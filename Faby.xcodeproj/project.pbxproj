@@ -10,22 +10,9 @@
 		C45BB7B02D350B6200E23648 /* Faby.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Faby.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		C45BB7C22D350B6400E23648 /* Exceptions for "Faby" folder in "Faby" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = C45BB7AF2D350B6200E23648 /* Faby */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
-
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		C45BB7B22D350B6200E23648 /* Faby */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				C45BB7C22D350B6400E23648 /* Exceptions for "Faby" folder in "Faby" target */,
-			);
 			path = Faby;
 			sourceTree = "<group>";
 		};
