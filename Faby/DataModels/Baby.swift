@@ -4,7 +4,7 @@ class Baby {
     var dateOfBirth: Date
     var gender: Gender
     var parent: Parent
-    
+    var region: String?
     var milestonesAchieved: [GrowthMilestone : Date] = [:]
     var height: [Double: Date] = [:]
     var weight: [Double: Date] = [:]

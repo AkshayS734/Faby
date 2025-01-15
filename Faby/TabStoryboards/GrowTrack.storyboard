@@ -15,11 +15,28 @@
                     <view key="view" contentMode="scaleToFill" id="5EZ-qb-Rvc">
                         <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <subviews>
+                            <segmentedControl opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="left" contentVerticalAlignment="top" segmentControlStyle="plain" selectedSegmentIndex="0" translatesAutoresizingMaskIntoConstraints="NO" id="u9M-sU-hb4">
+                                <rect key="frame" x="16" y="175" width="361" height="32"/>
+                                <segments>
+                                    <segment title="Milestones"/>
+                                    <segment title="Body measurements"/>
+                                </segments>
+                            </segmentedControl>
+                        </subviews>
                         <viewLayoutGuide key="safeArea" id="vDu-zF-Fre"/>
                         <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                        <constraints>
+                            <constraint firstItem="vDu-zF-Fre" firstAttribute="trailing" secondItem="u9M-sU-hb4" secondAttribute="trailing" constant="16" id="MVc-MS-pdV"/>
+                            <constraint firstItem="u9M-sU-hb4" firstAttribute="leading" secondItem="vDu-zF-Fre" secondAttribute="leading" constant="16" id="srr-53-bPg"/>
+                            <constraint firstItem="u9M-sU-hb4" firstAttribute="top" secondItem="vDu-zF-Fre" secondAttribute="top" constant="20" id="wio-BX-9VL"/>
+                        </constraints>
                     </view>
                     <navigationItem key="navigationItem" title="GrowTrack" id="zmZ-sQ-EVr"/>
                     <simulatedTabBarMetrics key="simulatedBottomBarMetrics"/>
+                    <connections>
+                        <outlet property="milestoneGrowthSegmentedControl" destination="u9M-sU-hb4" id="arJ-t6-5LI"/>
+                    </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="Ief-a0-LHa" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
             </objects>
