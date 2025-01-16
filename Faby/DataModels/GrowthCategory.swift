@@ -1,8 +1,7 @@
 import Foundation
 enum GrowthCategory: String, Codable {
-    case growth
-    case development
-    case health
-    case learning
+    case cognitive
+    case language
+    case physical
     case social
 }
