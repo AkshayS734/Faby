@@ -6,10 +6,10 @@ enum GrowthCategory: String, Codable {
     case social
 }
 enum MilestoneMonth: Int, Codable {
-    case twelve = 12
-    case fifteen = 15
-    case eighteen = 18
-    case twentyFour = 24
-    case thirty = 30
-    case thirtySix = 36
+    case month12 = 12
+    case month15 = 15
+    case month18 = 18
+    case month24 = 24
+    case month30 = 30
+    case month36 = 36
 }

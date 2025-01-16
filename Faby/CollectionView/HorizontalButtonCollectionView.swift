@@ -1,12 +1,17 @@
 import UIKit
 
+protocol HorizontalButtonCollectionViewDelegate: AnyObject {
+    func didSelectButton(at index: Int)
+}
+
 class HorizontalButtonCollectionView: UIView, UICollectionViewDataSource, UICollectionViewDelegate, UICollectionViewDelegateFlowLayout {
-    
+    weak var buttonDelegate: HorizontalButtonCollectionViewDelegate?
     private var collectionView: UICollectionView!
     private var buttonTitles: [String]
     private var buttonSize: CGSize
     private var minimumLineSpacing: CGFloat
     private var cornerRadius: CGFloat
+    private var selectedIndex: Int?
     
     init(buttonTitles: [String], buttonSize: CGSize, minimumLineSpacing: CGFloat, cornerRadius: CGFloat) {
         self.buttonTitles = buttonTitles
@@ -60,8 +65,16 @@ class HorizontalButtonCollectionView: UIView, UICollectionViewDataSource, UIColl
             return UICollectionViewCell()
         }
         cell.configure(with: buttonTitles[indexPath.item])
-        
-        // Apply corner radius to the button
+        let buttonTitle = buttonTitles[indexPath.item]
+        cell.configure(with: buttonTitle)
+        if indexPath.item == selectedIndex {
+            cell.backgroundColor = .systemBlue
+            cell.layer.borderWidth = 2
+            cell.layer.borderColor = UIColor.white.cgColor
+        } else {
+            cell.backgroundColor = .clear
+            cell.layer.borderWidth = 0
+        }
         cell.updateCornerRadius(cornerRadius)
         
         return cell
@@ -69,5 +82,8 @@ class HorizontalButtonCollectionView: UIView, UICollectionViewDataSource, UIColl
     
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
         return buttonSize
+    }
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        buttonDelegate?.didSelectButton(at: indexPath.item)
     }
 }

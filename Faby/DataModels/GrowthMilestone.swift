@@ -4,11 +4,11 @@ class GrowthMilestone: Hashable {
     var title: String
     var query: String
     var image: String
-    var milestoneMonth: Int
+    var milestoneMonth: MilestoneMonth
     var description: String
     var category: GrowthCategory
     
-    init(title: String,query: String, image: String, milestoneMonth: Int, description: String, category: GrowthCategory) {
+    init(title: String,query: String, image: String, milestoneMonth: MilestoneMonth, description: String, category: GrowthCategory) {
         self.title = title
         self.query = query
         self.image = image
