@@ -6,8 +6,6 @@ class GrowthMilestone: Hashable {
     var image: String
     var milestoneMonth: Int
     var description: String
-//    var reached: Bool = false
-//    var reachedDate: Date?
     var category: GrowthCategory
     
     init(title: String,query: String, image: String, milestoneMonth: Int, description: String, category: GrowthCategory) {
@@ -18,11 +16,6 @@ class GrowthMilestone: Hashable {
         self.description = description
         self.category = category
     }
-    
-//    func markReached(for date: Date) {
-//        reached = true
-//        reachedDate = date
-//    }
     
     static func == (lhs: GrowthMilestone, rhs: GrowthMilestone) -> Bool {
         return lhs.title == rhs.title &&
