@@ -32,4 +32,10 @@ class ButtonCollectionViewCell: UICollectionViewCell {
     func configure(with title: String) {
         button.setTitle(title, for: .normal)
     }
+
+    // New method to customize the button's corner radius
+    func updateCornerRadius(_ radius: CGFloat) {
+        button.layer.cornerRadius = radius
+        button.clipsToBounds = true
+    }
 }

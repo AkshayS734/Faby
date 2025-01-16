@@ -3,10 +3,16 @@ import UIKit
 class HorizontalButtonCollectionView: UIView, UICollectionViewDataSource, UICollectionViewDelegate, UICollectionViewDelegateFlowLayout {
     
     private var collectionView: UICollectionView!
-    private let buttonTitles: [String]
+    private var buttonTitles: [String]
+    private var buttonSize: CGSize
+    private var minimumLineSpacing: CGFloat
+    private var cornerRadius: CGFloat
     
-    init(buttonTitles: [String]) {
+    init(buttonTitles: [String], buttonSize: CGSize, minimumLineSpacing: CGFloat, cornerRadius: CGFloat) {
         self.buttonTitles = buttonTitles
+        self.buttonSize = buttonSize
+        self.minimumLineSpacing = minimumLineSpacing
+        self.cornerRadius = cornerRadius
         super.init(frame: .zero)
         setupCollectionView()
     }
@@ -18,7 +24,7 @@ class HorizontalButtonCollectionView: UIView, UICollectionViewDataSource, UIColl
     private func setupCollectionView() {
         let layout = UICollectionViewFlowLayout()
         layout.scrollDirection = .horizontal
-        layout.minimumLineSpacing = 10
+        layout.minimumLineSpacing = minimumLineSpacing // Apply minimum line spacing
         
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
         collectionView.backgroundColor = .clear
@@ -37,6 +43,13 @@ class HorizontalButtonCollectionView: UIView, UICollectionViewDataSource, UIColl
             collectionView.bottomAnchor.constraint(equalTo: bottomAnchor)
         ])
     }
+
+    func updateData(_ newTitles: [String]) {
+        self.buttonTitles = newTitles
+        collectionView.reloadData()
+    }
+    
+    // MARK: - UICollectionViewDataSource
     
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         return buttonTitles.count
@@ -47,12 +60,14 @@ class HorizontalButtonCollectionView: UIView, UICollectionViewDataSource, UIColl
             return UICollectionViewCell()
         }
         cell.configure(with: buttonTitles[indexPath.item])
+        
+        // Apply corner radius to the button
+        cell.updateCornerRadius(cornerRadius)
+        
         return cell
     }
     
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
-        let width = (collectionView.frame.width - 64) / 3
-        return CGSize(width: width, height: 100)
+        return buttonSize
     }
 }
-
