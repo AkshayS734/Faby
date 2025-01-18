@@ -682,17 +682,17 @@ class GrowthMilestonesDataModel {
             category: .physical
         )
     ]
-    func milestones(forCategory category: GrowthCategory, andMonth month: MilestoneMonth) -> [GrowthMilestone] {
-        return milestones.filter { $0.category == category && $0.milestoneMonth == month }
-    }
-        
-    func milestones(forCategory category: GrowthCategory) -> [GrowthMilestone] {
-        return milestones.filter { $0.category == category }
-    }
-        
-    func milestones(forMonth month: MilestoneMonth) -> [GrowthMilestone] {
-        return milestones.filter { $0.milestoneMonth == month }
-    }
+//    func milestones(forCategory category: GrowthCategory, andMonth month: MilestoneMonth) -> [GrowthMilestone] {
+//        return milestones.filter { $0.category == category && $0.milestoneMonth == month }
+//    }
+//        
+//    func milestones(forCategory category: GrowthCategory) -> [GrowthMilestone] {
+//        return milestones.filter { $0.category == category }
+//    }
+//        
+//    func milestones(forMonth month: MilestoneMonth) -> [GrowthMilestone] {
+//        return milestones.filter { $0.milestoneMonth == month }
+//    }
 //    private init() {
 //        milestones = [
 //            
