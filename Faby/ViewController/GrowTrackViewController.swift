@@ -1,173 +1,141 @@
 import UIKit
 
-class GrowTrackViewController: UIViewController, HorizontalButtonCollectionViewDelegate{
+class GrowTrackViewController: UIViewController, UICollectionViewDelegate{
     
-    @IBOutlet weak var milestoneGrowthSegmentedControl: UISegmentedControl!
+    
+    @IBOutlet weak var topSegmentedControl: UISegmentedControl!
+    
+    private var monthButtonCollectionView: ButtonsCollectionView!
+    private var categoryButtonCollectionView: ButtonsCollectionView!
+    private var milestonesCollectionView: UICollectionView!
+    
     private let monthButtonTitles = ["12 months", "15 months", "18 months", "24 months", "30 months", "36 months"]
     private let monthButtonSize = CGSize(width: 90, height: 100)
-    private var monthHorizontalCollectionView: HorizontalButtonCollectionView!
-    private let categoryButtonTitles = ["Social","Cognitive","Physical","Language"]
-    private let categoryButtonSize = CGSize(width: 100, height: 40)
-    private var categoryHorizontalCollectionView: HorizontalButtonCollectionView!
-    private var milestoneCollectionView: UICollectionView!
+    private let categoryButtonTitles = ["Cognitive", "Language", "Physical", "Social"]
+    private let categoryButtonSize = CGSize(width: 90, height: 50)
+    
     private var filteredMilestones: [GrowthMilestone] = []
-    private var selectedCategory: String?
-    private var selectedMonth: String?
-
+    
     
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemGray6
-        monthHorizontalCollectionView = HorizontalButtonCollectionView(buttonTitles: monthButtonTitles, buttonSize: monthButtonSize, minimumLineSpacing: 20, cornerRadius: 10)
-        monthHorizontalCollectionView.buttonDelegate = self
-        monthHorizontalCollectionView.updateData(monthButtonTitles)
+        
+        monthButtonCollectionView = ButtonsCollectionView(buttonTitles: monthButtonTitles, buttonSize: monthButtonSize, minimumLineSpacing: 5, cornerRadius: 10)
+        monthButtonCollectionView.delegate = self
+        view.addSubview(monthButtonCollectionView)
         setupMonthCollectionView()
         
-        categoryHorizontalCollectionView = HorizontalButtonCollectionView(buttonTitles: categoryButtonTitles, buttonSize: categoryButtonSize,  minimumLineSpacing: 10, cornerRadius: 7)
-        categoryHorizontalCollectionView.buttonDelegate = self
-        categoryHorizontalCollectionView.updateData(categoryButtonTitles)
+        categoryButtonCollectionView = ButtonsCollectionView(buttonTitles: categoryButtonTitles, buttonSize: categoryButtonSize, minimumLineSpacing: 10, cornerRadius: 7)
+        categoryButtonCollectionView.delegate = self
+        view.addSubview(categoryButtonCollectionView)
         setupCategoryCollectionView()
-        setupMilestoneCollectionView()
         
+        setupMilestonesCollectionView()
+        monthButtonCollectionView.selectButton(at: 0)
+        categoryButtonCollectionView.selectButton(at: 0)
+        filterMilestones(month: monthButtonTitles[0], category: categoryButtonTitles[0])
     }
-    @IBAction func segmentChanged(_ sender: UISegmentedControl) {
-        if milestoneGrowthSegmentedControl.selectedSegmentIndex == 0 {
-            monthHorizontalCollectionView.isHidden = false
-            categoryHorizontalCollectionView.isHidden = false
-            milestoneCollectionView.isHidden = false
-        } else {
-            monthHorizontalCollectionView.isHidden = true
-            categoryHorizontalCollectionView.isHidden = true
-            milestoneCollectionView.isHidden = true
-        }
-    }
-    func didSelectButton(at index: Int) {
-        if categoryHorizontalCollectionView.isHidden == false {
-            selectedCategory = categoryButtonTitles[index]
-        } else {
-            selectedMonth = monthButtonTitles[index]
-        }
-        filterMilestones()
-    }
+    
     private func setupMonthCollectionView() {
-        view.addSubview(monthHorizontalCollectionView)
-        monthHorizontalCollectionView.translatesAutoresizingMaskIntoConstraints = false
+        monthButtonCollectionView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            monthHorizontalCollectionView.topAnchor.constraint(equalTo: milestoneGrowthSegmentedControl.bottomAnchor, constant: 20),
-            monthHorizontalCollectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            monthHorizontalCollectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            monthHorizontalCollectionView.heightAnchor.constraint(equalToConstant: 100)
-            
+            monthButtonCollectionView.topAnchor.constraint(equalTo: topSegmentedControl.bottomAnchor, constant: 20),
+            monthButtonCollectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            monthButtonCollectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            monthButtonCollectionView.heightAnchor.constraint(equalToConstant: 100)
         ])
     }
     
     private func setupCategoryCollectionView() {
-        view.addSubview(categoryHorizontalCollectionView)
-        categoryHorizontalCollectionView.translatesAutoresizingMaskIntoConstraints = false
+        categoryButtonCollectionView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            categoryHorizontalCollectionView.topAnchor.constraint(equalTo: monthHorizontalCollectionView.bottomAnchor, constant: 0),
-            categoryHorizontalCollectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            categoryHorizontalCollectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            categoryHorizontalCollectionView.heightAnchor.constraint(equalToConstant: 60)
+            categoryButtonCollectionView.topAnchor.constraint(equalTo: monthButtonCollectionView.bottomAnchor, constant: 10),
+            categoryButtonCollectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            categoryButtonCollectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            categoryButtonCollectionView.heightAnchor.constraint(equalToConstant: 50)
         ])
     }
-    private func setupMilestoneCollectionView() {
+    
+    private func setupMilestonesCollectionView() {
         let layout = UICollectionViewFlowLayout()
         layout.scrollDirection = .vertical
-        milestoneCollectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
-        milestoneCollectionView.register(MilestoneQueryCell.self, forCellWithReuseIdentifier: MilestoneQueryCell.identifier)
-        milestoneCollectionView.delegate = self
-        milestoneCollectionView.dataSource = self
-        milestoneCollectionView.backgroundColor = .white
-            
-        view.addSubview(milestoneCollectionView)
-        milestoneCollectionView.translatesAutoresizingMaskIntoConstraints = false
+        layout.minimumLineSpacing = 10
+        layout.itemSize = CGSize(width: view.frame.width - 32, height: 100) // Adjust width dynamically
+
+        milestonesCollectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
+        milestonesCollectionView.backgroundColor = .clear
+        milestonesCollectionView.register(MilestoneCardCell.self, forCellWithReuseIdentifier: MilestoneCardCell.identifier)
+        milestonesCollectionView.dataSource = self
+        milestonesCollectionView.delegate = self
+        view.addSubview(milestonesCollectionView)
+
+        milestonesCollectionView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            milestoneCollectionView.topAnchor.constraint(equalTo: categoryHorizontalCollectionView.bottomAnchor, constant: 20),
-            milestoneCollectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            milestoneCollectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            milestoneCollectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -20)
+            milestonesCollectionView.topAnchor.constraint(equalTo: categoryButtonCollectionView.bottomAnchor, constant: 20),
+            milestonesCollectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            milestonesCollectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            milestonesCollectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -16)
         ])
     }
+    
+    @IBAction func segmentedControlSwitched(_ sender: UISegmentedControl) {
         
-    private func filterMilestones() {
-        if let selectedCategory = selectedCategory, let selectedMonthString = selectedMonth {
-                if let selectedMonth = monthFromString(selectedMonthString), let categoryEnum = categoryFromString(selectedCategory) {
-                    filteredMilestones = GrowthMilestonesDataModel.shared.milestones(forCategory: categoryEnum, andMonth: selectedMonth)
-                }
-        }
-        else if let selectedCategory = selectedCategory {
-            if let categoryEnum = categoryFromString(selectedCategory) {
-                filteredMilestones = GrowthMilestonesDataModel.shared.milestones(forCategory: categoryEnum)
-            }
-        }
-            // If only month is selected
-        else if let selectedMonthString = selectedMonth {
-            if let selectedMonth = monthFromString(selectedMonthString) {
-                filteredMilestones = GrowthMilestonesDataModel.shared.milestones(forMonth: selectedMonth)
-            }
-        }
-        else {
-            filteredMilestones = GrowthMilestonesDataModel.shared.milestones
-        }
-        milestoneCollectionView.reloadData()
-    }
-    func categoryFromString(_ categoryString: String) -> GrowthCategory? {
-        switch categoryString.lowercased() {
-        case "cognitive":
-            return .cognitive
-        case "social":
-            return .social
-        case "physical":
-            return .physical
-        case "language":
-            return .language
-        default:
-            return nil
+        let selectedIndex = sender.selectedSegmentIndex
+        switch selectedIndex {
+            case 0:
+            monthButtonCollectionView.isHidden = false
+            categoryButtonCollectionView.isHidden = false
+            milestonesCollectionView.isHidden = false
+            case 1:
+            monthButtonCollectionView.isHidden = true
+            categoryButtonCollectionView.isHidden = true
+            milestonesCollectionView.isHidden = true
+            default:
+            monthButtonCollectionView.isHidden = false
+            categoryButtonCollectionView.isHidden = false
+            milestonesCollectionView.isHidden = false
+            
         }
     }
-    func monthFromString(_ monthString: String) -> MilestoneMonth? {
-        switch monthString.lowercased() {
-        case "12 months":
-            return .month12
-        case "15 months":
-            return .month15
-        case "18 months":
-            return .month18
-        case "24 months":
-            return .month24
-        case "30 months":
-            return .month30
-        case "36 months":
-            return .month36
-        default:
-            return nil
+    private func filterMilestones(month: String, category: String) {
+        let monthNumber = Int(month.split(separator: " ")[0]) ?? 0
+        filteredMilestones = GrowthMilestonesDataModel.shared.milestones.filter { milestone in
+            let isMatchingMonth = milestone.milestoneMonth.rawValue == monthNumber
+            let isMatchingCategory = milestone.category.rawValue == category.lowercased()
+            return isMatchingMonth && isMatchingCategory
         }
-    }
 
+//        print("Filtered milestones count: \(filteredMilestones.count)")
+            // Reload the collection view after filtering
+        milestonesCollectionView.reloadData()
+    }
 }
 
 
+extension GrowTrackViewController: ButtonsCollectionViewDelegate {
+    func didSelectButton(withTitle title: String, inCollection collection: ButtonsCollectionView) {
+//        print("Button selected: \(title)")
+        if collection == monthButtonCollectionView {
+//            print("Selected month: \(title)")
+            // Update the filter based on selected month and the current category
+            filterMilestones(month: title, category: categoryButtonTitles[categoryButtonCollectionView.selectedIndex ?? 0])
+        } else if collection == categoryButtonCollectionView {
+//            print("Selected category: \(title)")
+            // Update the filter based on selected category and the current month
+            filterMilestones(month: monthButtonTitles[monthButtonCollectionView.selectedIndex ?? 0], category: title)
+        }
+    }
+}
 
-extension GrowTrackViewController: UICollectionViewDelegate, UICollectionViewDataSource {
-    
+extension GrowTrackViewController: UICollectionViewDataSource {
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         return filteredMilestones.count
     }
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-        guard let cell = collectionView.dequeueReusableCell(withReuseIdentifier: MilestoneQueryCell.identifier, for: indexPath) as? MilestoneQueryCell else {
-            return UICollectionViewCell()
-        }
-        
-        let milestone = filteredMilestones[indexPath.item]
-        cell.configure(with: milestone)
-        
-        
+        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: MilestoneCardCell.identifier, for: indexPath) as! MilestoneCardCell
+        cell.configure(with: filteredMilestones[indexPath.row])
         return cell
-    }
-    
-    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        // Handle the cell tap, navigate or perform action
     }
 }

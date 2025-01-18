@@ -23,7 +23,7 @@
                                     <segment title="Body measurements"/>
                                 </segments>
                                 <connections>
-                                    <action selector="segmentChanged:" destination="Y6W-OH-hqX" eventType="valueChanged" id="rbf-4s-1xV"/>
+                                    <action selector="segmentedControlSwitched:" destination="Y6W-OH-hqX" eventType="valueChanged" id="TLU-bc-pzh"/>
                                 </connections>
                             </segmentedControl>
                         </subviews>
@@ -38,7 +38,7 @@
                     <navigationItem key="navigationItem" title="GrowTrack" id="zmZ-sQ-EVr"/>
                     <simulatedTabBarMetrics key="simulatedBottomBarMetrics"/>
                     <connections>
-                        <outlet property="milestoneGrowthSegmentedControl" destination="u9M-sU-hb4" id="LqG-sM-Ev5"/>
+                        <outlet property="topSegmentedControl" destination="u9M-sU-hb4" id="kTg-Ao-rd6"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="Ief-a0-LHa" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
