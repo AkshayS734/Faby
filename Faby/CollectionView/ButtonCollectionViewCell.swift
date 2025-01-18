@@ -2,13 +2,14 @@ import UIKit
 
 class ButtonCollectionViewCell: UICollectionViewCell {
     static let identifier = "ButtonCollectionViewCell"
-        
+    
     private let button: UIButton = {
         let button = UIButton(type: .system)
         button.setTitleColor(.black, for: .normal)
         button.backgroundColor = .white
         button.layer.cornerRadius = 11
         button.clipsToBounds = true
+        button.isUserInteractionEnabled = false
         return button
     }()
         
@@ -23,6 +24,9 @@ class ButtonCollectionViewCell: UICollectionViewCell {
             button.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 5),
             button.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -5),
         ])
+//        let tap = UITapGestureRecognizer(target: self, action: #selector(self.buttonTapped(_:)))
+//        button.addGestureRecognizer(tap)
+//        tap.cancelsTouchesInView = false
     }
         
     required init?(coder: NSCoder) {
@@ -32,10 +36,20 @@ class ButtonCollectionViewCell: UICollectionViewCell {
     func configure(with title: String) {
         button.setTitle(title, for: .normal)
     }
+    
+//    @objc func buttonTapped(_ sender: UITapGestureRecognizer) {
+//        isSelected = !isSelected
+//    }
 
-    // New method to customize the button's corner radius
-    func updateCornerRadius(_ radius: CGFloat) {
-        button.layer.cornerRadius = radius
-        button.clipsToBounds = true
+    override var isSelected: Bool {
+        didSet {
+            if isSelected {
+                button.backgroundColor = .systemBlue
+                button.setTitleColor(.white, for: .normal)
+            } else {
+                button.backgroundColor = .white
+                button.setTitleColor(.black, for: .normal)
+            }
+        }
     }
 }
