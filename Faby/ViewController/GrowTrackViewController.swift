@@ -1,6 +1,6 @@
 import UIKit
 
-class GrowTrackViewController: UIViewController, UICollectionViewDelegate{
+class GrowTrackViewController: UIViewController{
     
     
     @IBOutlet weak var topSegmentedControl: UISegmentedControl!
@@ -113,21 +113,32 @@ class GrowTrackViewController: UIViewController, UICollectionViewDelegate{
 }
 
 
+extension GrowTrackViewController: UICollectionViewDelegate {
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        let selectedMilestone = filteredMilestones[indexPath.row]
+        let modalVC = MilestoneModalViewController(
+            category: selectedMilestone.category.rawValue,
+            title: selectedMilestone.title,
+            description: selectedMilestone.description
+        )
+        modalVC.onSave = { [weak self] date, image in
+            // Handle the saved data here
+            print("Milestone reached on \(date), image: \(image?.description ?? "No Image")")
+        }
+        modalVC.modalPresentationStyle = .formSheet
+        present(modalVC, animated: true, completion: nil)
+    }
+}
+
 extension GrowTrackViewController: ButtonsCollectionViewDelegate {
     func didSelectButton(withTitle title: String, inCollection collection: ButtonsCollectionView) {
-//        print("Button selected: \(title)")
         if collection == monthButtonCollectionView {
-//            print("Selected month: \(title)")
-            // Update the filter based on selected month and the current category
             filterMilestones(month: title, category: categoryButtonTitles[categoryButtonCollectionView.selectedIndex ?? 0])
         } else if collection == categoryButtonCollectionView {
-//            print("Selected category: \(title)")
-            // Update the filter based on selected category and the current month
             filterMilestones(month: monthButtonTitles[monthButtonCollectionView.selectedIndex ?? 0], category: title)
         }
     }
 }
-
 extension GrowTrackViewController: UICollectionViewDataSource {
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         return filteredMilestones.count
