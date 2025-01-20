@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.XIB" version="3.0" toolsVersion="23504" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES">
+    <device id="retina6_12" orientation="portrait" appearance="light"/>
+    <dependencies>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="23506"/>
+        <capability name="Safe area layout guides" minToolsVersion="9.0"/>
+        <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
+    </dependencies>
+    <objects>
+        <placeholder placeholderIdentifier="IBFilesOwner" id="-1" userLabel="File's Owner"/>
+        <placeholder placeholderIdentifier="IBFirstResponder" id="-2" customClass="UIResponder"/>
+        <collectionViewCell opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center" reuseIdentifier="BodyMeasurementCollectionViewCell" id="gTV-IL-0wX" customClass="BodyMeasurementCollectionViewCell" customModule="Faby" customModuleProvider="target">
+            <rect key="frame" x="0.0" y="0.0" width="382" height="239"/>
+            <autoresizingMask key="autoresizingMask"/>
+            <view key="contentView" opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center">
+                <rect key="frame" x="0.0" y="0.0" width="382" height="239"/>
+                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                <subviews>
+                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Label" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="jD0-Vv-qB8">
+                        <rect key="frame" x="39" y="16" width="42" height="21"/>
+                        <fontDescription key="fontDescription" type="system" pointSize="17"/>
+                        <nil key="textColor"/>
+                        <nil key="highlightedColor"/>
+                    </label>
+                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Label" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="dz8-XD-Tsw">
+                        <rect key="frame" x="307" y="16" width="42" height="21"/>
+                        <fontDescription key="fontDescription" type="system" pointSize="17"/>
+                        <nil key="textColor"/>
+                        <nil key="highlightedColor"/>
+                    </label>
+                    <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" translatesAutoresizingMaskIntoConstraints="NO" id="BkV-CM-lru">
+                        <rect key="frame" x="16" y="16" width="19" height="22"/>
+                        <constraints>
+                            <constraint firstAttribute="height" constant="22" id="7ye-eR-WxI"/>
+                            <constraint firstAttribute="width" constant="19" id="eMb-15-XNS"/>
+                        </constraints>
+                    </imageView>
+                    <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="D5j-dJ-Fnc">
+                        <rect key="frame" x="353" y="16" width="13" height="20"/>
+                        <constraints>
+                            <constraint firstAttribute="height" constant="20" id="rHj-X1-exr"/>
+                            <constraint firstAttribute="width" constant="13" id="vz2-ZZ-whP"/>
+                        </constraints>
+                        <state key="normal" title="Button"/>
+                        <buttonConfiguration key="configuration" style="plain" image="chevron.right" catalog="system"/>
+                    </button>
+                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Label" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="ZGw-bv-98p">
+                        <rect key="frame" x="16" y="189" width="67" height="34"/>
+                        <fontDescription key="fontDescription" type="system" pointSize="28"/>
+                        <nil key="textColor"/>
+                        <nil key="highlightedColor"/>
+                    </label>
+                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Label" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="ZWI-qw-VDi">
+                        <rect key="frame" x="87" y="202" width="42" height="21"/>
+                        <fontDescription key="fontDescription" type="system" pointSize="17"/>
+                        <nil key="textColor"/>
+                        <nil key="highlightedColor"/>
+                    </label>
+                </subviews>
+            </view>
+            <viewLayoutGuide key="safeArea" id="ZTg-uK-7eu"/>
+            <constraints>
+                <constraint firstItem="dz8-XD-Tsw" firstAttribute="top" secondItem="gTV-IL-0wX" secondAttribute="top" constant="16" id="8D4-tF-5YK"/>
+                <constraint firstItem="jD0-Vv-qB8" firstAttribute="top" secondItem="gTV-IL-0wX" secondAttribute="top" constant="16" id="H0f-vY-s3t"/>
+                <constraint firstItem="D5j-dJ-Fnc" firstAttribute="leading" secondItem="dz8-XD-Tsw" secondAttribute="trailing" constant="4" id="ReO-67-0YR"/>
+                <constraint firstItem="BkV-CM-lru" firstAttribute="top" secondItem="gTV-IL-0wX" secondAttribute="top" constant="16" id="Sxo-f2-Ogx"/>
+                <constraint firstItem="jD0-Vv-qB8" firstAttribute="leading" secondItem="BkV-CM-lru" secondAttribute="trailing" constant="4" id="UnA-XU-IBg"/>
+                <constraint firstAttribute="bottom" secondItem="ZWI-qw-VDi" secondAttribute="bottom" constant="16" id="XuD-VH-2Y1"/>
+                <constraint firstItem="BkV-CM-lru" firstAttribute="leading" secondItem="gTV-IL-0wX" secondAttribute="leading" constant="16" id="bJj-9q-cQv"/>
+                <constraint firstItem="D5j-dJ-Fnc" firstAttribute="top" secondItem="gTV-IL-0wX" secondAttribute="top" constant="16" id="f7e-d1-kQf"/>
+                <constraint firstAttribute="trailing" secondItem="D5j-dJ-Fnc" secondAttribute="trailing" constant="16" id="h3C-gY-5gU"/>
+                <constraint firstAttribute="bottom" secondItem="ZGw-bv-98p" secondAttribute="bottom" constant="16" id="qf5-ST-a12"/>
+                <constraint firstItem="ZWI-qw-VDi" firstAttribute="leading" secondItem="ZGw-bv-98p" secondAttribute="trailing" constant="4" id="u0q-ZQ-ikw"/>
+                <constraint firstItem="ZGw-bv-98p" firstAttribute="leading" secondItem="gTV-IL-0wX" secondAttribute="leading" constant="16" id="vvu-N0-1Fh"/>
+            </constraints>
+            <size key="customSize" width="382" height="239"/>
+            <connections>
+                <outlet property="chevronButton" destination="D5j-dJ-Fnc" id="s2t-iN-vjA"/>
+                <outlet property="dateTimeLabel" destination="dz8-XD-Tsw" id="UkI-7t-KfW"/>
+                <outlet property="labelImage" destination="BkV-CM-lru" id="84B-hf-Ofh"/>
+                <outlet property="measurementNumberLabel" destination="ZGw-bv-98p" id="rMu-yU-EL2"/>
+                <outlet property="measurementUnitLabel" destination="ZWI-qw-VDi" id="Zh3-pN-WHi"/>
+                <outlet property="titleLabel" destination="jD0-Vv-qB8" id="ZGp-uD-Khn"/>
+            </connections>
+            <point key="canvasLocation" x="192.36641221374046" y="-19.366197183098592"/>
+        </collectionViewCell>
+    </objects>
+    <resources>
+        <image name="chevron.right" catalog="system" width="97" height="128"/>
+    </resources>
+</document>
