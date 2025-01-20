@@ -43,7 +43,6 @@ class MilestoneModalViewController: UIViewController {
         view.clipsToBounds = true
         view.backgroundColor = .systemGray6
         
-        // Modal Title
         let modalTitle = UILabel()
         modalTitle.text = "Add \(category) Milestone"
         modalTitle.font = .boldSystemFont(ofSize: 18)
@@ -51,14 +50,12 @@ class MilestoneModalViewController: UIViewController {
         view.addSubview(modalTitle)
         modalTitle.translatesAutoresizingMaskIntoConstraints = false
         
-        // Title Label
         titleLabel.text = milestoneTitle
         titleLabel.font = .systemFont(ofSize: 20)
         titleLabel.textAlignment = .center
         view.addSubview(titleLabel)
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         
-        // Description Label
         descriptionLabel.text = milestoneDescription
         descriptionLabel.font = .systemFont(ofSize: 16)
         descriptionLabel.numberOfLines = 0
@@ -66,36 +63,31 @@ class MilestoneModalViewController: UIViewController {
         view.addSubview(descriptionLabel)
         descriptionLabel.translatesAutoresizingMaskIntoConstraints = false
         
-        // Card View for Reached On, Date Picker, Add Special Moment, and Add Image
         let cardView = UIView()
         cardView.layer.cornerRadius = 8
         cardView.layer.shadowColor = UIColor.black.cgColor
         cardView.layer.shadowOpacity = 0.1
         cardView.layer.shadowOffset = CGSize(width: 0, height: 2)
         cardView.layer.shadowRadius = 4
-        cardView.backgroundColor = .white  // Ensure the background color is set
+        cardView.backgroundColor = .white
         view.addSubview(cardView)
         cardView.translatesAutoresizingMaskIntoConstraints = false
         
-        // Reached On Label
         reachedOnLabel.text = "Reached on"
         reachedOnLabel.font = .systemFont(ofSize: 16)
         reachedOnLabel.textAlignment = .left
         cardView.addSubview(reachedOnLabel)
         reachedOnLabel.translatesAutoresizingMaskIntoConstraints = false
         
-        // Date Picker
         datePicker.datePickerMode = .date
         cardView.addSubview(datePicker)
         datePicker.translatesAutoresizingMaskIntoConstraints = false
         
-        // Separator Line
         let separatorLine = UIView()
         separatorLine.backgroundColor = .lightGray
         cardView.addSubview(separatorLine)
         separatorLine.translatesAutoresizingMaskIntoConstraints = false
         
-        // Add Special Moment Label
         let specialMomentLabel = UILabel()
         specialMomentLabel.text = "Add Special Moment"
         specialMomentLabel.font = .systemFont(ofSize: 16)
@@ -103,23 +95,20 @@ class MilestoneModalViewController: UIViewController {
         cardView.addSubview(specialMomentLabel)
         specialMomentLabel.translatesAutoresizingMaskIntoConstraints = false
         
-        // Add Image Button
         addImageButton.addTarget(self, action: #selector(selectImage), for: .touchUpInside)
         addImageButton.setImage(UIImage(systemName: "photo.badge.plus"), for: .normal)
         addImageButton.tintColor = .systemBlue
         cardView.addSubview(addImageButton)
         addImageButton.translatesAutoresizingMaskIntoConstraints = false
         
-        // Image View
         imageView.contentMode = .scaleToFill
         imageView.layer.borderWidth = 0.5
         imageView.layer.borderColor = UIColor.gray.cgColor
         imageView.layer.cornerRadius = 8
-        imageView.isHidden = true // Initially hidden
+        imageView.isHidden = true
         cardView.addSubview(imageView)
         imageView.translatesAutoresizingMaskIntoConstraints = false
         
-        // Buttons
         saveButton.setTitle("Save", for: .normal)
         saveButton.addTarget(self, action: #selector(saveTapped), for: .touchUpInside)
         view.addSubview(saveButton)
@@ -130,7 +119,6 @@ class MilestoneModalViewController: UIViewController {
         view.addSubview(cancelButton)
         cancelButton.translatesAutoresizingMaskIntoConstraints = false
         
-        // Constraints
         NSLayoutConstraint.activate([
             modalTitle.topAnchor.constraint(equalTo: view.topAnchor, constant: 16),
             modalTitle.centerXAnchor.constraint(equalTo: view.centerXAnchor),
@@ -146,7 +134,7 @@ class MilestoneModalViewController: UIViewController {
             cardView.topAnchor.constraint(equalTo: descriptionLabel.bottomAnchor, constant: 40),
             cardView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             cardView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            cardView.heightAnchor.constraint(equalToConstant: 120),
+            cardView.heightAnchor.constraint(equalToConstant: 102),
             
             reachedOnLabel.topAnchor.constraint(equalTo: cardView.topAnchor, constant: 8),
             reachedOnLabel.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 16),
@@ -226,7 +214,7 @@ extension MilestoneModalViewController: UIImagePickerControllerDelegate, UINavig
     func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
         if let selectedImage = info[.originalImage] as? UIImage {
             imageView.image = selectedImage
-            imageView.isHidden = false // Show the image after selection
+            imageView.isHidden = false
         }
         picker.dismiss(animated: true, completion: nil)
     }

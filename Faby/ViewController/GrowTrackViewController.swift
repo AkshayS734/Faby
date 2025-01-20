@@ -99,15 +99,14 @@ class GrowTrackViewController: UIViewController{
         }
     }
     private func filterMilestones(month: String, category: String) {
+        guard let selectedBaby = BabyDataModel.shared.babyList.first else { return }
         let monthNumber = Int(month.split(separator: " ")[0]) ?? 0
-        filteredMilestones = GrowthMilestonesDataModel.shared.milestones.filter { milestone in
+            
+        filteredMilestones = selectedBaby.milestoneLeft.filter { milestone in
             let isMatchingMonth = milestone.milestoneMonth.rawValue == monthNumber
             let isMatchingCategory = milestone.category.rawValue == category.lowercased()
             return isMatchingMonth && isMatchingCategory
         }
-
-//        print("Filtered milestones count: \(filteredMilestones.count)")
-            // Reload the collection view after filtering
         milestonesCollectionView.reloadData()
     }
 }
@@ -115,16 +114,36 @@ class GrowTrackViewController: UIViewController{
 
 extension GrowTrackViewController: UICollectionViewDelegate {
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        guard let selectedBaby = BabyDataModel.shared.babyList.first else { return } 
         let selectedMilestone = filteredMilestones[indexPath.row]
+                
         let modalVC = MilestoneModalViewController(
             category: selectedMilestone.category.rawValue,
             title: selectedMilestone.title,
             description: selectedMilestone.description
         )
+                
         modalVC.onSave = { [weak self] date, image in
-            // Handle the saved data here
-            print("Milestone reached on \(date), image: \(image?.description ?? "No Image")")
+            guard let self = self else { return }
+                
+            selectedBaby.updateMilestonesAchieved(selectedMilestone, date: date)
+
+            self.filterMilestones(
+                month: self.monthButtonTitles[self.monthButtonCollectionView.selectedIndex ?? 0],
+                category: self.categoryButtonTitles[self.categoryButtonCollectionView.selectedIndex ?? 0]
+            )
+
+            modalVC.dismiss(animated: true) {
+                let alertController = UIAlertController(
+                    title: "🎉 Congratulations 🎉",
+                    message: "The milestone has been marked as reached.",
+                    preferredStyle: .alert
+                )
+                alertController.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
+                self.present(alertController, animated: true, completion: nil)
+            }
         }
+                
         modalVC.modalPresentationStyle = .formSheet
         present(modalVC, animated: true, completion: nil)
     }

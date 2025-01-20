@@ -1,6 +1,6 @@
 import Foundation
 class GrowthMilestone: Hashable {
-    
+    let id: UUID
     var title: String
     var query: String
     var image: String
@@ -9,6 +9,7 @@ class GrowthMilestone: Hashable {
     var category: GrowthCategory
     
     init(title: String,query: String, image: String, milestoneMonth: MilestoneMonth, description: String, category: GrowthCategory) {
+        self.id = UUID()
         self.title = title
         self.query = query
         self.image = image
