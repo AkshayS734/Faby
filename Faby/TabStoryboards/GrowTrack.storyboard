@@ -44,6 +44,9 @@
                                             <rect key="frame" x="0.0" y="0.0" width="128" height="128"/>
                                             <autoresizingMask key="autoresizingMask"/>
                                         </collectionViewCellContentView>
+                                        <connections>
+                                            <segue destination="QcD-le-w5v" kind="show" identifier="showMeasurementDetail" id="ZJr-gN-U3S"/>
+                                        </connections>
                                     </collectionViewCell>
                                 </cells>
                             </collectionView>
@@ -60,7 +63,7 @@
                             <constraint firstItem="vDu-zF-Fre" firstAttribute="trailing" secondItem="yDL-jR-bTF" secondAttribute="trailing" constant="16" id="xeG-1H-Fq5"/>
                         </constraints>
                     </view>
-                    <navigationItem key="navigationItem" title="GrowTrack" id="zmZ-sQ-EVr"/>
+                    <navigationItem key="navigationItem" title="GrowTrack" largeTitleDisplayMode="always" id="zmZ-sQ-EVr"/>
                     <simulatedTabBarMetrics key="simulatedBottomBarMetrics"/>
                     <connections>
                         <outlet property="bodyMeasurementCollectionView" destination="yDL-jR-bTF" id="mx3-tA-6Ff"/>
@@ -70,6 +73,24 @@
                 <placeholder placeholderIdentifier="IBFirstResponder" id="Ief-a0-LHa" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
             </objects>
             <point key="canvasLocation" x="1064.885496183206" y="-2.1126760563380285"/>
+        </scene>
+        <!--Measurement Details View Controller-->
+        <scene sceneID="HCe-Q9-Ymd">
+            <objects>
+                <viewController id="QcD-le-w5v" customClass="MeasurementDetailsViewController" customModule="Faby" customModuleProvider="target" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="EBu-h2-Oyu">
+                        <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <viewLayoutGuide key="safeArea" id="1Yt-oc-edc"/>
+                        <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                    </view>
+                    <navigationItem key="navigationItem" largeTitleDisplayMode="never" id="U2k-HR-C8r">
+                        <barButtonItem key="rightBarButtonItem" title="Add data" style="plain" id="bAM-dm-qGH"/>
+                    </navigationItem>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="iyR-o2-XQr" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="1799" y="-2"/>
         </scene>
         <!--GrowTrack-->
         <scene sceneID="bic-aL-8O4">
