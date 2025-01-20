@@ -18,6 +18,7 @@ class GrowTrackViewController: UIViewController{
     
     @IBOutlet weak var bodyMeasurementCollectionView: UICollectionView!
     private let bodyMeasurements = ["Height", "Weight", "Head Circumference"]
+    let units = ["cm", "kg", "cm"]
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -127,6 +128,14 @@ class GrowTrackViewController: UIViewController{
         }
         milestonesCollectionView.reloadData()
     }
+    
+    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+        if segue.identifier == "showMeasurementDetail",
+           let destinationVC = segue.destination as? MeasurementDetailsViewController,
+           let measurementType = sender as? String {
+            destinationVC.measurementType = measurementType
+        }
+    }
 }
 
 
@@ -156,7 +165,10 @@ extension GrowTrackViewController: UICollectionViewDelegate {
             modalVC.modalPresentationStyle = .formSheet
             present(modalVC, animated: true, completion: nil)
         } else if collectionView == bodyMeasurementCollectionView {
-            //yet to be added
+            let titles = ["Height", "Weight", "Head Circumference"]
+            let selectedMeasurement = titles[indexPath.row]
+
+            performSegue(withIdentifier: "showMeasurementDetail", sender: selectedMeasurement)
         }
         
     }
@@ -213,8 +225,7 @@ extension GrowTrackViewController: UICollectionViewDataSource {
                 withReuseIdentifier: "BodyMeasurementCollectionViewCell",
                 for: indexPath
             ) as! BodyMeasurementCollectionViewCell
-            let titles = ["Height", "Weight", "Head Circumference"]
-            cell.titleLabel.text = titles[indexPath.row]
+            cell.titleLabel.text = bodyMeasurements[indexPath.row]
             let armsImage = UIImage(systemName: "figure.arms.open")
             cell.labelImage.image = armsImage
             let titleColors: [UIColor] = [
@@ -224,6 +235,11 @@ extension GrowTrackViewController: UICollectionViewDataSource {
             ]
             cell.titleLabel.textColor = titleColors[indexPath.row % titleColors.count]
             cell.labelImage.tintColor = titleColors[indexPath.row % titleColors.count]
+            
+            cell.measurementNumberLabel.text = "0"
+            
+            cell.measurementUnitLabel.text = units[indexPath.row]
+            cell.dateTimeLabel.text = nil
             
             return cell
         } else if collectionView == milestonesCollectionView {
