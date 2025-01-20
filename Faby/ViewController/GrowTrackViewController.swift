@@ -61,7 +61,7 @@ class GrowTrackViewController: UIViewController{
         let layout = UICollectionViewFlowLayout()
         layout.scrollDirection = .vertical
         layout.minimumLineSpacing = 10
-        layout.itemSize = CGSize(width: view.frame.width - 32, height: 100) // Adjust width dynamically
+        layout.itemSize = CGSize(width: view.frame.width - 32, height: 100)
 
         milestonesCollectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
         milestonesCollectionView.backgroundColor = .clear

@@ -4,7 +4,7 @@ class MilestoneCardCell: UICollectionViewCell {
     
     private let milestoneImageView: UIImageView = {
         let imageView = UIImageView()
-        imageView.contentMode = .scaleAspectFill
+        imageView.contentMode = .scaleToFill
         imageView.clipsToBounds = true
         imageView.layer.cornerRadius = 8
         return imageView
@@ -13,7 +13,7 @@ class MilestoneCardCell: UICollectionViewCell {
     private let queryLabel: UILabel = {
         let label = UILabel()
         label.font = UIFont.systemFont(ofSize: 16, weight: .medium)
-        label.numberOfLines = 0 // This allows multiple lines
+        label.numberOfLines = 0
         label.textAlignment = .left
         label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal) // Prevents it from being squished horizontally
         label.setContentHuggingPriority(.defaultHigh, for: .horizontal) // Prevents it from being stretched horizontally
