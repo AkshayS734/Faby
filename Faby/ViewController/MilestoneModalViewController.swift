@@ -111,8 +111,8 @@ class MilestoneModalViewController: UIViewController {
         addImageButton.translatesAutoresizingMaskIntoConstraints = false
         
         // Image View
-        imageView.contentMode = .scaleAspectFit
-        imageView.layer.borderWidth = 1
+        imageView.contentMode = .scaleToFill
+        imageView.layer.borderWidth = 0.5
         imageView.layer.borderColor = UIColor.gray.cgColor
         imageView.layer.cornerRadius = 8
         imageView.isHidden = true // Initially hidden
@@ -139,14 +139,14 @@ class MilestoneModalViewController: UIViewController {
             titleLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             titleLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             
-            descriptionLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 8),
+            descriptionLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 16),
             descriptionLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             descriptionLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             
-            cardView.topAnchor.constraint(equalTo: descriptionLabel.bottomAnchor, constant: 30),
+            cardView.topAnchor.constraint(equalTo: descriptionLabel.bottomAnchor, constant: 40),
             cardView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             cardView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            cardView.heightAnchor.constraint(equalToConstant: 100),  // Ensure the height is set for visibility
+            cardView.heightAnchor.constraint(equalToConstant: 120),
             
             reachedOnLabel.topAnchor.constraint(equalTo: cardView.topAnchor, constant: 8),
             reachedOnLabel.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 16),
@@ -168,16 +168,19 @@ class MilestoneModalViewController: UIViewController {
             addImageButton.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -16),
             addImageButton.centerYAnchor.constraint(equalTo: specialMomentLabel.centerYAnchor),
             
-            imageView.topAnchor.constraint(equalTo: addImageButton.bottomAnchor, constant: 16),
+            imageView.topAnchor.constraint(equalTo: cardView.bottomAnchor, constant: 16),
             imageView.centerXAnchor.constraint(equalTo: cardView.centerXAnchor),
-            imageView.widthAnchor.constraint(equalToConstant: 100),
-            imageView.heightAnchor.constraint(equalToConstant: 100),
+            imageView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            imageView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            imageView.heightAnchor.constraint(equalToConstant: 300),
             
             saveButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             saveButton.topAnchor.constraint(equalTo: view.topAnchor, constant: 16),
+            saveButton.centerYAnchor.constraint(equalTo: modalTitle.centerYAnchor),
             
             cancelButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             cancelButton.topAnchor.constraint(equalTo: view.topAnchor, constant: 16),
+            cancelButton.centerYAnchor.constraint(equalTo: saveButton.centerYAnchor)
         ])
     }
     
