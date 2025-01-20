@@ -15,8 +15,8 @@ class MilestoneCardCell: UICollectionViewCell {
         label.font = UIFont.systemFont(ofSize: 16, weight: .medium)
         label.numberOfLines = 0
         label.textAlignment = .left
-        label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal) // Prevents it from being squished horizontally
-        label.setContentHuggingPriority(.defaultHigh, for: .horizontal) // Prevents it from being stretched horizontally
+        label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        label.setContentHuggingPriority(.defaultHigh, for: .horizontal)
         return label
     }()
     
@@ -43,7 +43,7 @@ class MilestoneCardCell: UICollectionViewCell {
             milestoneImageView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 0),
             milestoneImageView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 0),
             milestoneImageView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: 0),
-            milestoneImageView.widthAnchor.constraint(equalToConstant: 100),  // Set width explicitly or use proportional sizing
+            milestoneImageView.widthAnchor.constraint(equalToConstant: 100),
             
             queryLabel.leadingAnchor.constraint(equalTo: milestoneImageView.trailingAnchor, constant: 16),
             queryLabel.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
