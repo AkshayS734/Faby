@@ -68,8 +68,3 @@ struct MeasurementInputView: View {
         }
     }
 }
-struct MeasurementInputView_Previews: PreviewProvider {
-    static var previews: some View {
-        MeasurementInputView(measurementType: "Height")
-    }
-}
