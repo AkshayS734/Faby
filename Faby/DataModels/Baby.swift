@@ -29,12 +29,15 @@ class Baby {
     
     func updateHeight(_ height: Double, date: Date) {
         self.height[height] = date
+        print("Updated Height: \(height) on \(date)")
     }
     func updateWeight(_ weight: Double, date: Date) {
         self.weight[weight] = date
+        print("Updated Weight: \(weight) on \(date)")
     }
     func updateHeadCircumference(_ headCircumference: Double, date: Date) {
         self.headCircumference[headCircumference] = date
+        print("Updated Head Circumference: \(headCircumference) on \(date)")
     }
     
 }
