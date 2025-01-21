@@ -4,8 +4,8 @@ import Charts
 struct MeasurementDetailsView: View {
     var measurementType: String
     var baby: Baby?
-    var currentGrowthData: [Double]  // Data passed from the ViewController
-    var currentTimeLabels: [String] // Labels for the current time span
+    var currentGrowthData: [Double]
+    var currentTimeLabels: [String]
 
     @EnvironmentObject var unitSettings: UnitSettingsViewModel
 
@@ -16,7 +16,6 @@ struct MeasurementDetailsView: View {
                     .foregroundColor(.gray)
                     .padding()
             } else {
-                // Display the latest measurement
                 if let latestMeasurement = currentGrowthData.last {
                     Text("\(latestMeasurement, specifier: "%.2f") \(unitSettings.selectedUnit)")
                         .font(.title2)
