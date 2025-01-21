@@ -28,7 +28,7 @@ class MeasurementDetailsViewController: UIViewController {
             timeSpanSegmentedControl.insertSegment(withTitle: title, at: index, animated: false)
             }
         timeSpanSegmentedControl.selectedSegmentIndex = 3
-        
+        setupDataForTimeSpan()
         embedSwiftUIView()
         
     }
@@ -40,62 +40,37 @@ class MeasurementDetailsViewController: UIViewController {
             case 3: selectedTimeSpan = "Year"
             default: selectedTimeSpan = "Year"
         }
-
+        setupDataForTimeSpan()
         embedSwiftUIView()
     }
-//    private func setupDataForTimeSpan() {
-//        guard let measurementType = measurementType else { return }
-//
-//        switch measurementType {
-//        case "Height":
-//            if selectedTimeSpan == "Week" {
-//                currentGrowthData = [50, 51, 52, 53]
-//                currentTimeLabels = ["Mon", "Tue", "Wed", "Thu"]
-//            } else if selectedTimeSpan == "Month" {
-//                currentGrowthData = [50, 51, 52, 53, 54]
-//                currentTimeLabels = ["W1", "W2", "W3", "W4", "W5"]
-//            } else if selectedTimeSpan == "6 Months" {
-//                currentGrowthData = [50, 55, 60, 62, 65]
-//                currentTimeLabels = ["0M", "1M", "3M", "5M", "6M"]
-//            } else { // Year
-//                currentGrowthData = [50, 55, 60, 62, 65]
-//                currentTimeLabels = ["0M", "6M", "12M", "18M", "24M"]
-//            }
-//        case "Weight":
-//            if selectedTimeSpan == "Week" {
-//                currentGrowthData = [3.5, 4.0, 4.5, 5.0]
-//                currentTimeLabels = ["Mon", "Tue", "Wed", "Thu"]
-//            } else if selectedTimeSpan == "Month" {
-//                currentGrowthData = [3.5, 4.0, 5.0, 6.0, 7.0]
-//                currentTimeLabels = ["W1", "W2", "W3", "W4", "W5"]
-//            } else if selectedTimeSpan == "6 Months" {
-//                currentGrowthData = [3.5, 4.5, 5.5, 6.5, 7.5]
-//                currentTimeLabels = ["0M", "1M", "3M", "5M", "6M"]
-//            } else { // Year
-//                currentGrowthData = [3.5, 4.5, 5.5, 6.5, 7.5]
-//                currentTimeLabels = ["0M", "6M", "12M", "18M", "24M"]
-//            }
-//        case "Head Circumference":
-//            if selectedTimeSpan == "Week" {
-//                currentGrowthData = [35, 36, 37, 38]
-//                currentTimeLabels = ["Mon", "Tue", "Wed", "Thu"]
-//            } else if selectedTimeSpan == "Month" {
-//                currentGrowthData = [35, 36, 37, 38, 39]
-//                currentTimeLabels = ["W1", "W2", "W3", "W4", "W5"]
-//            } else if selectedTimeSpan == "6 Months" {
-//                currentGrowthData = [35, 37, 39, 40, 41]
-//                currentTimeLabels = ["0M", "1M", "3M", "5M", "6M"]
-//            } else { // Year
-//                currentGrowthData = [35, 37, 39, 40, 41]
-//                currentTimeLabels = ["0M", "6M", "12M", "18M", "24M"]
-//            }
-//        default:
-//            break
-//        }
-//        if isUnitChanged {
-//            convertDataToSelectedUnits()
-//        }
-//    }
+    private func setupDataForTimeSpan() {
+        guard let measurementType = measurementType else { return }
+        guard let baby = BabyDataModel.shared.babyList.first else { return }
+        
+        switch measurementType {
+        case "Height":
+            currentGrowthData = Array(baby.height.keys).sorted()
+            currentTimeLabels = Array(baby.height.values).map {
+                DateFormatter.localizedString(from: $0, dateStyle: .short, timeStyle: .none)
+            }
+        case "Weight":
+            currentGrowthData = Array(baby.weight.keys).sorted()
+            currentTimeLabels = Array(baby.weight.values).map {
+                DateFormatter.localizedString(from: $0, dateStyle: .short, timeStyle: .none)
+            }
+        case "Head Circumference":
+            currentGrowthData = Array(baby.headCircumference.keys).sorted()
+            currentTimeLabels = Array(baby.headCircumference.values).map {
+                DateFormatter.localizedString(from: $0, dateStyle: .short, timeStyle: .none)
+            }
+        default:
+            break
+        }
+        
+        if isUnitChanged {
+            convertDataToSelectedUnits()
+        }
+    }
     private func convertDataToSelectedUnits() {
             // Conversion logic if necessary
         if selectedHeightUnit == "inches" {
@@ -121,10 +96,9 @@ class MeasurementDetailsViewController: UIViewController {
                 hostingController.removeFromParent()
             }
         }
-
-                // Pass the baby data from the singleton to the MeasurementDetailsView
+        let baby = BabyDataModel.shared.babyList.first
         let swiftUIView = MeasurementDetailsView(
-            measurementType: measurementType ?? "",
+            measurementType: measurementType,
             baby: baby
         )
         .environmentObject(unitSettings)
@@ -148,9 +122,34 @@ class MeasurementDetailsViewController: UIViewController {
         presentMeasurementInputView()
     }
     func presentMeasurementInputView() {
-        let measurementInputView = MeasurementInputView(measurementType: measurementType ?? "")
+        let saveMeasurement: (String, Date) -> Void = { [weak self] inputMeasurement, date in
+            guard let self = self, let baby = self.baby else { return }
+                    
+                    // Convert the input measurement to Double
+            if let measurement = Double(inputMeasurement) {
+                        // Update the corresponding measurement for the Baby object
+                switch self.measurementType {
+                case "Height":
+                    baby.updateHeight(measurement, date: date)
+                case "Weight":
+                    baby.updateWeight(measurement, date: date)
+                case "Head Circumference":
+                    baby.updateHeadCircumference(measurement, date: date)
+                default:
+                    break
+                }
+                        
+                        // You can reload data here if necessary
+            }
+        }
+                
+                // Create the MeasurementInputView with the closure for saving the measurement
+        let measurementInputView = MeasurementInputView(
+            measurementType: measurementType ?? "",
+            saveMeasurement: saveMeasurement
+        )
+                
         let hostingController = UIHostingController(rootView: measurementInputView)
-        
         hostingController.modalPresentationStyle = .formSheet
         present(hostingController, animated: true, completion: nil)
     }
