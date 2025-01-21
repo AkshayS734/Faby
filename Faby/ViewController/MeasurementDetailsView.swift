@@ -4,85 +4,40 @@ import Charts
 struct MeasurementDetailsView: View {
     var measurementType: String
     var baby: Baby?
+    var currentGrowthData: [Double]  // Data passed from the ViewController
+    var currentTimeLabels: [String] // Labels for the current time span
 
     @EnvironmentObject var unitSettings: UnitSettingsViewModel
 
-    var growthData: [Double] {
-        guard let baby = baby else { return [] }
-        switch measurementType {
-        case "Height":
-            return baby.height.keys.sorted(by: { baby.height[$0]! < baby.height[$1]! })
-        case "Weight":
-            return baby.weight.keys.sorted(by: { baby.weight[$0]! < baby.weight[$1]! })
-        case "Head Circumference":
-            return baby.headCircumference.keys.sorted(by: { baby.headCircumference[$0]! < baby.headCircumference[$1]! })
-        default:
-            return []
-        }
-    }
-
-    var timeLabels: [String] {
-        guard let baby = baby else { return [] }
-        let dates = growthData.compactMap {
-            switch measurementType {
-            case "Height":
-                return baby.height[$0]
-            case "Weight":
-                return baby.weight[$0]
-            case "Head Circumference":
-                return baby.headCircumference[$0]
-            default:
-                return nil
-            }
-        }
-        return dates.map { DateFormatter.localizedString(from: $0, dateStyle: .short, timeStyle: .none) }
-    }
-    
-    private var measurementUnit: String {
-        switch measurementType {
-        case "Height", "Head Circumference":
-            return unitSettings.selectedUnit == "Metric" ? "cm" : "in"
-        case "Weight":
-            return unitSettings.selectedUnit == "Metric" ? "kg" : "lb"
-        default:
-            return ""
-        }
-    }
-
-    
     var body: some View {
-        if let baby = baby {
-            VStack {
-                if growthData.isEmpty {
-                    Text("No data available for \(baby.name)")
-                        .foregroundColor(.gray)
-                } else {
-                    if let latestMeasurement = growthData.last {
-                        Text("\(latestMeasurement, specifier: "%.f") \(measurementUnit)")
-                            .font(.title2)
-                            .padding(.top)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-
-                    Chart {
-                        ForEach(0..<growthData.count, id: \.self) { index in
-                            LineMark(
-                                x: .value("Time", timeLabels[index]),
-                                y: .value("Measurement", growthData[index])
-                            )
-                            .foregroundStyle(Color.blue)
-                            .symbol(Circle())
-                        }
-                    }
-                    .frame(height: 300)
+        VStack {
+            if currentGrowthData.isEmpty {
+                Text("No data available")
+                    .foregroundColor(.gray)
                     .padding()
+            } else {
+                // Display the latest measurement
+                if let latestMeasurement = currentGrowthData.last {
+                    Text("\(latestMeasurement, specifier: "%.2f") \(unitSettings.selectedUnit)")
+                        .font(.title2)
+                        .padding(.top)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
-            }
-            .navigationBarTitle("\(measurementType)", displayMode: .inline)
-        } else {
-            Text("No baby data available.")
-                .foregroundColor(.red)
+
+                Chart {
+                    ForEach(0..<currentGrowthData.count, id: \.self) { index in
+                        LineMark(
+                            x: .value("Time", currentTimeLabels[index]),
+                            y: .value("Measurement", currentGrowthData[index])
+                        )
+                        .foregroundStyle(Color.blue)
+                        .symbol(Circle())
+                    }
+                }
+                .frame(height: 300)
                 .padding()
+            }
         }
+        .navigationBarTitle("\(measurementType)", displayMode: .inline)
     }
 }

@@ -58,7 +58,7 @@ struct MeasurementInputView: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        if let measurement = Double(inputMeasurement) {
+                        if Double(inputMeasurement) != nil {
                             saveMeasurement(inputMeasurement, selectedDate)
                             dismiss()
                         } else {
