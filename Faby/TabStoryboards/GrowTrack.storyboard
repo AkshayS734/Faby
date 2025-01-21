@@ -89,7 +89,7 @@
                                     <segment title="Second"/>
                                 </segments>
                                 <connections>
-                                    <action selector="timeSpanChanged:" destination="QcD-le-w5v" eventType="valueChanged" id="1gU-oi-ymY"/>
+                                    <action selector="timeSpanChanged:" destination="QcD-le-w5v" eventType="valueChanged" id="DUM-5t-WqG"/>
                                 </connections>
                             </segmentedControl>
                         </subviews>
@@ -104,12 +104,12 @@
                     <navigationItem key="navigationItem" largeTitleDisplayMode="never" id="U2k-HR-C8r">
                         <barButtonItem key="rightBarButtonItem" title="Add data" style="plain" id="bAM-dm-qGH">
                             <connections>
-                                <action selector="addButtonTapped:" destination="QcD-le-w5v" id="rU5-jV-acw"/>
+                                <action selector="addButtonTapped:" destination="QcD-le-w5v" id="91e-wi-7kh"/>
                             </connections>
                         </barButtonItem>
                     </navigationItem>
                     <connections>
-                        <outlet property="timeSpanSegmentedControl" destination="6mZ-XZ-7nq" id="UJk-C0-gO6"/>
+                        <outlet property="timeSpanSegmentedControl" destination="6mZ-XZ-7nq" id="lOL-b5-5EM"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="iyR-o2-XQr" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
