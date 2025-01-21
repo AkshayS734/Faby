@@ -7,11 +7,16 @@ struct MeasurementInputView: View {
     @State private var selectedDate = Date()
     
     let measurementType: String
-    let saveMeasurement: (String, Date) -> Void  // Closure for saving the measurement
-    
+    let saveMeasurement: (String, Date) -> Void
     let heightUnits = ["cm", "inches"]
     let weightUnits = ["kg", "lbs"]
-    @State private var selectedUnit: String = "cm"  // Default to cm for height and "kg" for weight
+    @State private var selectedUnit: String
+    
+    init(measurementType: String, saveMeasurement: @escaping (String, Date) -> Void) {
+        self.measurementType = measurementType
+        self.saveMeasurement = saveMeasurement
+        _selectedUnit = State(initialValue: measurementType == "Weight" ? "kg" : "cm")
+    }
 
     var body: some View {
         NavigationView {
@@ -54,7 +59,6 @@ struct MeasurementInputView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         if let measurement = Double(inputMeasurement) {
-                            // Call the saveMeasurement closure with the input value and selected date
                             saveMeasurement(inputMeasurement, selectedDate)
                             dismiss()
                         } else {
