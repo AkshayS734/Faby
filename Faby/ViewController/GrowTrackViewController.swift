@@ -234,7 +234,7 @@ extension GrowTrackViewController: UICollectionViewDataSource {
                 withReuseIdentifier: "BodyMeasurementCollectionViewCell",
                 for: indexPath
             ) as! BodyMeasurementCollectionViewCell
-
+            let units = ["cm", "kg", "cm"]
             let measurementType = bodyMeasurements[indexPath.row]
             let unit = units[indexPath.row]
             let titleColors: [UIColor] = [
@@ -242,8 +242,7 @@ extension GrowTrackViewController: UICollectionViewDataSource {
                 UIColor(hex: "F27200"),
                 UIColor(hex: "AA7942")
             ]
-                    
-                    // Fetch the most recent measurement for the type
+            
             if let baby = BabyDataModel.shared.babyList.first {
                 let latestMeasurement: String
                 let latestDate: Date?

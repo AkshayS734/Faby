@@ -37,7 +37,19 @@ struct MeasurementDetailsView: View {
         }
         return dates.map { DateFormatter.localizedString(from: $0, dateStyle: .short, timeStyle: .none) }
     }
+    
+    private var measurementUnit: String {
+        switch measurementType {
+        case "Height", "Head Circumference":
+            return unitSettings.selectedUnit == "Metric" ? "cm" : "in"
+        case "Weight":
+            return unitSettings.selectedUnit == "Metric" ? "kg" : "lb"
+        default:
+            return ""
+        }
+    }
 
+    
     var body: some View {
         if let baby = baby {
             VStack {
@@ -46,7 +58,7 @@ struct MeasurementDetailsView: View {
                         .foregroundColor(.gray)
                 } else {
                     if let latestMeasurement = growthData.last {
-                        Text("\(latestMeasurement, specifier: "%.f") \(unitSettings.selectedUnit)")
+                        Text("\(latestMeasurement, specifier: "%.f") \(measurementUnit)")
                             .font(.title2)
                             .padding(.top)
                             .frame(maxWidth: .infinity, alignment: .leading)
