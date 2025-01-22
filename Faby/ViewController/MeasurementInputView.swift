@@ -7,12 +7,13 @@ struct MeasurementInputView: View {
     @State private var selectedDate = Date()
     
     let measurementType: String
-    let saveMeasurement: (String, Date) -> Void
-    let heightUnits = ["cm", "inches"]
-    let weightUnits = ["kg", "lbs"]
+    let saveMeasurement: (Double, Date, String) -> Void
+    
+    private let heightUnits = ["cm", "inches"]
+    private let weightUnits = ["kg", "lbs"]
     @State private var selectedUnit: String
     
-    init(measurementType: String, saveMeasurement: @escaping (String, Date) -> Void) {
+    init(measurementType: String, saveMeasurement: @escaping (Double, Date, String) -> Void) {
         self.measurementType = measurementType
         self.saveMeasurement = saveMeasurement
         _selectedUnit = State(initialValue: measurementType == "Weight" ? "kg" : "cm")
@@ -43,7 +44,7 @@ struct MeasurementInputView: View {
                 }
                 
                 if measurementType == "Weight" {
-                    Section(header: Text("Unit (Weight)")) {
+                    Section(header: Text("Unit")) {
                         Picker("Unit", selection: $selectedUnit) {
                             ForEach(weightUnits, id: \.self) { unit in
                                 Text(unit)
@@ -58,12 +59,7 @@ struct MeasurementInputView: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        if Double(inputMeasurement) != nil {
-                            saveMeasurement(inputMeasurement, selectedDate)
-                            dismiss()
-                        } else {
-                            print("Invalid measurement value")
-                        }
+                        handleSave()
                     }
                 }
                 ToolbarItem(placement: .cancellationAction) {
@@ -73,5 +69,14 @@ struct MeasurementInputView: View {
                 }
             }
         }
+    }
+
+    private func handleSave() {
+        guard let measurementValue = Double(inputMeasurement), measurementValue > 0 else {
+            print("Invalid measurement value")
+            return
+        }
+        saveMeasurement(measurementValue, selectedDate, selectedUnit)
+        dismiss()
     }
 }

@@ -250,7 +250,7 @@ extension GrowTrackViewController: UICollectionViewDataSource {
                 switch measurementType {
                 case "Height":
                     if let latest = baby.height.max(by: { $0.key < $1.key }) {
-                        latestMeasurement = "\(latest.key)"
+                        latestMeasurement = String(format: "%.2f", latest.key)
                         latestDate = latest.value
                     } else {
                         latestMeasurement = "0"
@@ -258,7 +258,7 @@ extension GrowTrackViewController: UICollectionViewDataSource {
                     }
                 case "Weight":
                     if let latest = baby.weight.max(by: { $0.key < $1.key }) {
-                        latestMeasurement = "\(latest.key)"
+                        latestMeasurement = String(format: "%.2f", latest.key)
                         latestDate = latest.value
                     } else {
                         latestMeasurement = "0"
@@ -266,7 +266,7 @@ extension GrowTrackViewController: UICollectionViewDataSource {
                     }
                 case "Head Circumference":
                     if let latest = baby.headCircumference.max(by: { $0.key < $1.key }) {
-                        latestMeasurement = "\(latest.key)"
+                        latestMeasurement = String(format: "%.2f", latest.key)
                         latestDate = latest.value
                     } else {
                         latestMeasurement = "0"
