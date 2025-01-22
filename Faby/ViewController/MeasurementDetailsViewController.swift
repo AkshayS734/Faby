@@ -15,7 +15,7 @@ class MeasurementDetailsViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = .white
+        view.backgroundColor = .systemGray6
         title = measurementType
 
         setupSegmentedControl()
@@ -30,6 +30,9 @@ class MeasurementDetailsViewController: UIViewController {
             timeSpanSegmentedControl.insertSegment(withTitle: title, at: index, animated: false)
         }
         timeSpanSegmentedControl.selectedSegmentIndex = 3
+        NSLayoutConstraint.activate([
+            timeSpanSegmentedControl.heightAnchor.constraint(equalToConstant: 32)
+        ])
     }
 
     @IBAction func timeSpanChanged(_ sender: UISegmentedControl) {
@@ -76,13 +79,16 @@ class MeasurementDetailsViewController: UIViewController {
             }
         }
 
-        let swiftUIView = MeasurementDetailsView(
-            measurementType: measurementType ?? "",
-            baby: baby,
-            currentGrowthData: currentGrowthData,
-            currentTimeLabels: currentTimeLabels
-        )
-        .environmentObject(unitSettings)
+        let swiftUIView = NavigationView {
+            MeasurementDetailsView(
+                measurementType: measurementType ?? "",
+                baby: baby,
+                currentGrowthData: currentGrowthData,
+                currentTimeLabels: currentTimeLabels
+            )
+            .environmentObject(unitSettings)
+            .navigationBarHidden(true)
+        }
 
         let hostingController = UIHostingController(rootView: swiftUIView)
         addChild(hostingController)
@@ -93,7 +99,8 @@ class MeasurementDetailsViewController: UIViewController {
         NSLayoutConstraint.activate([
             hostingController.view.topAnchor.constraint(equalTo: timeSpanSegmentedControl.bottomAnchor, constant: 16),
             hostingController.view.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            hostingController.view.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16)
+            hostingController.view.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            hostingController.view.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: 0)
         ])
 
         hostingController.didMove(toParent: self)

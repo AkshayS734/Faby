@@ -83,7 +83,7 @@
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
                             <segmentedControl opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="left" contentVerticalAlignment="top" segmentControlStyle="plain" selectedSegmentIndex="0" translatesAutoresizingMaskIntoConstraints="NO" id="6mZ-XZ-7nq">
-                                <rect key="frame" x="16" y="113" width="361" height="32"/>
+                                <rect key="frame" x="16" y="119" width="361" height="32"/>
                                 <segments>
                                     <segment title="First"/>
                                     <segment title="Second"/>
@@ -96,9 +96,9 @@
                         <viewLayoutGuide key="safeArea" id="1Yt-oc-edc"/>
                         <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                         <constraints>
-                            <constraint firstItem="6mZ-XZ-7nq" firstAttribute="top" secondItem="1Yt-oc-edc" secondAttribute="top" constant="10" id="BPT-0Y-qdu"/>
-                            <constraint firstItem="6mZ-XZ-7nq" firstAttribute="leading" secondItem="1Yt-oc-edc" secondAttribute="leading" constant="16" id="T1q-PC-1Gk"/>
-                            <constraint firstItem="1Yt-oc-edc" firstAttribute="trailing" secondItem="6mZ-XZ-7nq" secondAttribute="trailing" constant="16" id="qDf-aR-eyM"/>
+                            <constraint firstItem="6mZ-XZ-7nq" firstAttribute="leading" secondItem="1Yt-oc-edc" secondAttribute="leading" constant="16" id="Cpd-fx-GtE"/>
+                            <constraint firstItem="1Yt-oc-edc" firstAttribute="trailing" secondItem="6mZ-XZ-7nq" secondAttribute="trailing" constant="16" id="MJ2-zn-R25"/>
+                            <constraint firstItem="6mZ-XZ-7nq" firstAttribute="top" secondItem="1Yt-oc-edc" secondAttribute="top" constant="16" id="QMw-fV-7zg"/>
                         </constraints>
                     </view>
                     <navigationItem key="navigationItem" largeTitleDisplayMode="never" id="U2k-HR-C8r">

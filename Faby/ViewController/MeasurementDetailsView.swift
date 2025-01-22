@@ -15,6 +15,7 @@ struct MeasurementDetailsView: View {
                 Text("No data available")
                     .foregroundColor(.gray)
                     .padding()
+                    .frame(maxHeight: .infinity, alignment: .center)
             } else {
                 if let latestMeasurement = currentGrowthData.last {
                     Text("\(convertValue(latestMeasurement), specifier: "%.2f") \(unitLabel())")
@@ -33,14 +34,43 @@ struct MeasurementDetailsView: View {
                         .symbol(Circle())
                     }
                 }
-                .frame(height: 300)
-                .padding()
+                .frame(height: 400)
+                .padding(.top, 20)
+                .background(Color.white)
             }
+            
+            Spacer()
+            
+            ZStack {
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color.white)
+                    .shadow(color: .gray.opacity(0.3), radius: 4, x: 0, y: 2)
+
+                List {
+                    NavigationLink(destination: AllDataView(baby: baby)) {
+                        Text("Show All Data")
+                            .foregroundColor(.black)
+                            .onAppear { print("Show All Data Link Appeared") }
+                    }
+
+                    NavigationLink(destination: UnitSettingsView()) {
+                        Text("Change Units")
+                            .foregroundColor(.black)
+                            .onAppear { print("Change Units Link Appeared") }
+                    }
+                }
+                .listStyle(PlainListStyle())
+                .cornerRadius(10)
+            }
+            .frame(maxWidth: .infinity, maxHeight: 88)
+            .padding(.horizontal, 16)
+            .padding(.bottom, 20)
         }
+        .background(Color(UIColor.systemGray6))
         .navigationBarTitle("\(measurementType)", displayMode: .inline)
+        .navigationBarItems(trailing: EditButton())
     }
 
-    /// Returns the appropriate unit label based on the measurement type
     private func unitLabel() -> String {
         switch measurementType {
         case "Height", "Head Circumference":
