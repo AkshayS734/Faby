@@ -278,7 +278,6 @@ extension GrowTrackViewController: UICollectionViewDataSource {
                 }
 
                 cell.measurementNumberLabel.text = latestMeasurement
-                print("\(cell.measurementNumberLabel.text!)")
                 if let date = latestDate {
                     let dateFormatter = DateFormatter()
                     dateFormatter.dateStyle = .medium
