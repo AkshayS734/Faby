@@ -89,7 +89,7 @@
                                     <segment title="Second"/>
                                 </segments>
                                 <connections>
-                                    <action selector="timeSpanChanged:" destination="QcD-le-w5v" eventType="valueChanged" id="xs0-Hb-QBf"/>
+                                    <action selector="timeSpanChanged:" destination="QcD-le-w5v" eventType="valueChanged" id="Vce-dR-Z1p"/>
                                 </connections>
                             </segmentedControl>
                         </subviews>
@@ -109,7 +109,7 @@
                         </barButtonItem>
                     </navigationItem>
                     <connections>
-                        <outlet property="timeSpanSegmentedControl" destination="6mZ-XZ-7nq" id="o6Y-tH-pWc"/>
+                        <outlet property="timeSpanSegmentedControl" destination="6mZ-XZ-7nq" id="vf6-wS-T7v"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="iyR-o2-XQr" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>

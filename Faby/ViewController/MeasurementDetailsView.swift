@@ -38,9 +38,9 @@ struct MeasurementDetailsView: View {
                 .padding(.top, 20)
                 .background(Color.white)
             }
-            
+
             Spacer()
-            
+
             ZStack {
                 RoundedRectangle(cornerRadius: 16)
                     .fill(Color.white)
@@ -50,21 +50,18 @@ struct MeasurementDetailsView: View {
                     NavigationLink(destination: AllDataView(baby: baby)) {
                         Text("Show All Data")
                             .foregroundColor(.black)
-                            .onAppear { print("Show All Data Link Appeared") }
                     }
 
                     NavigationLink(destination: UnitSettingsView()) {
                         Text("Change Units")
                             .foregroundColor(.black)
-                            .onAppear { print("Change Units Link Appeared") }
                     }
                 }
                 .listStyle(PlainListStyle())
                 .cornerRadius(10)
             }
             .frame(maxWidth: .infinity, maxHeight: 88)
-            .padding(.horizontal, 16)
-            .padding(.bottom, 20)
+            .padding(.bottom, 40)
         }
         .background(Color(UIColor.systemGray6))
         .navigationBarTitle("\(measurementType)", displayMode: .inline)

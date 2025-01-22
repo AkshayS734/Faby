@@ -24,12 +24,13 @@ class MeasurementDetailsViewController: UIViewController {
     }
 
     private func setupSegmentedControl() {
+        // Setup the segmented control for selecting the time span
         timeSpanSegmentedControl.removeAllSegments()
         let segments = ["Week", "Month", "6 Months", "Year"]
         for (index, title) in segments.enumerated() {
             timeSpanSegmentedControl.insertSegment(withTitle: title, at: index, animated: false)
         }
-        timeSpanSegmentedControl.selectedSegmentIndex = 3
+        timeSpanSegmentedControl.selectedSegmentIndex = 3 // Default to "Year"
         NSLayoutConstraint.activate([
             timeSpanSegmentedControl.heightAnchor.constraint(equalToConstant: 32)
         ])
@@ -50,6 +51,7 @@ class MeasurementDetailsViewController: UIViewController {
     private func setupDataForTimeSpan() {
         guard let baby = baby else { return }
 
+        // Setup growth data based on the measurement type
         switch measurementType {
         case "Height":
             currentGrowthData = Array(baby.height.keys).sorted()
@@ -79,23 +81,23 @@ class MeasurementDetailsViewController: UIViewController {
             }
         }
 
-        let swiftUIView = NavigationView {
-            MeasurementDetailsView(
-                measurementType: measurementType ?? "",
-                baby: baby,
-                currentGrowthData: currentGrowthData,
-                currentTimeLabels: currentTimeLabels
-            )
-            .environmentObject(unitSettings)
-            .navigationBarHidden(true)
-        }
+        // Create the SwiftUI view
+        let swiftUIView = MeasurementDetailsView(
+            measurementType: measurementType ?? "",
+            baby: baby,
+            currentGrowthData: currentGrowthData,
+            currentTimeLabels: currentTimeLabels
+        )
+        .environmentObject(unitSettings)
 
+        // Create the UIHostingController for the SwiftUI view
         let hostingController = UIHostingController(rootView: swiftUIView)
         addChild(hostingController)
         hostingController.view.frame = view.bounds
         hostingController.view.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(hostingController.view)
 
+        // Set constraints for the hosting controller's view
         NSLayoutConstraint.activate([
             hostingController.view.topAnchor.constraint(equalTo: timeSpanSegmentedControl.bottomAnchor, constant: 16),
             hostingController.view.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
@@ -107,10 +109,12 @@ class MeasurementDetailsViewController: UIViewController {
     }
 
     @IBAction func addButtonTapped(_ sender: UIBarButtonItem) {
+        // Handle "Add" button tap to present the measurement input view
         presentMeasurementInputView()
     }
 
     func presentMeasurementInputView() {
+        // Define the block to save the new measurement
         let saveMeasurement: (String, Date) -> Void = { [weak self] inputMeasurement, date in
             guard let self = self, let baby = self.baby else { return }
             if let measurement = Double(inputMeasurement) {
@@ -130,31 +134,32 @@ class MeasurementDetailsViewController: UIViewController {
             }
         }
 
+        // Present the measurement input view using a hosting controller
         let measurementInputView = MeasurementInputView(
             measurementType: measurementType ?? "",
             saveMeasurement: { measurement, date, unit in
-            let convertedMeasurement: Double
-            if unit == "inches" {
-                convertedMeasurement = measurement * 2.54
-            } else if unit == "lbs" {
-                convertedMeasurement = measurement / 2.20462
-            } else {
-                convertedMeasurement = measurement
-            }
+                let convertedMeasurement: Double
+                if unit == "inches" {
+                    convertedMeasurement = measurement * 2.54
+                } else if unit == "lbs" {
+                    convertedMeasurement = measurement / 2.20462
+                } else {
+                    convertedMeasurement = measurement
+                }
 
-            switch self.measurementType {
-            case "Height":
-                self.baby?.updateHeight(convertedMeasurement, date: date)
-            case "Weight":
-                self.baby?.updateWeight(convertedMeasurement, date: date)
-            case "Head Circumference":
-                self.baby?.updateHeadCircumference(convertedMeasurement, date: date)
-            default:
-                break
-            }
+                switch self.measurementType {
+                case "Height":
+                    self.baby?.updateHeight(convertedMeasurement, date: date)
+                case "Weight":
+                    self.baby?.updateWeight(convertedMeasurement, date: date)
+                case "Head Circumference":
+                    self.baby?.updateHeadCircumference(convertedMeasurement, date: date)
+                default:
+                    break
+                }
 
-            self.setupDataForTimeSpan()
-            self.embedSwiftUIView()
+                self.setupDataForTimeSpan()
+                self.embedSwiftUIView()
             }
         )
 
@@ -164,6 +169,7 @@ class MeasurementDetailsViewController: UIViewController {
     }
 
     private func convertToBaseUnit(_ value: Double) -> Double {
+        // Convert measurement to base unit based on type
         switch measurementType {
         case "Height", "Head Circumference":
             return unitSettings.selectedUnit == "inches" ? value / 0.393701 : value
