@@ -45,7 +45,23 @@ class Baby {
         print("Updated Head Circumference: \(headCircumference) on \(date)")
         measurementUpdated?()
     }
-    
+    func removeHeight(_ height: Double) {
+        self.height.removeValue(forKey: height)
+        print("Removed Height: \(height)")
+        measurementUpdated?()
+    }
+        
+    func removeWeight(_ weight: Double) {
+        self.weight.removeValue(forKey: weight)
+        print("Removed Weight: \(weight)")
+        measurementUpdated?()
+    }
+        
+    func removeHeadCircumference(_ headCircumference: Double) {
+        self.headCircumference.removeValue(forKey: headCircumference)
+        print("Removed Head Circumference: \(headCircumference)")
+        measurementUpdated?()
+    }
 }
 
 enum Gender {
