@@ -4,8 +4,8 @@ import Charts
 struct MeasurementDetailsView: View {
     var measurementType: String
     var baby: Baby?
-    var currentGrowthData: [Double]
-    var currentTimeLabels: [String]
+    @State private var currentGrowthData: [Double] = []
+    @State private var currentTimeLabels: [String] = []
 
     @EnvironmentObject var unitSettings: UnitSettingsViewModel
 
@@ -34,7 +34,7 @@ struct MeasurementDetailsView: View {
                         .symbol(Circle())
                     }
                 }
-                .frame(height: 400)
+                .frame(height: 300)
                 .padding(.top, 20)
                 .background(Color.white)
             }
@@ -47,7 +47,13 @@ struct MeasurementDetailsView: View {
                     .shadow(color: .gray.opacity(0.3), radius: 4, x: 0, y: 2)
 
                 List {
-                    NavigationLink(destination: AllDataView(baby: baby)) {
+                    NavigationLink(
+                        destination: AllDataView(
+                            baby: baby,
+                            measurementType: measurementType,
+                            onDataChanged: updateGrowthData
+                        )
+                    ) {
                         Text("Show All Data")
                             .foregroundColor(.black)
                     }
@@ -61,11 +67,30 @@ struct MeasurementDetailsView: View {
                 .cornerRadius(10)
             }
             .frame(maxWidth: .infinity, maxHeight: 88)
-            .padding(.bottom, 40)
+            .padding(.bottom, 80)
         }
         .background(Color(UIColor.systemGray6))
         .navigationBarTitle("\(measurementType)", displayMode: .inline)
-        .navigationBarItems(trailing: EditButton())
+        .onAppear {
+            updateGrowthData()
+        }
+    }
+
+    private func updateGrowthData() {
+        guard let baby = baby else { return }
+        switch measurementType {
+        case "Height":
+            currentGrowthData = baby.height.sorted(by: { $0.value < $1.value }).map { $0.key }
+            currentTimeLabels = baby.height.sorted(by: { $0.value < $1.value }).map { $0.value.formattedDate() }
+        case "Weight":
+            currentGrowthData = baby.weight.sorted(by: { $0.value < $1.value }).map { $0.key }
+            currentTimeLabels = baby.weight.sorted(by: { $0.value < $1.value }).map { $0.value.formattedDate() }
+        case "Head Circumference":
+            currentGrowthData = baby.headCircumference.sorted(by: { $0.value < $1.value }).map { $0.key }
+            currentTimeLabels = baby.headCircumference.sorted(by: { $0.value < $1.value }).map { $0.value.formattedDate() }
+        default:
+            break
+        }
     }
 
     private func unitLabel() -> String {
@@ -88,5 +113,13 @@ struct MeasurementDetailsView: View {
         default:
             return value
         }
+    }
+}
+extension Date {
+    func formattedDate() -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        formatter.timeStyle = .none
+        return formatter.string(from: self)
     }
 }
