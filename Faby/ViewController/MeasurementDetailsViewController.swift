@@ -107,13 +107,14 @@ class MeasurementDetailsViewController: UIViewController {
         let saveMeasurement: (String, Date) -> Void = { [weak self] inputMeasurement, date in
             guard let self = self, let baby = self.baby else { return }
             if let measurement = Double(inputMeasurement) {
+                let convertedMeasurement = self.convertToBaseUnit(measurement)
                 switch self.measurementType {
                 case "Height":
-                    baby.updateHeight(measurement, date: date)
+                    baby.updateHeight(convertedMeasurement, date: date)
                 case "Weight":
-                    baby.updateWeight(measurement, date: date)
+                    baby.updateWeight(convertedMeasurement, date: date)
                 case "Head Circumference":
-                    baby.updateHeadCircumference(measurement, date: date)
+                    baby.updateHeadCircumference(convertedMeasurement, date: date)
                 default:
                     break
                 }
@@ -124,11 +125,45 @@ class MeasurementDetailsViewController: UIViewController {
 
         let measurementInputView = MeasurementInputView(
             measurementType: measurementType ?? "",
-            saveMeasurement: saveMeasurement
+            saveMeasurement: { measurement, date, unit in
+            let convertedMeasurement: Double
+            if unit == "inches" {
+                convertedMeasurement = measurement * 2.54
+            } else if unit == "lbs" {
+                convertedMeasurement = measurement / 2.20462
+            } else {
+                convertedMeasurement = measurement
+            }
+
+            switch self.measurementType {
+            case "Height":
+                self.baby?.updateHeight(convertedMeasurement, date: date)
+            case "Weight":
+                self.baby?.updateWeight(convertedMeasurement, date: date)
+            case "Head Circumference":
+                self.baby?.updateHeadCircumference(convertedMeasurement, date: date)
+            default:
+                break
+            }
+
+            self.setupDataForTimeSpan()
+            self.embedSwiftUIView()
+            }
         )
 
         let hostingController = UIHostingController(rootView: measurementInputView)
         hostingController.modalPresentationStyle = .formSheet
         present(hostingController, animated: true, completion: nil)
+    }
+
+    private func convertToBaseUnit(_ value: Double) -> Double {
+        switch measurementType {
+        case "Height", "Head Circumference":
+            return unitSettings.selectedUnit == "inches" ? value / 0.393701 : value
+        case "Weight":
+            return unitSettings.weightUnit == "lbs" ? value / 2.20462 : value
+        default:
+            return value
+        }
     }
 }

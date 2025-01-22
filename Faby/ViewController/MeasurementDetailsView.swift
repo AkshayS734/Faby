@@ -17,7 +17,7 @@ struct MeasurementDetailsView: View {
                     .padding()
             } else {
                 if let latestMeasurement = currentGrowthData.last {
-                    Text("\(latestMeasurement, specifier: "%.2f") \(unitSettings.selectedUnit)")
+                    Text("\(convertValue(latestMeasurement), specifier: "%.2f") \(unitLabel())")
                         .font(.title2)
                         .padding(.top)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -27,7 +27,7 @@ struct MeasurementDetailsView: View {
                     ForEach(0..<currentGrowthData.count, id: \.self) { index in
                         LineMark(
                             x: .value("Time", currentTimeLabels[index]),
-                            y: .value("Measurement", currentGrowthData[index])
+                            y: .value("Measurement", convertValue(currentGrowthData[index]))
                         )
                         .foregroundStyle(Color.blue)
                         .symbol(Circle())
@@ -38,5 +38,28 @@ struct MeasurementDetailsView: View {
             }
         }
         .navigationBarTitle("\(measurementType)", displayMode: .inline)
+    }
+
+    /// Returns the appropriate unit label based on the measurement type
+    private func unitLabel() -> String {
+        switch measurementType {
+        case "Height", "Head Circumference":
+            return unitSettings.selectedUnit
+        case "Weight":
+            return unitSettings.weightUnit
+        default:
+            return ""
+        }
+    }
+
+    private func convertValue(_ value: Double) -> Double {
+        switch measurementType {
+        case "Height", "Head Circumference":
+            return unitSettings.selectedUnit == "inches" ? value * 0.393701 : value
+        case "Weight":
+            return unitSettings.weightUnit == "lbs" ? value * 2.20462 : value
+        default:
+            return value
+        }
     }
 }
