@@ -17,15 +17,17 @@ class MilestoneModalViewController: UIViewController {
     private let addImageButton = UIButton(type: .system)
     private let saveButton = UIButton(type: .system)
     private let cancelButton = UIButton(type: .system)
-    
+    var milestone: GrowthMilestone?
     weak var delegate: MilestoneModalViewControllerDelegate?
+    var baby: Baby?
     
     var onSave: ((Date, UIImage?) -> Void)?
     
-    init(category: String, title: String, description: String) {
+    init(category: String, title: String, description: String, milestone: GrowthMilestone) {
         self.category = category
         self.milestoneTitle = title
         self.milestoneDescription = description
+        self.milestone = milestone
         super.init(nibName: nil, bundle: nil)
     }
     
@@ -184,7 +186,6 @@ class MilestoneModalViewController: UIViewController {
             }
             alertController.addAction(cameraAction)
         }
-        
         let photoLibraryAction = UIAlertAction(title: "Choose from Library", style: .default) { _ in
             let picker = UIImagePickerController()
             picker.sourceType = .photoLibrary
@@ -192,15 +193,20 @@ class MilestoneModalViewController: UIViewController {
             self.present(picker, animated: true, completion: nil)
         }
         alertController.addAction(photoLibraryAction)
-        
         let cancelAction = UIAlertAction(title: "Cancel", style: .destructive, handler: nil)
         alertController.addAction(cancelAction)
-        
         present(alertController, animated: true, completion: nil)
     }
     
     @objc private func saveTapped() {
-        onSave?(datePicker.date, imageView.image)
+        guard milestone != nil else { return }
+        print("Save button tapped inside modal")
+        if let image = imageView.image {
+            onSave?(datePicker.date, image)
+        } else {
+            onSave?(datePicker.date, nil)
+        }
+
         dismiss(animated: true, completion: nil)
     }
     
@@ -215,6 +221,7 @@ extension MilestoneModalViewController: UIImagePickerControllerDelegate, UINavig
         if let selectedImage = info[.originalImage] as? UIImage {
             imageView.image = selectedImage
             imageView.isHidden = false
+            print("Image selected: \(String(describing: selectedImage))")
         }
         picker.dismiss(animated: true, completion: nil)
     }
