@@ -10,28 +10,29 @@ class VacciAlertViewController: UIViewController {
         super.viewDidLoad()
         
         // Initialize CalendarContainerView inside a UIHostingController
-        let calendarView = UIHostingController(rootView:
-            CalendarContainerView(
-                selectedDate: selectedDateSubject.eraseToAnyPublisher(), // Pass the selected date publisher
-                onChevronTapped: showDatePicker // Action to show date picker
+
+            let calendarView = UIHostingController(rootView:
+                CalendarContainerView(
+                    selectedDate: selectedDateSubject.eraseToAnyPublisher(),
+                    onChevronTapped: showDatePicker,
+                    onCardTapped: { [weak self] vaccine in
+                        self?.showVaccineDetail(for: vaccine)
+                    }
+                )
             )
-        )
-        
-        // Add the calendar view to the parent view controller
-        addChild(calendarView)
-        calendarView.view.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(calendarView.view)
-        calendarView.didMove(toParent: self)
-        
-        // Setup constraints for calendar view
-        NSLayoutConstraint.activate([
-            calendarView.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            calendarView.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            calendarView.view.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
-            calendarView.view.bottomAnchor.constraint(lessThanOrEqualTo: view.safeAreaLayoutGuide.bottomAnchor)
-        ])
-    }
-    
+
+            addChild(calendarView)
+            calendarView.view.translatesAutoresizingMaskIntoConstraints = false
+            view.addSubview(calendarView.view)
+            calendarView.didMove(toParent: self)
+
+            NSLayoutConstraint.activate([
+                calendarView.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+                calendarView.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+                calendarView.view.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
+                calendarView.view.bottomAnchor.constraint(lessThanOrEqualTo: view.safeAreaLayoutGuide.bottomAnchor)
+            ])
+        }
     // Date changed event handler when user selects a date from the date picker
     @objc func dateChanged(_ datePicker: UIDatePicker) {
         selectedDateSubject.send(datePicker.date) // Send the selected date to the publisher
@@ -91,10 +92,23 @@ class VacciAlertViewController: UIViewController {
     }
     
     // Handle segue to vaccine detail view
-        func showVaccineDetail(for vaccine: String) {
-            performSegue(withIdentifier: "vaccineInfo", sender: vaccine)
+    func showVaccineDetail(for vaccine: String) {
+        let detailVC = VaccineDetailViewController()
+        
+        // Pass vaccine details (example for "Hepatitis B")
+        if vaccine == "Hepatitis B" {
+            detailVC.vaccineNameLabel.text = "Hepatitis B"
+            detailVC.vaccineDescriptionLabel.text = "Hepatitis is an inflammation of the liver. The vaccine protects against severe complications."
+            
+        }
+        if vaccine == "Influenza"{
+            detailVC.vaccineNameLabel.text = "Influenza"
+            detailVC.vaccineDescriptionLabel.text="The flu is a contagious respiratory illness caused by influenza viruses. The vaccine protects against severe complications."
         }
         
+        detailVC.modalPresentationStyle = .pageSheet
+        present(detailVC, animated: true, completion: nil)
+    }
         // Prepare for segue to pass data
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         if segue.identifier == "ShowVaccineDetail",
@@ -107,47 +121,45 @@ class VacciAlertViewController: UIViewController {
 }
 // SwiftUI View to display the calendar and vaccine details
 struct CalendarContainerView: View {
-    let selectedDate: AnyPublisher<Date, Never> // Publisher for the selected date
-    var onChevronTapped: () -> Void // Action for chevron button (to show date picker)
-    @State private var currentDate: Date = Date() // Store the current selected date
-    @State private var upcomingVaccinations: [String] = ["Hepatitis Vaccination", "Influenza"] // List of upcoming vaccinations
+    let selectedDate: AnyPublisher<Date, Never>
+    var onChevronTapped: () -> Void
+    var onCardTapped: (String) -> Void // Closure to handle card taps
+    @State private var currentDate: Date = Date()
+    @State private var upcomingVaccinations: [String] = ["Hepatitis Vaccination", "Influenza"]
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                // Calendar View Section
                 CalendarView(selectedDate: currentDate, onChevronTapped: onChevronTapped)
-                
-                // Latest Research Section header
+
                 Text("Latest Research")
                     .font(.title2)
                     .bold()
                     .padding(.horizontal)
-                
-                // Horizontal Scroll for vaccine cards
+
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 16) {
-                        // Vaccine card views for Hepatitis B and Influenza
                         VaccineCardView(
                             title: "Hepatitis B",
                             description: "The hepatitis B vaccine prevents liver disease and cancer.",
-                            imageName: "hepatitisB" // Image for Hepatitis B from assets
+                            imageName: "hepatitisB",
+                            onTap: { onCardTapped("Hepatitis B") }
                         )
                         VaccineCardView(
                             title: "Influenza",
                             description: "The influenza vaccine reduces the risk of flu infection.",
-                            imageName: "influenza" // Image for Influenza from assets
+                            imageName: "influenza",
+                            onTap: { onCardTapped("Influenza") }
                         )
                     }
                     .padding(.horizontal)
                 }
-                
-                // Upcoming Vaccination Section header
+
                 Text("Upcoming Vaccination")
                     .font(.title2)
                     .bold()
                     .padding(.horizontal)
-                
-                // List of upcoming vaccinations
+
                 VStack(spacing: 8) {
                     ForEach(upcomingVaccinations, id: \.self) { vaccine in
                         HStack {
@@ -155,9 +167,9 @@ struct CalendarContainerView: View {
                                 .font(.body)
                             Spacer()
                             Button(action: {
-                                print("\(vaccine) selected") // Action when vaccine is selected
+                                print("\(vaccine) selected")
                             }) {
-                                Image(systemName: vaccine == "Hepatitis Vaccination" ? "plus" : "plus")
+                                Image(systemName: "plus")
                                     .foregroundColor(.blue)
                             }
                         }
@@ -171,30 +183,30 @@ struct CalendarContainerView: View {
             .padding(.vertical)
         }
         .onReceive(selectedDate) { date in
-            currentDate = date // Update the current date when the publisher emits a new date
+            currentDate = date
         }
     }
 }
+
 // SwiftUI View to display individual vaccine cards
 struct VaccineCardView: View {
     let title: String
     let description: String
-    let imageName: String // Image name passed as a parameter
+    let imageName: String
+    let onTap: () -> Void // Closure to handle tap action
+
     var body: some View {
         VStack(alignment: .leading) {
-            // Load the image from the assets using the provided image name
-            Image(imageName) // Use the passed image name to load the image from assets
+            Image(imageName)
                 .resizable()
                 .scaledToFit()
-                .frame(height: 50) // Set the height of the image
+                .frame(height: 50)
                 .padding(.bottom, 8)
             
-            // Title of the vaccine
             Text(title)
                 .font(.headline)
                 .foregroundColor(.primary)
             
-            // Description of the vaccine
             Text(description)
                 .font(.subheadline)
                 .foregroundColor(.secondary)
@@ -203,6 +215,9 @@ struct VaccineCardView: View {
         .frame(width: 200)
         .background(Color(UIColor.secondarySystemBackground))
         .cornerRadius(12)
+        .onTapGesture { // Handle tap on the card
+            onTap()
+        }
     }
 }
 // SwiftUI View to display the calendar and month/year header
