@@ -2,6 +2,7 @@ import UIKit
 
 class GrowTrackViewController: UIViewController{
     
+    var baby: Baby! = BabyDataModel.shared.babyList[0]
     
     @IBOutlet weak var topSegmentedControl: UISegmentedControl!
     
@@ -73,7 +74,7 @@ class GrowTrackViewController: UIViewController{
         let layout = UICollectionViewFlowLayout()
         layout.scrollDirection = .vertical
         layout.minimumLineSpacing = 10
-        layout.itemSize = CGSize(width: view.frame.width - 32, height: 170)
+        layout.itemSize = CGSize(width: view.frame.width - 32, height: 150)
         bodyMeasurementCollectionView.collectionViewLayout = layout
         bodyMeasurementCollectionView.reloadData()
     }
@@ -176,16 +177,24 @@ extension GrowTrackViewController: UICollectionViewDelegate {
             let modalVC = MilestoneModalViewController(
                 category: selectedMilestone.category.rawValue,
                 title: selectedMilestone.title,
-                description: selectedMilestone.description
+                description: selectedMilestone.description,
+                milestone: selectedMilestone
             )
+            modalVC.baby = baby
+            print("Setting onSave closure")
             modalVC.onSave = { [weak self] date, image in
                 guard let self = self else { return }
+                
+                print("Save button tapped")
                 selectedBaby.updateMilestonesAchieved(selectedMilestone, date: date)
-
+                print("Milestone saved: \(date), Image: \(String(describing: image))")
                 self.filterMilestones(
                     month: self.monthButtonTitles[self.monthButtonCollectionView.selectedIndex ?? 0],
                     category: self.categoryButtonTitles[self.categoryButtonCollectionView.selectedIndex ?? 0]
                 )
+                
+                self.milestonesCollectionView.reloadData()
+                
                 modalVC.dismiss(animated: true) {
                     self.showCongratulationsAlert()
                 }
