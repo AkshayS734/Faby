@@ -11,3 +11,4 @@ struct Hospital {
     let address: String
     let distance: String
 }
+

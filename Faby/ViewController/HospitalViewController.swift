@@ -92,8 +92,8 @@ class HospitalViewController: UIViewController, UITableViewDataSource, UITableVi
         let cancelAction = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
         let doneAction = UIAlertAction(title: "Done", style: .default) { _ in
             if let dateText = alertController.textFields?.first?.text, !dateText.isEmpty {
-                // Handle the date input
-                print("Reminder set for \(hospital.name) on \(dateText)")
+                // Save the date and hospital info locally
+                self.saveVaccinationData(hospital: hospital, date: dateText)
                 
                 // Show confirmation message
                 self.showConfirmationMessage()
@@ -103,6 +103,21 @@ class HospitalViewController: UIViewController, UITableViewDataSource, UITableVi
         alertController.addAction(cancelAction)
         alertController.addAction(doneAction)
         present(alertController, animated: true)
+    }
+
+    private func saveVaccinationData(hospital: Hospital, date: String) {
+        // Create a dictionary to store the hospital and date
+        let vaccinationData = ["hospital": hospital.name, "address": hospital.address, "date": date]
+
+        // Retrieve existing data (if any)
+        var savedData = UserDefaults.standard.array(forKey: "VaccinationSchedules") as? [[String: String]] ?? []
+
+        // Add the new entry
+        savedData.append(vaccinationData)
+
+        // Save updated data back to UserDefaults
+        UserDefaults.standard.set(savedData, forKey: "VaccinationSchedules")
+        print("Saved vaccination schedule: \(vaccinationData)")
     }
 
     private func showConfirmationMessage() {
@@ -174,4 +189,4 @@ class HospitalCell: UITableViewCell {
     }
 }
 
-// MARK: - Hospital Model
+
