@@ -12,8 +12,13 @@ class GrowTrackViewController: UIViewController{
     private let monthButtonTitles = ["12 months", "15 months", "18 months", "24 months", "30 months", "36 months"]
     private let monthButtonSize = CGSize(width: 90, height: 100)
     private let categoryButtonTitles = ["Cognitive", "Language", "Physical", "Social"]
-    private let categoryButtonSize = CGSize(width: 90, height: 50)
-    
+    private let categoryButtonSize = CGSize(width: 110, height: 50)
+    private let categoryButtonImages: [UIImage] = [
+        UIImage(systemName: "brain.head.profile")!,
+        UIImage(systemName: "text.bubble")!,
+        UIImage(systemName: "figure.walk")!,
+        UIImage(systemName: "person.2.fill")!
+    ]
     private var filteredMilestones: [GrowthMilestone] = []
     
     @IBOutlet weak var bodyMeasurementCollectionView: UICollectionView!
@@ -23,19 +28,33 @@ class GrowTrackViewController: UIViewController{
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemGray6
-        
+            
         if let baby = BabyDataModel.shared.babyList.first {
             baby.measurementUpdated = { [weak self] in
                 self?.bodyMeasurementCollectionView.reloadData()
             }
         }
         
-        monthButtonCollectionView = ButtonsCollectionView(buttonTitles: monthButtonTitles, buttonSize: monthButtonSize, minimumLineSpacing: 5, cornerRadius: 10)
+        monthButtonCollectionView = ButtonsCollectionView(
+            buttonTitles: monthButtonTitles,
+            categoryButtonTitles: [],
+            categoryButtonImages: [],
+            buttonSize: monthButtonSize,
+            minimumLineSpacing: 5,
+            cornerRadius: 10
+        )
         monthButtonCollectionView.delegate = self
         view.addSubview(monthButtonCollectionView)
         setupMonthCollectionView()
-        
-        categoryButtonCollectionView = ButtonsCollectionView(buttonTitles: categoryButtonTitles, buttonSize: categoryButtonSize, minimumLineSpacing: 10, cornerRadius: 7)
+
+        categoryButtonCollectionView = ButtonsCollectionView(
+            buttonTitles: categoryButtonTitles,
+            categoryButtonTitles: categoryButtonTitles,
+            categoryButtonImages: categoryButtonImages,
+            buttonSize: categoryButtonSize,
+            minimumLineSpacing: 10,
+            cornerRadius: 7
+        )
         categoryButtonCollectionView.delegate = self
         view.addSubview(categoryButtonCollectionView)
         setupCategoryCollectionView()
