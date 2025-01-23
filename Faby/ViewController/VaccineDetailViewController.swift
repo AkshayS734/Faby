@@ -12,6 +12,7 @@ import UIKit
 class VaccineDetailViewController: UIViewController {
     
     
+    
     var vaccine: Vaccine? // Add this to store the selected vaccine data
     // UI Elements
     let scrollView = UIScrollView()

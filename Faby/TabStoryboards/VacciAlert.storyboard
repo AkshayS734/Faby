@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="23504" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="4EG-2K-2CL">
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="23504" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="Rr1-fx-2cY">
     <device id="retina6_12" orientation="portrait" appearance="light"/>
     <dependencies>
         <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="23506"/>
@@ -8,7 +8,7 @@
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
     <scenes>
-        <!--VacciAlert-->
+        <!--VacciTime-->
         <scene sceneID="s0d-6b-0kx">
             <objects>
                 <viewController id="Y6W-OH-hqX" customClass="VacciAlertViewController" customModule="Faby" customModuleProvider="target" sceneMemberID="viewController">
@@ -18,36 +18,74 @@
                         <viewLayoutGuide key="safeArea" id="vDu-zF-Fre"/>
                         <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                     </view>
-                    <navigationItem key="navigationItem" title="VacciAlert" id="Pyj-oc-eqW"/>
+                    <navigationItem key="navigationItem" title="VacciTime" id="Pyj-oc-eqW">
+                        <rightBarButtonItems>
+                            <barButtonItem title="Item" image="gearshape" catalog="system" id="4vI-hj-23A"/>
+                            <barButtonItem title="Item" image="bell.badge.fill" catalog="system" id="TC5-8w-FHp"/>
+                        </rightBarButtonItems>
+                    </navigationItem>
                     <simulatedTabBarMetrics key="simulatedBottomBarMetrics"/>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="Ief-a0-LHa" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="1124.4274809160304" y="3.5211267605633805"/>
+            <point key="canvasLocation" x="2593" y="4"/>
         </scene>
-        <!--VacciAlert-->
-        <scene sceneID="HJt-BC-WzE">
+        <!--VacciTime-->
+        <scene sceneID="sXE-Hm-vPT">
             <objects>
-                <navigationController automaticallyAdjustsScrollViewInsets="NO" id="4EG-2K-2CL" sceneMemberID="viewController">
-                    <tabBarItem key="tabBarItem" title="VacciAlert" image="syringe" catalog="system" selectedImage="syringe.fill" id="cDW-f4-ato"/>
+                <viewController id="PtG-bF-BbV" customClass="VaccineInputViewController" customModule="Faby" customModuleProvider="target" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="EMK-OA-ZLP">
+                        <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <subviews>
+                            <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="01q-YN-NOj">
+                                <rect key="frame" x="16" y="752" width="361" height="50"/>
+                                <constraints>
+                                    <constraint firstAttribute="height" constant="50" id="rg3-Ei-iYX"/>
+                                </constraints>
+                                <state key="normal" title="Button"/>
+                                <buttonConfiguration key="configuration" style="filled" title="Continue"/>
+                                <connections>
+                                    <segue destination="Y6W-OH-hqX" kind="show" id="bGb-ug-djc"/>
+                                </connections>
+                            </button>
+                        </subviews>
+                        <viewLayoutGuide key="safeArea" id="SIE-Jd-W4U"/>
+                        <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                        <constraints>
+                            <constraint firstItem="SIE-Jd-W4U" firstAttribute="trailing" secondItem="01q-YN-NOj" secondAttribute="trailing" constant="16" id="4qb-wY-CO5"/>
+                            <constraint firstItem="01q-YN-NOj" firstAttribute="leading" secondItem="SIE-Jd-W4U" secondAttribute="leading" constant="16" id="rvw-EI-ke7"/>
+                            <constraint firstItem="SIE-Jd-W4U" firstAttribute="bottom" secondItem="01q-YN-NOj" secondAttribute="bottom" constant="16" id="yDC-8K-Mxa"/>
+                        </constraints>
+                    </view>
+                    <navigationItem key="navigationItem" title="VacciTime" id="ZBA-Y9-wB5"/>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="q6D-XM-VRT" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="1750.3816793893129" y="3.5211267605633805"/>
+        </scene>
+        <!--Navigation Controller-->
+        <scene sceneID="Cbe-dl-275">
+            <objects>
+                <navigationController automaticallyAdjustsScrollViewInsets="NO" id="Rr1-fx-2cY" sceneMemberID="viewController">
                     <toolbarItems/>
-                    <navigationBar key="navigationBar" contentMode="scaleToFill" largeTitles="YES" id="iq3-dK-cmn">
+                    <navigationBar key="navigationBar" contentMode="scaleToFill" largeTitles="YES" id="j4E-hx-pg4">
                         <rect key="frame" x="0.0" y="59" width="393" height="96"/>
                         <autoresizingMask key="autoresizingMask"/>
                     </navigationBar>
                     <nil name="viewControllers"/>
                     <connections>
-                        <segue destination="Y6W-OH-hqX" kind="relationship" relationship="rootViewController" id="8oX-Q6-auo"/>
+                        <segue destination="PtG-bF-BbV" kind="relationship" relationship="rootViewController" id="ZVc-n7-mdz"/>
                     </connections>
                 </navigationController>
-                <placeholder placeholderIdentifier="IBFirstResponder" id="1TA-Xo-iMx" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="RUC-hN-RjZ" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="136.64122137404578" y="3.5211267605633805"/>
+            <point key="canvasLocation" x="823.66412213740455" y="3.5211267605633805"/>
         </scene>
     </scenes>
     <resources>
-        <image name="syringe" catalog="system" width="128" height="115"/>
-        <image name="syringe.fill" catalog="system" width="128" height="115"/>
+        <image name="bell.badge.fill" catalog="system" width="117" height="128"/>
+        <image name="gearshape" catalog="system" width="128" height="123"/>
         <systemColor name="systemBackgroundColor">
             <color white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
         </systemColor>

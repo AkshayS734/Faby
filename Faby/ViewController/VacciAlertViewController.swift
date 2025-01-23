@@ -3,6 +3,8 @@ import SwiftUI
 import Combine
 // ViewController to manage the calendar and vaccine alert UI
 class VacciAlertViewController: UIViewController {
+    
+    var selectedVaccines: [String] = []
     // Publisher to send the selected date
     private let selectedDateSubject = PassthroughSubject<Date, Never>()
     
