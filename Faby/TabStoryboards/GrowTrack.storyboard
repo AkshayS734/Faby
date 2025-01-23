@@ -81,12 +81,36 @@
                     <view key="view" contentMode="scaleToFill" id="EBu-h2-Oyu">
                         <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <subviews>
+                            <segmentedControl opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="left" contentVerticalAlignment="top" segmentControlStyle="plain" selectedSegmentIndex="0" translatesAutoresizingMaskIntoConstraints="NO" id="6mZ-XZ-7nq">
+                                <rect key="frame" x="16" y="119" width="361" height="32"/>
+                                <segments>
+                                    <segment title="First"/>
+                                    <segment title="Second"/>
+                                </segments>
+                                <connections>
+                                    <action selector="timeSpanChanged:" destination="QcD-le-w5v" eventType="valueChanged" id="Vce-dR-Z1p"/>
+                                </connections>
+                            </segmentedControl>
+                        </subviews>
                         <viewLayoutGuide key="safeArea" id="1Yt-oc-edc"/>
                         <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                        <constraints>
+                            <constraint firstItem="6mZ-XZ-7nq" firstAttribute="leading" secondItem="1Yt-oc-edc" secondAttribute="leading" constant="16" id="Cpd-fx-GtE"/>
+                            <constraint firstItem="1Yt-oc-edc" firstAttribute="trailing" secondItem="6mZ-XZ-7nq" secondAttribute="trailing" constant="16" id="MJ2-zn-R25"/>
+                            <constraint firstItem="6mZ-XZ-7nq" firstAttribute="top" secondItem="1Yt-oc-edc" secondAttribute="top" constant="16" id="QMw-fV-7zg"/>
+                        </constraints>
                     </view>
                     <navigationItem key="navigationItem" largeTitleDisplayMode="never" id="U2k-HR-C8r">
-                        <barButtonItem key="rightBarButtonItem" title="Add data" style="plain" id="bAM-dm-qGH"/>
+                        <barButtonItem key="rightBarButtonItem" title="Add data" style="plain" id="bAM-dm-qGH">
+                            <connections>
+                                <action selector="addButtonTapped:" destination="QcD-le-w5v" id="7Mn-7Y-wkF"/>
+                            </connections>
+                        </barButtonItem>
                     </navigationItem>
+                    <connections>
+                        <outlet property="timeSpanSegmentedControl" destination="6mZ-XZ-7nq" id="vf6-wS-T7v"/>
+                    </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="iyR-o2-XQr" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
             </objects>
