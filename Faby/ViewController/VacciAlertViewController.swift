@@ -17,7 +17,9 @@ class VacciAlertViewController: UIViewController {
         let calendarView = UIHostingController(rootView:
             CalendarContainerView(
                 selectedDate: selectedDateSubject.eraseToAnyPublisher(),
-                onChevronTapped: showDatePicker,
+                onChevronTappedToNavigate: { [weak self] in
+                    self?.navigateToVaccineReminderViewController()
+                },
                 onCardTapped: { [weak self] vaccine in
                     self?.showVaccineDetail(for: vaccine)
                 },
@@ -38,6 +40,11 @@ class VacciAlertViewController: UIViewController {
             calendarView.view.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
             calendarView.view.bottomAnchor.constraint(lessThanOrEqualTo: view.safeAreaLayoutGuide.bottomAnchor)
         ])
+    }
+    
+    func navigateToVaccineReminderViewController() {
+        let reminderVC = VaccineReminderViewController()
+        show(reminderVC, sender: self)
     }
     // Date changed event handler when user selects a date from the date picker
     @objc func dateChanged(_ datePicker: UIDatePicker) {
@@ -129,17 +136,20 @@ class VacciAlertViewController: UIViewController {
 // SwiftUI View to display the calendar and vaccine details
 struct CalendarContainerView: View {
     let selectedDate: AnyPublisher<Date, Never>
-    var onChevronTapped: () -> Void
+    var onChevronTappedToNavigate: () -> Void // Correct name
     var onCardTapped: (String) -> Void
     var onAddVaccinationTapped: () -> Void
-    
+
     @State private var currentDate: Date = Date()
     @State private var upcomingVaccinations: [String] = ["Hepatitis Vaccination", "Influenza"]
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                CalendarView(selectedDate: currentDate, onChevronTapped: onChevronTapped)
+                CalendarView(
+                    selectedDate: currentDate,
+                    onChevronTappedToNavigate: onChevronTappedToNavigate // Pass correct closure
+                )
 
                 Text("Latest Research")
                     .font(.title2)
@@ -196,7 +206,6 @@ struct CalendarContainerView: View {
         }
     }
 }
-
 // SwiftUI View to display individual vaccine cards
 struct VaccineCardView: View {
     let title: String
@@ -232,8 +241,8 @@ struct VaccineCardView: View {
 // SwiftUI View to display the calendar and month/year header
 struct CalendarView: View {
     var selectedDate: Date
-    var onChevronTapped: () -> Void
-    
+    var onChevronTappedToNavigate: () -> Void // Navigation closure
+
     var body: some View {
         VStack(alignment: .leading) {
             // Month and Year Section
@@ -244,7 +253,7 @@ struct CalendarView: View {
                     .font(.headline)
                     .foregroundColor(.primary)
                 Spacer()
-                Button(action: onChevronTapped) { // Button to show the date picker
+                Button(action: onChevronTappedToNavigate) { // Button to navigate
                     Image(systemName: "chevron.right")
                         .foregroundColor(.secondary)
                 }
@@ -258,9 +267,9 @@ struct CalendarView: View {
                     ForEach(1...31, id: \.self) { day in
                         let isSelected = isDaySelected(day) // Check if the day is selected
                         VStack(spacing: 4) {
-                            Text(dayOfWeek(for: day)) // Display the day of the week
-                                .font(.footnote)
-                                .foregroundColor(.secondary)
+//                            Text(dayOfWeek(for: day)) // Display the day of the week
+//                                .font(.footnote)
+//                                .foregroundColor(.secondary)
                             Text("\(day)") // Display the day number
                                 .font(.body)
                                 .fontWeight(isSelected ? .semibold : .regular) // Bold if selected
@@ -278,24 +287,29 @@ struct CalendarView: View {
     }
     
     // Helper function to check if a day is selected
-    private func isDaySelected(_ day: Int) -> Bool {
+     func isDaySelected(_ day: Int) -> Bool {
         let calendar = Calendar.current
-        return calendar.component(.day, from: selectedDate) == day
+        let components = calendar.dateComponents([.day], from: selectedDate)
+        return components.day == day
     }
+}
     
-    // Helper function to get the day of the week for a specific day
-    private func dayOfWeek(for day: Int) -> String {
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd"
-        let calendar = Calendar.current
-        let components = calendar.dateComponents([.year, .month], from: selectedDate)
-        if let date = dateFormatter.date(from: "\(components.year ?? 2024)-\(components.month ?? 12)-\(String(format: "%02d", day))") {
-            let dayNameFormatter = DateFormatter()
-            dayNameFormatter.dateFormat = "E"
-            return dayNameFormatter.string(from: date)
-        }
-        return ""
-    }
+//     Helper function to get the day of the week for a specific day
+// func dayOfWeek(for day: Int) -> String {
+//    let dateFormatter = DateFormatter()
+//    dateFormatter.dateFormat = "yyyy-MM-dd"
+//    let calendar = Calendar.current
+//    let components = calendar.dateComponents([.year, .month], from: selectedDate)
+//    
+//    if let year = components.year, let month = components.month {
+//        if let date = dateFormatter.date(from: "\(year)-\(month)-\(day)") {
+//            let dayNameFormatter = DateFormatter()
+//            dayNameFormatter.dateFormat = "E" // Short day of the week (e.g., Mon, Tue)
+//            return dayNameFormatter.string(from: date)
+//        }
+//    }
+//    return ""
+//}
     
     // Helper function to format the month and year string
     private func monthYearString(from date: Date) -> String {
@@ -303,6 +317,6 @@ struct CalendarView: View {
         formatter.dateFormat = "MMMM yyyy"
         return formatter.string(from: date)
     }
-}
+
     
 

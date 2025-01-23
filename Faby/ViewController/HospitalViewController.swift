@@ -63,6 +63,17 @@ class HospitalViewController: UIViewController, UITableViewDataSource, UITableVi
         return hospitals.count
     }
 
+    private func getScheduledVaccinationDates() -> [Date] {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "dd/MM/yyyy" // Match the format used when saving data
+
+        // Retrieve data from UserDefaults
+        let savedData = UserDefaults.standard.array(forKey: "VaccinationSchedules") as? [[String: String]] ?? []
+
+        // Extract and convert dates from the saved data
+        let dates = savedData.compactMap { $0["date"] }
+        return dates.compactMap { dateFormatter.date(from: $0) }
+    }
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         guard let cell = tableView.dequeueReusableCell(withIdentifier: HospitalCell.identifier, for: indexPath) as? HospitalCell else {
             return UITableViewCell()

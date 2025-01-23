@@ -20,7 +20,11 @@
                     </view>
                     <navigationItem key="navigationItem" title="VacciTime" id="Pyj-oc-eqW">
                         <rightBarButtonItems>
-                            <barButtonItem title="Item" image="gearshape" catalog="system" id="4vI-hj-23A"/>
+                            <barButtonItem title="Item" image="gearshape" catalog="system" id="4vI-hj-23A">
+                                <connections>
+                                    <segue destination="Jhx-xQ-LRF" kind="show" id="aNC-UC-F6z"/>
+                                </connections>
+                            </barButtonItem>
                             <barButtonItem title="Item" image="bell.badge.fill" catalog="system" id="TC5-8w-FHp"/>
                         </rightBarButtonItems>
                     </navigationItem>
@@ -29,6 +33,22 @@
                 <placeholder placeholderIdentifier="IBFirstResponder" id="Ief-a0-LHa" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
             </objects>
             <point key="canvasLocation" x="2593" y="4"/>
+        </scene>
+        <!--View Controller-->
+        <scene sceneID="TqP-eH-hKm">
+            <objects>
+                <viewController id="Jhx-xQ-LRF" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="csR-8b-7SM">
+                        <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <viewLayoutGuide key="safeArea" id="qWa-Gw-XbJ"/>
+                        <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                    </view>
+                    <navigationItem key="navigationItem" id="P45-Gg-eeL"/>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="drR-SJ-Hg3" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="3524" y="4"/>
         </scene>
         <!--VacciTime-->
         <scene sceneID="sXE-Hm-vPT">
