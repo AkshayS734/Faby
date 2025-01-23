@@ -1,6 +1,7 @@
 import UIKit
 import SwiftUI
 import Combine
+
 // ViewController to manage the calendar and vaccine alert UI
 class VacciAlertViewController: UIViewController {
     
@@ -12,29 +13,32 @@ class VacciAlertViewController: UIViewController {
         super.viewDidLoad()
         
         // Initialize CalendarContainerView inside a UIHostingController
-
-            let calendarView = UIHostingController(rootView:
-                CalendarContainerView(
-                    selectedDate: selectedDateSubject.eraseToAnyPublisher(),
-                    onChevronTapped: showDatePicker,
-                    onCardTapped: { [weak self] vaccine in
-                        self?.showVaccineDetail(for: vaccine)
-                    }
-                )
+        
+        let calendarView = UIHostingController(rootView:
+            CalendarContainerView(
+                selectedDate: selectedDateSubject.eraseToAnyPublisher(),
+                onChevronTapped: showDatePicker,
+                onCardTapped: { [weak self] vaccine in
+                    self?.showVaccineDetail(for: vaccine)
+                },
+                onAddVaccinationTapped: { [weak self] in
+                    self?.showAddVaccinationModal()
+                }
             )
+        )
 
-            addChild(calendarView)
-            calendarView.view.translatesAutoresizingMaskIntoConstraints = false
-            view.addSubview(calendarView.view)
-            calendarView.didMove(toParent: self)
-
-            NSLayoutConstraint.activate([
-                calendarView.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-                calendarView.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-                calendarView.view.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
-                calendarView.view.bottomAnchor.constraint(lessThanOrEqualTo: view.safeAreaLayoutGuide.bottomAnchor)
-            ])
-        }
+        addChild(calendarView)
+        calendarView.view.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(calendarView.view)
+        calendarView.didMove(toParent: self)
+        
+        NSLayoutConstraint.activate([
+            calendarView.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            calendarView.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            calendarView.view.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
+            calendarView.view.bottomAnchor.constraint(lessThanOrEqualTo: view.safeAreaLayoutGuide.bottomAnchor)
+        ])
+    }
     // Date changed event handler when user selects a date from the date picker
     @objc func dateChanged(_ datePicker: UIDatePicker) {
         selectedDateSubject.send(datePicker.date) // Send the selected date to the publisher
@@ -111,21 +115,24 @@ class VacciAlertViewController: UIViewController {
         detailVC.modalPresentationStyle = .pageSheet
         present(detailVC, animated: true, completion: nil)
     }
-        // Prepare for segue to pass data
-    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        if segue.identifier == "ShowVaccineDetail",
-           let detailVC = segue.destination as? VaccineDetailViewController,
-           let vaccine = sender as? String {
-            detailVC.vaccineNameLabel.text = vaccine // Assign the string to the text property of the UILabel
-        }
-        }
     
+    
+    // Prepare for segue to pass data
+    func showAddVaccinationModal() {
+        let detailVC = HospitalViewController()
+        
+        detailVC.modalPresentationStyle = .pageSheet
+        present(detailVC, animated: true, completion: nil)
+    }
 }
+
 // SwiftUI View to display the calendar and vaccine details
 struct CalendarContainerView: View {
     let selectedDate: AnyPublisher<Date, Never>
     var onChevronTapped: () -> Void
-    var onCardTapped: (String) -> Void // Closure to handle card taps
+    var onCardTapped: (String) -> Void
+    var onAddVaccinationTapped: () -> Void
+    
     @State private var currentDate: Date = Date()
     @State private var upcomingVaccinations: [String] = ["Hepatitis Vaccination", "Influenza"]
 
@@ -169,7 +176,7 @@ struct CalendarContainerView: View {
                                 .font(.body)
                             Spacer()
                             Button(action: {
-                                print("\(vaccine) selected")
+                                onAddVaccinationTapped()
                             }) {
                                 Image(systemName: "plus")
                                     .foregroundColor(.blue)
