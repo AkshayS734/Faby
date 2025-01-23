@@ -24,6 +24,12 @@ class GrowTrackViewController: UIViewController{
         super.viewDidLoad()
         view.backgroundColor = .systemGray6
         
+        if let baby = BabyDataModel.shared.babyList.first {
+            baby.measurementUpdated = { [weak self] in
+                self?.bodyMeasurementCollectionView.reloadData()
+            }
+        }
+        
         monthButtonCollectionView = ButtonsCollectionView(buttonTitles: monthButtonTitles, buttonSize: monthButtonSize, minimumLineSpacing: 5, cornerRadius: 10)
         monthButtonCollectionView.delegate = self
         view.addSubview(monthButtonCollectionView)
@@ -50,7 +56,7 @@ class GrowTrackViewController: UIViewController{
         layout.minimumLineSpacing = 10
         layout.itemSize = CGSize(width: view.frame.width - 32, height: 170)
         bodyMeasurementCollectionView.collectionViewLayout = layout
-        
+        bodyMeasurementCollectionView.reloadData()
     }
     
     private func setupMonthCollectionView() {
@@ -104,16 +110,19 @@ class GrowTrackViewController: UIViewController{
             categoryButtonCollectionView.isHidden = false
             milestonesCollectionView.isHidden = false
             bodyMeasurementCollectionView.isHidden = true
+            bodyMeasurementCollectionView.reloadData()
             case 1:
             monthButtonCollectionView.isHidden = true
             categoryButtonCollectionView.isHidden = true
             milestonesCollectionView.isHidden = true
             bodyMeasurementCollectionView.isHidden = false
+            bodyMeasurementCollectionView.reloadData()
             default:
             monthButtonCollectionView.isHidden = false
             categoryButtonCollectionView.isHidden = false
             milestonesCollectionView.isHidden = false
             bodyMeasurementCollectionView.isHidden = true
+            bodyMeasurementCollectionView.reloadData()
             
         }
     }
@@ -225,22 +234,67 @@ extension GrowTrackViewController: UICollectionViewDataSource {
                 withReuseIdentifier: "BodyMeasurementCollectionViewCell",
                 for: indexPath
             ) as! BodyMeasurementCollectionViewCell
-            cell.titleLabel.text = bodyMeasurements[indexPath.row]
-            let armsImage = UIImage(systemName: "figure.arms.open")
-            cell.labelImage.image = armsImage
+            let units = ["cm", "kg", "cm"]
+            let measurementType = bodyMeasurements[indexPath.row]
+            let unit = units[indexPath.row]
             let titleColors: [UIColor] = [
                 UIColor(hex: "942192"),
                 UIColor(hex: "F27200"),
                 UIColor(hex: "AA7942")
             ]
-            cell.titleLabel.textColor = titleColors[indexPath.row % titleColors.count]
+            
+            if let baby = BabyDataModel.shared.babyList.first {
+                let latestMeasurement: String
+                let latestDate: Date?
+                    
+                switch measurementType {
+                case "Height":
+                    if let latest = baby.height.max(by: { $0.key < $1.key }) {
+                        latestMeasurement = String(format: "%.2f", latest.key)
+                        latestDate = latest.value
+                    } else {
+                        latestMeasurement = "0"
+                        latestDate = nil
+                    }
+                case "Weight":
+                    if let latest = baby.weight.max(by: { $0.key < $1.key }) {
+                        latestMeasurement = String(format: "%.2f", latest.key)
+                        latestDate = latest.value
+                    } else {
+                        latestMeasurement = "0"
+                        latestDate = nil
+                    }
+                case "Head Circumference":
+                    if let latest = baby.headCircumference.max(by: { $0.key < $1.key }) {
+                        latestMeasurement = String(format: "%.2f", latest.key)
+                        latestDate = latest.value
+                    } else {
+                        latestMeasurement = "0"
+                        latestDate = nil
+                    }
+                default:
+                    latestMeasurement = "0"
+                    latestDate = nil
+                }
+
+                cell.measurementNumberLabel.text = latestMeasurement
+                if let date = latestDate {
+                    let dateFormatter = DateFormatter()
+                    dateFormatter.dateStyle = .medium
+                    cell.dateTimeLabel.text = dateFormatter.string(from: date)
+                } else {
+                    cell.dateTimeLabel.text = nil
+                }
+            } else {
+                cell.measurementNumberLabel.text = "0"
+                cell.dateTimeLabel.text = nil
+            }
+
+            cell.titleLabel.text = measurementType
+            cell.labelImage.image = UIImage(systemName: "figure.arms.open")
             cell.labelImage.tintColor = titleColors[indexPath.row % titleColors.count]
-            
-            cell.measurementNumberLabel.text = "0"
-            
-            cell.measurementUnitLabel.text = units[indexPath.row]
-            cell.dateTimeLabel.text = nil
-            
+            cell.titleLabel.textColor = titleColors[indexPath.row % titleColors.count]
+            cell.measurementUnitLabel.text = unit
             return cell
         } else if collectionView == milestonesCollectionView {
             let cell = collectionView.dequeueReusableCell(
