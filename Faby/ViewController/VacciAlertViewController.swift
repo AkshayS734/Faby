@@ -12,6 +12,11 @@ class VacciAlertViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        navigationItem.hidesBackButton = true
+
+           // Set the title
+           navigationItem.title = "VacciTime"
+        
         // Initialize CalendarContainerView inside a UIHostingController
         
         let calendarView = UIHostingController(rootView:
@@ -136,19 +141,22 @@ class VacciAlertViewController: UIViewController {
 // SwiftUI View to display the calendar and vaccine details
 struct CalendarContainerView: View {
     let selectedDate: AnyPublisher<Date, Never>
-    var onChevronTappedToNavigate: () -> Void // Correct name
+    var onChevronTappedToNavigate: () -> Void
     var onCardTapped: (String) -> Void
     var onAddVaccinationTapped: () -> Void
 
     @State private var currentDate: Date = Date()
-    @State private var upcomingVaccinations: [String] = ["Hepatitis Vaccination", "Influenza"]
+    @State private var upcomingVaccinations: [(name: String, startDate: Date, endDate: Date)] = [
+        ("Hepatitis Vaccination", Date(), Calendar.current.date(byAdding: .day, value: 4, to: Date())!),
+        ("Influenza", Calendar.current.date(byAdding: .day, value: 7, to: Date())!, Calendar.current.date(byAdding: .day, value: 10, to: Date())!)
+    ]
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 CalendarView(
                     selectedDate: currentDate,
-                    onChevronTappedToNavigate: onChevronTappedToNavigate // Pass correct closure
+                    onChevronTappedToNavigate: onChevronTappedToNavigate
                 )
 
                 Text("Latest Research")
@@ -180,10 +188,15 @@ struct CalendarContainerView: View {
                     .padding(.horizontal)
 
                 VStack(spacing: 8) {
-                    ForEach(upcomingVaccinations, id: \.self) { vaccine in
+                    ForEach(upcomingVaccinations, id: \.name) { vaccine in
                         HStack {
-                            Text(vaccine)
-                                .font(.body)
+                            VStack(alignment: .leading) {
+                                Text(vaccine.name)
+                                    .font(.body)
+                                Text(formatDateRange(from: vaccine.startDate, to: vaccine.endDate))
+                                    .font(.subheadline)
+                                    .foregroundColor(.gray)
+                            }
                             Spacer()
                             Button(action: {
                                 onAddVaccinationTapped()
@@ -204,6 +217,13 @@ struct CalendarContainerView: View {
         .onReceive(selectedDate) { date in
             currentDate = date
         }
+    }
+
+    // Helper function to format the date range
+    private func formatDateRange(from startDate: Date, to endDate: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        return "\(formatter.string(from: startDate)) - \(formatter.string(from: endDate))"
     }
 }
 // SwiftUI View to display individual vaccine cards
@@ -243,6 +263,8 @@ struct CalendarView: View {
     var selectedDate: Date
     var onChevronTappedToNavigate: () -> Void // Navigation closure
 
+    @State private var currentDay: Int = Calendar.current.component(.day, from: Date()) // Get today's day
+
     var body: some View {
         VStack(alignment: .leading) {
             // Month and Year Section
@@ -259,64 +281,47 @@ struct CalendarView: View {
                 }
             }
             .padding(.horizontal)
-            
+
             // Horizontal Scrolling Date Section
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    // Create buttons for each day of the month
-                    ForEach(1...31, id: \.self) { day in
-                        let isSelected = isDaySelected(day) // Check if the day is selected
-                        VStack(spacing: 4) {
-//                            Text(dayOfWeek(for: day)) // Display the day of the week
-//                                .font(.footnote)
-//                                .foregroundColor(.secondary)
-                            Text("\(day)") // Display the day number
-                                .font(.body)
-                                .fontWeight(isSelected ? .semibold : .regular) // Bold if selected
-                                .foregroundColor(isSelected ? .white : .primary)
-                                .frame(width: 36, height: 36)
-                                .background(isSelected ? Color.red : Color.clear) // Red background if selected
-                                .clipShape(Circle()) // Circle shape for the day number
+            ScrollViewReader { proxy in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(1...31, id: \.self) { day in
+                            let isSelected = isDaySelected(day) // Check if the day is selected
+                            VStack(spacing: 4) {
+                                Text("\(day)") // Display the day number
+                                    .font(.body)
+                                    .fontWeight(isSelected ? .semibold : .regular) // Bold if selected
+                                    .foregroundColor(isSelected ? .white : .primary)
+                                    .frame(width: 36, height: 36)
+                                    .background(isSelected ? Color.blue : Color.clear) // Blue background if selected
+                                    .clipShape(Circle()) // Circle shape for the day number
+                            }
+                            .id(day) // Add an id to each day for scrolling
                         }
                     }
+                    .padding(.horizontal)
                 }
-                .padding(.horizontal)
+                .onAppear {
+                    // Scroll to today's date when the view appears
+                    proxy.scrollTo(currentDay, anchor: .center)
+                }
             }
         }
         .padding(.top)
     }
-    
+
     // Helper function to check if a day is selected
-     func isDaySelected(_ day: Int) -> Bool {
+    func isDaySelected(_ day: Int) -> Bool {
         let calendar = Calendar.current
         let components = calendar.dateComponents([.day], from: selectedDate)
         return components.day == day
     }
-}
-    
-//     Helper function to get the day of the week for a specific day
-// func dayOfWeek(for day: Int) -> String {
-//    let dateFormatter = DateFormatter()
-//    dateFormatter.dateFormat = "yyyy-MM-dd"
-//    let calendar = Calendar.current
-//    let components = calendar.dateComponents([.year, .month], from: selectedDate)
-//    
-//    if let year = components.year, let month = components.month {
-//        if let date = dateFormatter.date(from: "\(year)-\(month)-\(day)") {
-//            let dayNameFormatter = DateFormatter()
-//            dayNameFormatter.dateFormat = "E" // Short day of the week (e.g., Mon, Tue)
-//            return dayNameFormatter.string(from: date)
-//        }
-//    }
-//    return ""
-//}
-    
+
     // Helper function to format the month and year string
     private func monthYearString(from date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "MMMM yyyy"
         return formatter.string(from: date)
     }
-
-    
-
+}

@@ -32,6 +32,8 @@ class VaccineInputViewController: UIViewController, UITableViewDataSource, UITab
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        view.backgroundColor = UIColor(hex: "#f2f2f7")
+        
         // Set up the navigation bar title
         self.title = "VacciTime"
         view.backgroundColor = .white
@@ -69,6 +71,25 @@ class VaccineInputViewController: UIViewController, UITableViewDataSource, UITab
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -80) // Leave space for the "Continue" button
         ])
+    }
+    private func storeVaccinationDetails(childName: String, vaccines: [String]) {
+        // Create a dictionary to hold the vaccine details
+        let vaccinationDetails: [String: Any] = [
+            "childName": childName,
+            "vaccines": vaccines,
+            "date": Date()  // You can store the current date when vaccines were marked as completed
+        ]
+        
+        // Retrieve existing data from UserDefaults
+        var existingData = UserDefaults.standard.array(forKey: "ChildrenVaccinations") as? [[String: Any]] ?? []
+        
+        // Add the new vaccination details to the list
+        existingData.append(vaccinationDetails)
+        
+        // Store the updated data back into UserDefaults
+        UserDefaults.standard.set(existingData, forKey: "ChildrenVaccinations")
+        
+        print("Vaccination details saved for \(childName): \(vaccines)")
     }
     
     // MARK: - UITableViewDataSource Methods

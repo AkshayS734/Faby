@@ -23,7 +23,7 @@ class VaccineDetailViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = .white
+        view.backgroundColor = UIColor(hex: "#f2f2f7")
         if let vaccine = vaccine {
             vaccineNameLabel.text = vaccine.name
             vaccineDescriptionLabel.text = vaccine.description

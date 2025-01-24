@@ -8,9 +8,12 @@ class VaccineReminderViewController: UIViewController, UISearchBarDelegate {
     let calendarView = UIView()
     let scheduledVaccinationsLabel = UILabel()
     let vaccinationsStackView = UIStackView()
+    var vaccines: [String] = []
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        view.backgroundColor = UIColor(hex: "#f2f2f7")
         
         // Configure Navigation Bar
 //        navigationItem.title = "This Month"
@@ -56,6 +59,11 @@ class VaccineReminderViewController: UIViewController, UISearchBarDelegate {
         datePicker.preferredDatePickerStyle = .inline
         datePicker.addTarget(self, action: #selector(didSelectDate(_:)), for: .valueChanged)
         calendarView.addSubview(datePicker)
+        
+        // Set the font to match Apple's default font
+            if let font = UIFont(name: "SFProText-Regular", size: 16) {
+                datePicker.setValue(font, forKeyPath: "textFont")
+            }
         
         NSLayoutConstraint.activate([
             // Position calendarView close to the top of the contentView
@@ -139,11 +147,19 @@ class VaccineReminderViewController: UIViewController, UISearchBarDelegate {
         locationLabel.font = UIFont.systemFont(ofSize: 14)
         locationLabel.textColor = .gray
         
+        let checkmarkButton = UIButton(type: .custom)
+        checkmarkButton.setImage(UIImage(systemName: "circle"), for: .normal)
+        checkmarkButton.setImage(UIImage(systemName: "checkmark.circle.fill"), for: .selected)
+        checkmarkButton.tintColor = UIColor(hex: "#0076BA") // Custom color
+        checkmarkButton.addTarget(self, action: #selector(didToggleCheckmark(_:)), for: .touchUpInside)
+        checkmarkButton.translatesAutoresizingMaskIntoConstraints = false
+        
         let stackView = UIStackView(arrangedSubviews: [titleLabel, dateLabel, locationLabel])
         stackView.axis = .vertical
         stackView.spacing = 5
         stackView.translatesAutoresizingMaskIntoConstraints = false
         card.addSubview(stackView)
+        card.addSubview(checkmarkButton)
         
         vaccinationsStackView.addArrangedSubview(card)
         
@@ -152,9 +168,93 @@ class VaccineReminderViewController: UIViewController, UISearchBarDelegate {
             
             stackView.topAnchor.constraint(equalTo: card.topAnchor, constant: 10),
             stackView.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 10),
-            stackView.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -10),
-            stackView.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -10)
+            stackView.trailingAnchor.constraint(equalTo: checkmarkButton.leadingAnchor, constant: -10),
+            stackView.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -10),
+            
+            checkmarkButton.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -10),
+            checkmarkButton.centerYAnchor.constraint(equalTo: card.centerYAnchor),
+            checkmarkButton.widthAnchor.constraint(equalToConstant: 30),
+            checkmarkButton.heightAnchor.constraint(equalToConstant: 30)
         ])
+        
+        // Set the button's selected state based on stored data
+        if isVaccinationCompleted(title: title, date: date, location: location) {
+            checkmarkButton.isSelected = true
+        }
+    }
+
+    @objc private func didToggleCheckmark(_ sender: UIButton) {
+        sender.isSelected.toggle()
+        
+        // Find the vaccination info based on its card index
+        guard let card = sender.superview,
+              let stackView = card.subviews.first(where: { $0 is UIStackView }) as? UIStackView,
+              let titleLabel = stackView.arrangedSubviews[0] as? UILabel,
+              let dateLabel = stackView.arrangedSubviews[1] as? UILabel,
+              let locationLabel = stackView.arrangedSubviews[2] as? UILabel else {
+            return
+        }
+        
+        let title = titleLabel.text ?? ""
+        let date = dateLabel.text ?? ""
+        let location = locationLabel.text ?? ""
+        
+        // Update completion status in UserDefaults
+        updateVaccinationCompletion(title: title, date: date, location: location, isCompleted: sender.isSelected)
+    }
+    
+    private func storeVaccinationDetails(childName: String, vaccines: [String]) {
+            let vaccinationDetails: [String: Any] = [
+                "childName": childName,
+                "vaccines": vaccines,
+                "date": Date()  // Store the current date when vaccines were marked as completed
+            ]
+            
+            // Retrieve existing data from UserDefaults
+            var existingData = UserDefaults.standard.array(forKey: "ChildrenVaccinations") as? [[String: Any]] ?? []
+            
+            // Add the new vaccination details to the list
+            existingData.append(vaccinationDetails)
+            
+            // Store the updated data back into UserDefaults
+            UserDefaults.standard.set(existingData, forKey: "ChildrenVaccinations")
+            
+            print("Vaccination details saved for \(childName): \(vaccines)")
+        }
+
+    // Function to check if a vaccination is completed
+    private func isVaccinationCompleted(title: String, date: String, location: String) -> Bool {
+        if let savedData = UserDefaults.standard.array(forKey: "VaccinationSchedules") as? [[String: Any]] {
+            for vaccination in savedData {
+                if let savedTitle = vaccination["hospital"] as? String,
+                   let savedDate = vaccination["date"] as? String,
+                   let savedLocation = vaccination["address"] as? String,
+                   let isCompleted = vaccination["isCompleted"] as? Bool,
+                   savedTitle == title, savedDate == date, savedLocation == location {
+                    return isCompleted
+                }
+            }
+        }
+        return false
+    }
+
+    // Function to update vaccination completion status
+    private func updateVaccinationCompletion(title: String, date: String, location: String, isCompleted: Bool) {
+        var savedData = UserDefaults.standard.array(forKey: "VaccinationSchedules") as? [[String: Any]] ?? []
+        
+        if let index = savedData.firstIndex(where: {
+            $0["hospital"] as? String == title &&
+            $0["date"] as? String == date &&
+            $0["address"] as? String == location
+        }) {
+            savedData[index]["isCompleted"] = isCompleted
+        } else {
+            // Add new vaccination data if not already present
+            let newVaccination = ["hospital": title, "date": date, "address": location, "isCompleted": isCompleted] as [String: Any]
+            savedData.append(newVaccination)
+        }
+        
+        UserDefaults.standard.set(savedData, forKey: "VaccinationSchedules")
     }
     // MARK: - Actions
     
