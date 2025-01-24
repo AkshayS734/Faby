@@ -30,6 +30,7 @@ class Baby {
             saveMilestoneUserImage(for: milestone, image: image)
         }
         milestonesAchieved[milestone] = date
+        NotificationCenter.default.post(name: .milestonesAchievedUpdated, object: nil)
     }
     
     func saveImageToDocumentsDirectory(image: UIImage, filename: String) -> String? {
@@ -61,14 +62,14 @@ class Baby {
     
     func loadUserImage(for milestone: GrowthMilestone) -> UIImage? {
         guard let filePath = milestone.userImagePath else {
-            return nil
+            return UIImage(named : milestone.image)
         }
         
         let fileManager = FileManager.default
         if fileManager.fileExists(atPath: filePath) {
             return UIImage(contentsOfFile: filePath)
         }
-        return nil
+        return UIImage(named : milestone.image)
     }
     
     func updateHeight(_ height: Double, date: Date) {
@@ -94,21 +95,23 @@ class Baby {
         print("Removed Height: \(height)")
         measurementUpdated?()
     }
-        
+    
     func removeWeight(_ weight: Double) {
         self.weight.removeValue(forKey: weight)
         print("Removed Weight: \(weight)")
         measurementUpdated?()
     }
-        
+    
     func removeHeadCircumference(_ headCircumference: Double) {
         self.headCircumference.removeValue(forKey: headCircumference)
         print("Removed Head Circumference: \(headCircumference)")
         measurementUpdated?()
     }
 }
-
 enum Gender {
     case male
     case female
+}
+extension Notification.Name {
+    static let milestonesAchievedUpdated = Notification.Name("milestonesAchievedUpdated")
 }
