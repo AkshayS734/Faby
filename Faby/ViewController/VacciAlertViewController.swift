@@ -16,6 +16,7 @@ class VacciAlertViewController: UIViewController {
 
            // Set the title
            navigationItem.title = "VacciTime"
+        view.backgroundColor = UIColor(hex: "#f2f2f7")
         
         // Initialize CalendarContainerView inside a UIHostingController
         
@@ -152,74 +153,75 @@ struct CalendarContainerView: View {
     ]
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                CalendarView(
-                    selectedDate: currentDate,
-                    onChevronTappedToNavigate: onChevronTappedToNavigate
-                )
+        ZStack { // Add a ZStack to manage the background
+            Color(UIColor(hex: "#f2f2f7")) // Set background color
+                .ignoresSafeArea() // Extend to the edges of the screen
 
-                Text("Latest Research")
-                    .font(.title2)
-                    .bold()
-                    .padding(.horizontal)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    CalendarView(
+                        selectedDate: currentDate,
+                        onChevronTappedToNavigate: onChevronTappedToNavigate
+                    )
 
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 16) {
-                        VaccineCardView(
-                            title: "Hepatitis B",
-                            description: "The hepatitis B vaccine prevents liver disease and cancer.",
-                            imageName: "hepatitisB",
-                            onTap: { onCardTapped("Hepatitis B") }
-                        )
-                        VaccineCardView(
-                            title: "Influenza",
-                            description: "The influenza vaccine reduces the risk of flu infection.",
-                            imageName: "influenza",
-                            onTap: { onCardTapped("Influenza") }
-                        )
-                    }
-                    .padding(.horizontal)
-                }
+                    Text("Latest Research")
+                        .font(.title2)
+                        .bold()
+                        .padding(.horizontal)
 
-                Text("Upcoming Vaccination")
-                    .font(.title2)
-                    .bold()
-                    .padding(.horizontal)
-
-                VStack(spacing: 8) {
-                    ForEach(upcomingVaccinations, id: \.name) { vaccine in
-                        HStack {
-                            VStack(alignment: .leading) {
-                                Text(vaccine.name)
-                                    .font(.body)
-                                Text(formatDateRange(from: vaccine.startDate, to: vaccine.endDate))
-                                    .font(.subheadline)
-                                    .foregroundColor(.gray)
-                            }
-                            Spacer()
-                            Button(action: {
-                                onAddVaccinationTapped()
-                            }) {
-                                Image(systemName: "plus")
-                                    .foregroundColor(.blue)
-                            }
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 16) {
+                            VaccineCardView(
+                                title: "Hepatitis B",
+                                description: "The hepatitis B vaccine prevents liver disease and cancer.",
+                                imageName: "hepatitisB",
+                                onTap: { onCardTapped("Hepatitis B") }
+                            )
+                            VaccineCardView(
+                                title: "Influenza",
+                                description: "The influenza vaccine reduces the risk of flu infection.",
+                                imageName: "influenza",
+                                onTap: { onCardTapped("Influenza") }
+                            )
                         }
-                        .padding()
-                        .background(Color(UIColor.secondarySystemBackground))
-                        .cornerRadius(8)
+                        .padding(.horizontal)
                     }
+
+                    Text("Upcoming Vaccination")
+                        .font(.title2)
+                        .bold()
+                        .padding(.horizontal)
+
+                    VStack(spacing: 8) {
+                        ForEach(upcomingVaccinations, id: \.name) { vaccine in
+                            HStack {
+                                VStack(alignment: .leading) {
+                                    Text(vaccine.name)
+                                        .font(.body)
+                                    Text(formatDateRange(from: vaccine.startDate, to: vaccine.endDate))
+                                        .font(.subheadline)
+                                        .foregroundColor(.gray)
+                                }
+                                Spacer()
+                                Button(action: {
+                                    onAddVaccinationTapped()
+                                }) {
+                                    Image(systemName: "plus")
+                                        .foregroundColor(.blue)
+                                }
+                            }
+                            .padding()
+                            .background(Color(UIColor.white))
+                            .cornerRadius(8)
+                        }
+                    }
+                    .padding(.horizontal)
                 }
-                .padding(.horizontal)
+                .padding(.vertical)
             }
-            .padding(.vertical)
-        }
-        .onReceive(selectedDate) { date in
-            currentDate = date
         }
     }
 
-    // Helper function to format the date range
     private func formatDateRange(from startDate: Date, to endDate: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .short
@@ -251,8 +253,9 @@ struct VaccineCardView: View {
         }
         .padding()
         .frame(width: 200)
-        .background(Color(UIColor.secondarySystemBackground))
-        .cornerRadius(12)
+        .background(Color(UIColor.white))
+        .cornerRadius(16)
+        .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
         .onTapGesture { // Handle tap on the card
             onTap()
         }
