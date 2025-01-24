@@ -29,6 +29,8 @@ class HospitalViewController: UIViewController, UITableViewDataSource, UITableVi
         setupUI()
         tableView.dataSource = self
         tableView.delegate = self
+        
+        setMapRegion()
     }
 
     private func setupUI() {
@@ -56,6 +58,21 @@ class HospitalViewController: UIViewController, UITableViewDataSource, UITableVi
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
+    }
+    
+    private func setMapRegion() {
+        // Latitude and longitude for Knowledge Park 2, Greater Noida
+        let latitude: CLLocationDegrees = 28.4744
+        let longitude: CLLocationDegrees = 77.5021
+
+        // Define the zoom level (span)
+        let span = MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01) // Adjust zoom level as needed
+
+        // Create a region
+        let region = MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: latitude, longitude: longitude), span: span)
+
+        // Set the mapView's region
+        mapView.setRegion(region, animated: true)
     }
 
     // MARK: - TableView DataSource
