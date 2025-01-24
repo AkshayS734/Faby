@@ -199,21 +199,20 @@ class MilestoneModalViewController: UIViewController {
     }
     
     @objc private func saveTapped() {
-        guard milestone != nil else { return }
-        print("Save button tapped inside modal")
+        guard let milestone = milestone else { return }
         if let image = imageView.image {
             onSave?(datePicker.date, image)
         } else {
             onSave?(datePicker.date, nil)
         }
 
+        delegate?.milestoneDidReach(milestone)
         dismiss(animated: true, completion: nil)
     }
     
     @objc private func cancelTapped() {
         dismiss(animated: true, completion: nil)
     }
-    
 }
 
 extension MilestoneModalViewController: UIImagePickerControllerDelegate, UINavigationControllerDelegate {
@@ -221,7 +220,6 @@ extension MilestoneModalViewController: UIImagePickerControllerDelegate, UINavig
         if let selectedImage = info[.originalImage] as? UIImage {
             imageView.image = selectedImage
             imageView.isHidden = false
-            print("Image selected: \(String(describing: selectedImage))")
         }
         picker.dismiss(animated: true, completion: nil)
     }

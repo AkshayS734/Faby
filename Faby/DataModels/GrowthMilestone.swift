@@ -20,7 +20,8 @@ class GrowthMilestone: Hashable {
     }
     
     static func == (lhs: GrowthMilestone, rhs: GrowthMilestone) -> Bool {
-        return lhs.title == rhs.title &&
+        return lhs.id == rhs.id &&
+                lhs.title == rhs.title &&
                 lhs.query == rhs.query &&
                 lhs.image == rhs.image &&
                 lhs.milestoneMonth == rhs.milestoneMonth &&
@@ -28,6 +29,7 @@ class GrowthMilestone: Hashable {
                 lhs.category == rhs.category
     }
     func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
         hasher.combine(title)
         hasher.combine(query)
         hasher.combine(image)
