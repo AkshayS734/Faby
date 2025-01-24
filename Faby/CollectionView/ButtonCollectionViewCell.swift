@@ -16,6 +16,7 @@ class ButtonCollectionViewCell: UICollectionViewCell {
     private let imageView: UIImageView = {
         let imageView = UIImageView()
         imageView.contentMode = .scaleAspectFit
+        imageView.tintColor = .black
         return imageView
     }()
     

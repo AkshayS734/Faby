@@ -1,10 +1,17 @@
 import UIKit
 
-class GrowTrackViewController: UIViewController{
+class GrowTrackViewController: UIViewController, MilestonesOverviewDelegate{
     
     var baby: Baby! = BabyDataModel.shared.babyList[0]
     
     @IBOutlet weak var topSegmentedControl: UISegmentedControl!
+    
+    @IBAction func showMilestoneOverviewTapped(_ sender: UIBarButtonItem) {
+        print("Button was tapped!")
+        let milestonesVC = MilestonesOverviewViewController()
+        milestonesVC.delegate = self
+        navigationController?.pushViewController(milestonesVC, animated: true)
+    }
     
     private var monthButtonCollectionView: ButtonsCollectionView!
     private var categoryButtonCollectionView: ButtonsCollectionView!
@@ -29,12 +36,14 @@ class GrowTrackViewController: UIViewController{
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemGray6
-            
         if let baby = BabyDataModel.shared.babyList.first {
             baby.measurementUpdated = { [weak self] in
                 self?.bodyMeasurementCollectionView.reloadData()
             }
         }
+        let button = UIBarButtonItem(image: UIImage(systemName: "clock.arrow.trianglehead.counterclockwise.rotate.90")?.withRenderingMode(.alwaysOriginal), style: .plain, target: self, action: #selector(showMilestoneOverviewTapped))
+        self.navigationItem.rightBarButtonItem = button
+        navigationItem.rightBarButtonItem = button
         
         monthButtonCollectionView = ButtonsCollectionView(
             buttonTitles: monthButtonTitles,
@@ -78,7 +87,11 @@ class GrowTrackViewController: UIViewController{
         bodyMeasurementCollectionView.collectionViewLayout = layout
         bodyMeasurementCollectionView.reloadData()
     }
-    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        navigationController?.navigationBar.prefersLargeTitles = true
+        navigationItem.largeTitleDisplayMode = .automatic
+    }
     private func setupMonthCollectionView() {
         monthButtonCollectionView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
@@ -88,7 +101,6 @@ class GrowTrackViewController: UIViewController{
             monthButtonCollectionView.heightAnchor.constraint(equalToConstant: 100)
         ])
     }
-    
     private func setupCategoryCollectionView() {
         categoryButtonCollectionView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
@@ -157,6 +169,9 @@ class GrowTrackViewController: UIViewController{
         }
         milestonesCollectionView.reloadData()
     }
+    func milestonesOverviewDidUpdate() {
+        milestonesCollectionView.reloadData()
+    }
     
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         if segue.identifier == "showMeasurementDetail",
@@ -181,13 +196,15 @@ extension GrowTrackViewController: UICollectionViewDelegate {
                 milestone: selectedMilestone
             )
             modalVC.baby = baby
-            print("Setting onSave closure")
             modalVC.onSave = { [weak self] date, image in
                 guard let self = self else { return }
                 
-                print("Save button tapped")
                 selectedBaby.updateMilestonesAchieved(selectedMilestone, date: date)
-                print("Milestone saved: \(date), Image: \(String(describing: image))")
+                if let milestonesVC = self.navigationController?.viewControllers.first(where: { $0 is MilestonesOverviewViewController }) as? MilestonesOverviewViewController {
+                        milestonesVC.reloadMilestones()
+                        milestonesVC.delegate?.milestonesOverviewDidUpdate()
+                    }
+                
                 self.filterMilestones(
                     month: self.monthButtonTitles[self.monthButtonCollectionView.selectedIndex ?? 0],
                     category: self.categoryButtonTitles[self.categoryButtonCollectionView.selectedIndex ?? 0]
