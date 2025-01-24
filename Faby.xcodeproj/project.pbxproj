@@ -11,7 +11,7 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		323D7E102D3E47B1000DA98C /* Exceptions for "Faby" folder in "Faby" target */ = {
+		7FAC3EA02D36DD5B00BF0613 /* Exceptions for "Faby" folder in "Faby" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -24,7 +24,7 @@
 		C45BB7B22D350B6200E23648 /* Faby */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				323D7E102D3E47B1000DA98C /* Exceptions for "Faby" folder in "Faby" target */,
+				7FAC3EA02D36DD5B00BF0613 /* Exceptions for "Faby" folder in "Faby" target */,
 			);
 			path = Faby;
 			sourceTree = "<group>";
