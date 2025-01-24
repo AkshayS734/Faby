@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="23504" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="ubG-24-8Xz">
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="23504" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="Y6W-OH-hqX">
     <device id="retina6_12" orientation="portrait" appearance="light"/>
     <dependencies>
         <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="23506"/>
@@ -9,7 +9,7 @@
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
     <scenes>
-        <!--Tod Bite View Controller-->
+        <!--TodBite-->
         <scene sceneID="s0d-6b-0kx">
             <objects>
                 <viewController id="Y6W-OH-hqX" customClass="TodBiteViewController" customModule="Faby" customModuleProvider="target" sceneMemberID="viewController">
@@ -18,21 +18,18 @@
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
                             <segmentedControl opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="left" contentVerticalAlignment="top" segmentControlStyle="plain" selectedSegmentIndex="0" translatesAutoresizingMaskIntoConstraints="NO" id="gMV-eZ-APs">
-                                <rect key="frame" x="38" y="138" width="327" height="32"/>
+                                <rect key="frame" x="16" y="75" width="361" height="32"/>
                                 <segments>
-                                    <segment title="First"/>
-                                    <segment title="Second"/>
+                                    <segment title="Recommended Meal"/>
+                                    <segment title="MyBowl"/>
                                 </segments>
                                 <connections>
-                                    <action selector="segmentedControlTapped:" destination="Y6W-OH-hqX" eventType="valueChanged" id="tJ6-09-sX8"/>
+                                    <action selector="segmentedControlTapped:" destination="Y6W-OH-hqX" eventType="valueChanged" id="KAW-0b-irN"/>
                                 </connections>
                             </segmentedControl>
-                            <collectionView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" dataMode="prototypes" translatesAutoresizingMaskIntoConstraints="NO" id="fQc-a8-Ib0">
-                                <rect key="frame" x="38" y="208" width="327" height="149"/>
+                            <collectionView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" misplaced="YES" dataMode="prototypes" translatesAutoresizingMaskIntoConstraints="NO" id="fQc-a8-Ib0">
+                                <rect key="frame" x="0.0" y="158" width="393" height="679"/>
                                 <color key="backgroundColor" systemColor="systemBackgroundColor"/>
-                                <constraints>
-                                    <constraint firstAttribute="height" constant="149" id="eKV-L7-XPi"/>
-                                </constraints>
                                 <collectionViewFlowLayout key="collectionViewLayout" automaticEstimatedItemSize="YES" minimumLineSpacing="10" minimumInteritemSpacing="10" id="VCG-Jz-ROC">
                                     <size key="itemSize" width="128" height="128"/>
                                     <size key="headerReferenceSize" width="0.0" height="0.0"/>
@@ -41,10 +38,10 @@
                                 </collectionViewFlowLayout>
                                 <cells>
                                     <collectionViewCell opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center" id="8sV-We-6E8">
-                                        <rect key="frame" x="0.0" y="0.0" width="128" height="128"/>
+                                        <rect key="frame" x="0.0" y="0.0" width="127.99999999999997" height="128"/>
                                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                         <collectionViewCellContentView key="contentView" opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center" insetsLayoutMarginsFromSafeArea="NO" id="GLm-8B-qOz">
-                                            <rect key="frame" x="0.0" y="0.0" width="128" height="128"/>
+                                            <rect key="frame" x="0.0" y="0.0" width="127.99999999999997" height="128"/>
                                             <autoresizingMask key="autoresizingMask"/>
                                         </collectionViewCellContentView>
                                     </collectionViewCell>
@@ -54,41 +51,40 @@
                         <viewLayoutGuide key="safeArea" id="vDu-zF-Fre"/>
                         <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                         <constraints>
-                            <constraint firstItem="vDu-zF-Fre" firstAttribute="trailing" secondItem="gMV-eZ-APs" secondAttribute="trailing" constant="28" id="5Mj-ZZ-HDi"/>
-                            <constraint firstItem="fQc-a8-Ib0" firstAttribute="leading" secondItem="vDu-zF-Fre" secondAttribute="leading" constant="38" id="Rkg-HY-MZI"/>
-                            <constraint firstItem="fQc-a8-Ib0" firstAttribute="top" secondItem="gMV-eZ-APs" secondAttribute="bottom" constant="39" id="evr-rB-ADf"/>
-                            <constraint firstItem="vDu-zF-Fre" firstAttribute="trailing" secondItem="fQc-a8-Ib0" secondAttribute="trailing" constant="28" id="hpY-Ga-Zp3"/>
-                            <constraint firstItem="gMV-eZ-APs" firstAttribute="top" secondItem="vDu-zF-Fre" secondAttribute="top" constant="35" id="wkF-Sc-n3h"/>
-                            <constraint firstItem="gMV-eZ-APs" firstAttribute="leading" secondItem="vDu-zF-Fre" secondAttribute="leading" constant="38" id="zru-Mi-Lt5"/>
+                            <constraint firstItem="gMV-eZ-APs" firstAttribute="top" secondItem="vDu-zF-Fre" secondAttribute="top" constant="16" id="EBb-uE-5XH"/>
+                            <constraint firstItem="fQc-a8-Ib0" firstAttribute="trailing" secondItem="vDu-zF-Fre" secondAttribute="trailing" id="EBx-Sq-HnB"/>
+                            <constraint firstItem="fQc-a8-Ib0" firstAttribute="leading" secondItem="vDu-zF-Fre" secondAttribute="leading" id="RiO-dS-h2T"/>
+                            <constraint firstItem="vDu-zF-Fre" firstAttribute="trailing" secondItem="gMV-eZ-APs" secondAttribute="trailing" constant="16" id="VP0-jv-mn2"/>
+                            <constraint firstItem="fQc-a8-Ib0" firstAttribute="bottom" secondItem="vDu-zF-Fre" secondAttribute="bottom" constant="16" id="YJI-BQ-ZDB"/>
+                            <constraint firstItem="fQc-a8-Ib0" firstAttribute="top" secondItem="gMV-eZ-APs" secondAttribute="bottom" constant="5" id="gMc-mV-JON"/>
+                            <constraint firstItem="gMV-eZ-APs" firstAttribute="leading" secondItem="vDu-zF-Fre" secondAttribute="leading" constant="16" id="p1K-4I-lPE"/>
                         </constraints>
                     </view>
-                    <navigationItem key="navigationItem" id="6jO-cy-kd2"/>
+                    <navigationItem key="navigationItem" title="TodBite" id="6jO-cy-kd2"/>
                     <connections>
-                        <outlet property="CollectionView" destination="fQc-a8-Ib0" id="J7w-eF-EZs"/>
-                        <outlet property="segmentedControl" destination="gMV-eZ-APs" id="taf-Hq-EWu"/>
+                        <outlet property="segmentedControl" destination="gMV-eZ-APs" id="6Jj-wI-ep0"/>
+                        <segue destination="PJx-UQ-aKa" kind="show" id="3YA-Wf-WWT"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="Ief-a0-LHa" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="1063.3587786259541" y="3.5211267605633805"/>
+            <point key="canvasLocation" x="1990.0763358778624" y="3.5211267605633805"/>
         </scene>
-        <!--Navigation Controller-->
-        <scene sceneID="oYS-lA-UmF">
+        <!--View Controller-->
+        <scene sceneID="90X-Mv-UkS">
             <objects>
-                <navigationController automaticallyAdjustsScrollViewInsets="NO" id="ubG-24-8Xz" sceneMemberID="viewController">
-                    <toolbarItems/>
-                    <navigationBar key="navigationBar" contentMode="scaleToFill" id="aVo-V0-RQY">
-                        <rect key="frame" x="0.0" y="59" width="393" height="44"/>
-                        <autoresizingMask key="autoresizingMask"/>
-                    </navigationBar>
-                    <nil name="viewControllers"/>
-                    <connections>
-                        <segue destination="Y6W-OH-hqX" kind="relationship" relationship="rootViewController" id="Ts4-9H-AKC"/>
-                    </connections>
-                </navigationController>
-                <placeholder placeholderIdentifier="IBFirstResponder" id="39e-4I-afM" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
+                <viewController id="PJx-UQ-aKa" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="XYj-qc-r6G">
+                        <rect key="frame" x="0.0" y="0.0" width="393" height="842"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <viewLayoutGuide key="safeArea" id="xBU-FB-P55"/>
+                        <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                    </view>
+                    <navigationItem key="navigationItem" id="w9f-Gd-AnN"/>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="WYv-OL-LVg" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="136.64122137404578" y="3.5211267605633805"/>
+            <point key="canvasLocation" x="2855.7251908396947" y="21.83098591549296"/>
         </scene>
     </scenes>
     <resources>
