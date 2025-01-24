@@ -273,7 +273,7 @@ struct CalendarView: View {
             // Month and Year Section
             HStack {
                 Image(systemName: "calendar")
-                    .foregroundColor(.blue)
+                    .foregroundColor(Color(UIColor(hex: "#0076BA")))
                 Text(monthYearString(from: selectedDate)) // Display the month and year
                     .font(.headline)
                     .foregroundColor(.primary)
@@ -297,7 +297,7 @@ struct CalendarView: View {
                                     .fontWeight(isSelected ? .semibold : .regular) // Bold if selected
                                     .foregroundColor(isSelected ? .white : .primary)
                                     .frame(width: 36, height: 36)
-                                    .background(isSelected ? Color.blue : Color.clear) // Blue background if selected
+                                    .background(isSelected ? Color(UIColor(hex: "#0076BA")) : Color.clear)// Blue background if selected
                                     .clipShape(Circle()) // Circle shape for the day number
                             }
                             .id(day) // Add an id to each day for scrolling
