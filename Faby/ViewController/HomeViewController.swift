@@ -1,8 +1,7 @@
 import UIKit
 
 class HomeViewController: UIViewController {
-
-    // MARK: - UI Components
+    var baby = BabyDataModel.shared.babyList[0]
     private let scrollView: UIScrollView = {
         let scrollView = UIScrollView()
         scrollView.translatesAutoresizingMaskIntoConstraints = false
@@ -17,7 +16,7 @@ class HomeViewController: UIViewController {
 
     private let nameLabel: UILabel = {
         let label = UILabel()
-        label.text = "Deepak"
+        label.text = "Name"
         label.font = UIFont.boldSystemFont(ofSize: 30)
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
@@ -25,7 +24,7 @@ class HomeViewController: UIViewController {
 
     private let dateLabel: UILabel = {
         let label = UILabel()
-        label.text = "Thursday, 24 December 2024"
+        label.text = "Date"
         label.font = UIFont.systemFont(ofSize: 16)
         label.textColor = .gray
         label.translatesAutoresizingMaskIntoConstraints = false
@@ -95,12 +94,22 @@ class HomeViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .white
-
+        
         setupUI()
         setupDelegates()
         loadVaccinationData()
+        updateNameLabel()
+        updateDateLabel()
+    }
+    private func updateNameLabel() {
+        nameLabel.text = baby.name
     }
 
+    private func updateDateLabel() {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .full
+        dateLabel.text = formatter.string(from: Date())
+    }
     private func setupUI() {
         view.addSubview(scrollView)
         scrollView.addSubview(contentView)
