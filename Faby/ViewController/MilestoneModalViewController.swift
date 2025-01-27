@@ -53,7 +53,7 @@ class MilestoneModalViewController: UIViewController {
         modalTitle.translatesAutoresizingMaskIntoConstraints = false
         
         titleLabel.text = milestoneTitle
-        titleLabel.font = .systemFont(ofSize: 20)
+        titleLabel.font = .systemFont(ofSize: 20) 
         titleLabel.textAlignment = .center
         view.addSubview(titleLabel)
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
