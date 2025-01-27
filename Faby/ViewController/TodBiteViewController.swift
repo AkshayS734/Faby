@@ -6,6 +6,17 @@ class TodBiteViewController: UIViewController, UITableViewDelegate {
     @IBOutlet weak var segmentedControl: UISegmentedControl! // Connect this in storyboard
     var collectionView: UICollectionView!
     var tableView: UITableView!
+    private let placeholderLabel: UILabel = {
+        let label = UILabel()
+        label.text = "No items added to MyBowl yet."
+        label.textAlignment = .center
+        label.textColor = .lightGray
+        label.numberOfLines = 0
+        label.isHidden = true // Initially hidden
+        label.translatesAutoresizingMaskIntoConstraints = false
+        return label
+    }()
+    private var createPlanButton: UIButton!
 
     // MARK: - Properties
     var selectedCategory: CategoryType? = nil
@@ -20,6 +31,8 @@ class TodBiteViewController: UIViewController, UITableViewDelegate {
         super.viewDidLoad()
         setupCollectionView()
         setupTableView()
+        setupCreatePlanButton()
+        setupPlaceholderLabel()
         loadDefaultContent()
     }
 
@@ -61,6 +74,36 @@ class TodBiteViewController: UIViewController, UITableViewDelegate {
         ])
     }
 
+    private func setupCreatePlanButton() {
+        createPlanButton = UIButton(type: .system)
+        createPlanButton.setTitle("Create Plan", for: .normal)
+        createPlanButton.translatesAutoresizingMaskIntoConstraints = false
+        createPlanButton.backgroundColor = .systemBlue
+        createPlanButton.setTitleColor(.white, for: .normal)
+        createPlanButton.layer.cornerRadius = 10
+        createPlanButton.addTarget(self, action: #selector(createPlanButtonTapped), for: .touchUpInside)
+        view.addSubview(createPlanButton)
+
+        NSLayoutConstraint.activate([
+            createPlanButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -16),
+            createPlanButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            createPlanButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            createPlanButton.heightAnchor.constraint(equalToConstant: 50)
+        ])
+
+        createPlanButton.isHidden = true // Initially hidden
+    }
+
+    private func setupPlaceholderLabel() {
+        view.addSubview(placeholderLabel)
+        NSLayoutConstraint.activate([
+            placeholderLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            placeholderLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            placeholderLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            placeholderLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16)
+        ])
+    }
+
     private func loadDefaultContent() {
         collectionView.isHidden = false
         tableView.isHidden = true
@@ -73,14 +116,28 @@ class TodBiteViewController: UIViewController, UITableViewDelegate {
         case 0:
             collectionView.isHidden = false
             tableView.isHidden = true
-            collectionView.reloadData()
+            createPlanButton.isHidden = true
+            placeholderLabel.isHidden = true
         case 1:
             collectionView.isHidden = true
-            tableView.isHidden = false
+            updatePlaceholderVisibility()
             tableView.reloadData()
         default:
             break
         }
+    }
+
+    @objc private func createPlanButtonTapped() {
+        let createPlanVC = CreatePlanViewController()
+        createPlanVC.selectedItems = myBowlItemsDict.flatMap { $0.value }
+        navigationController?.pushViewController(createPlanVC, animated: true)
+    }
+
+    private func updatePlaceholderVisibility() {
+        let isMyBowlEmpty = myBowlItemsDict.isEmpty
+        placeholderLabel.isHidden = !isMyBowlEmpty
+        tableView.isHidden = isMyBowlEmpty
+        createPlanButton.isHidden = isMyBowlEmpty
     }
 
     private func createCompositionalLayout() -> UICollectionViewLayout {
@@ -148,6 +205,7 @@ class TodBiteViewController: UIViewController, UITableViewDelegate {
             if self.myBowlItemsDict[category]?.isEmpty == true {
                 self.myBowlItemsDict.removeValue(forKey: category)
             }
+            self.updatePlaceholderVisibility()
             self.tableView.reloadData()
         }))
 
@@ -162,6 +220,15 @@ class TodBiteViewController: UIViewController, UITableViewDelegate {
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
 
         present(alert, animated: true, completion: nil)
+    }
+
+    func addItemToMyBowl(item: Item) {
+        if myBowlItemsDict[.SnackBite] == nil {
+            myBowlItemsDict[.SnackBite] = []
+        }
+        myBowlItemsDict[.SnackBite]?.append(item)
+        updatePlaceholderVisibility()
+        tableView.reloadData()
     }
 }
 
@@ -264,6 +331,7 @@ extension TodBiteViewController: UITableViewDataSource {
             if myBowlItemsDict[category]?.isEmpty == true {
                 myBowlItemsDict.removeValue(forKey: category)
             }
+            updatePlaceholderVisibility()
             tableView.reloadData()
         }
     }
@@ -289,6 +357,7 @@ extension TodBiteViewController: TodBiteCollectionViewCellDelegate {
         showToast(message: "\"\(item.name)\" added to MyBowl!")
 
         if segmentedControl.selectedSegmentIndex == 1 {
+            updatePlaceholderVisibility()
             tableView.reloadData()
         }
     }

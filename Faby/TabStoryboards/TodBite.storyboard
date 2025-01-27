@@ -60,7 +60,11 @@
                             <constraint firstItem="gMV-eZ-APs" firstAttribute="leading" secondItem="vDu-zF-Fre" secondAttribute="leading" constant="16" id="p1K-4I-lPE"/>
                         </constraints>
                     </view>
+                    <toolbarItems>
+                        <barButtonItem title="Item" id="ANq-QN-UWV"/>
+                    </toolbarItems>
                     <navigationItem key="navigationItem" title="TodBite" id="6jO-cy-kd2"/>
+                    <simulatedToolbarMetrics key="simulatedBottomBarMetrics"/>
                     <connections>
                         <outlet property="segmentedControl" destination="gMV-eZ-APs" id="6Jj-wI-ep0"/>
                         <segue destination="PJx-UQ-aKa" kind="show" id="3YA-Wf-WWT"/>
@@ -75,7 +79,7 @@
             <objects>
                 <viewController id="PJx-UQ-aKa" sceneMemberID="viewController">
                     <view key="view" contentMode="scaleToFill" id="XYj-qc-r6G">
-                        <rect key="frame" x="0.0" y="0.0" width="393" height="842"/>
+                        <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <viewLayoutGuide key="safeArea" id="xBU-FB-P55"/>
                         <color key="backgroundColor" systemColor="systemBackgroundColor"/>

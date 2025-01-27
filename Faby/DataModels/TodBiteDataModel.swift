@@ -8,18 +8,18 @@ enum CategoryType: String, CaseIterable {
     case NightBite = "NightBite"
 }
 
-enum RegionType: String {
-    case East = "East"
-    case West = "West"
-    case North = "North"
-    case South = "South"
+enum RegionType: String, CaseIterable {
+    case East
+    case West
+    case North
+    case South
+    // Add other regions if applicable
 }
 
-enum AgeGroup: String {
+enum AgeGroup: String, CaseIterable {
     case months12to15 = "12-15 months"
     case months15to18 = "15-18 months"
-    case months18to21 = "18-21 months"
-    case months21to24 = "21-24 months"
+    case months18to24 = "18-24 months"
     case months24to27 = "24-27 months"
     case months27to30 = "27-30 months"
     case months30to33 = "30-33 months"
@@ -49,7 +49,6 @@ class Todbite {
             Item(name: "Poha with Vegetables", description: "Light, iron-rich, and full of vitamins.", image: "Poha with Vegetables"),
             Item(name: "Mashed Banana with Milk", description: "Rich in potassium and calcium.", image: "Mashed Banana with Milk"),
             Item(name: "Poha with Vegetables", description: "Light, iron-rich, and full of vitamins", image: "Poha with Vegetables")
-           
         ],
         .NourishBite: [
             Item(name: "Boiled Green Peas and Potatoes", description: "High in fiber, vitamins, and natural energy.", image: "Boiled Green Peas and Potatoes"),
@@ -62,20 +61,17 @@ class Todbite {
             Item(name: "Dal Chawal with Ghee", description: "Provides protein, fiber and fats.", image: "Dal Chawal with Ghee"),
             Item(name: "Palak Paneer with Rice", description: "High in iron, calcium, and protein.", image: "Palak Paneer with Rice"),
             Item(name: "Vegetable Pulao", description: "Packed with vitamins, fiber", image: "Vegetable Pulao")
-            
         ],
         .SnackBite: [
             Item(name: "Mashed Seasonal Fruits", description: "Packed with vitamins, fiber, and natural sugars", image: "Mashed Seasonal Fruits"),
             Item(name: "Boiled Sweet Corn ", description: "Rich in fiber, vitamins, and natural energy.", image: "Boiled Sweet Corn "),
             Item(name: "Dhokla (Steamed) ", description: "High in protein and easy to digest.", image: "Dhokla (Steamed) "),
-            Item(name: "Puffed Rice with Jaggery", description: "Iron-rich snack with natural sweetness.", image: "Puffed Rice with Jaggery"),
-            
+            Item(name: "Puffed Rice with Jaggery", description: "Iron-rich snack with natural sweetness.", image: "Puffed Rice with Jaggery")
         ],
         .NightBite: [
             Item(name: "Gobhi Aloo With Roti", description: "Rich in vitamins, fiber, and energy.", image: "Gobhi Aloo With Roti"),
             Item(name: "Moong Dal Khichdi with Vegetables", description: "Rich protein, fiber, and essential nutrients", image: "Moong Dal Khichdi with Vegetables"),
             Item(name: "Spinach Dal with Rice", description: "Loaded with iron, calcium, and vitamins.", image: "Spinach Dal with Rice")
-          
         ]
     ]
     
