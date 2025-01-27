@@ -62,7 +62,7 @@ class GrowTrackViewController: UIViewController, MilestonesOverviewDelegate{
             categoryButtonTitles: categoryButtonTitles,
             categoryButtonImages: categoryButtonImages,
             buttonSize: categoryButtonSize,
-            minimumLineSpacing: 10,
+            minimumLineSpacing: 7,
             cornerRadius: 7
         )
         categoryButtonCollectionView.delegate = self
@@ -209,6 +209,9 @@ extension GrowTrackViewController: UICollectionViewDelegate {
                     month: self.monthButtonTitles[self.monthButtonCollectionView.selectedIndex ?? 0],
                     category: self.categoryButtonTitles[self.categoryButtonCollectionView.selectedIndex ?? 0]
                 )
+                if image != nil {
+                    selectedBaby.saveMilestoneUserImage(for: selectedMilestone, image: image!)
+                }
                 
                 self.milestonesCollectionView.reloadData()
                 

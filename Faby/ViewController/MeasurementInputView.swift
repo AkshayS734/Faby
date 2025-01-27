@@ -27,7 +27,7 @@ struct MeasurementInputView: View {
                     TextField("Enter \(measurementType) value (e.g., 50)", text: $inputMeasurement)
                         .keyboardType(.decimalPad)
                         .accessibilityLabel("Measurement value input for \(measurementType)")
-                        .foregroundColor(isValidInput ? .primary : .red)
+                        .foregroundColor(isValidInput ? .primary : .blue)
                 }
                 
                 Section(header: Text("Measurement Date")) {
