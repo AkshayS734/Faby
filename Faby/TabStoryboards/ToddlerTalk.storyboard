@@ -12,7 +12,7 @@
         <!--Toddler Talk-->
         <scene sceneID="s0d-6b-0kx">
             <objects>
-                <viewController id="Y6W-OH-hqX" customClass="ToddlerTalkViewController" customModule="Faby" customModuleProvider="target" sceneMemberID="viewController">
+                <viewController storyboardIdentifier="ToddlerTalkViewController" id="Y6W-OH-hqX" customClass="ToddlerTalkViewController" customModule="Faby" customModuleProvider="target" sceneMemberID="viewController">
                     <view key="view" contentMode="scaleToFill" id="5EZ-qb-Rvc">
                         <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
@@ -65,7 +65,7 @@
                     <navigationItem key="navigationItem" title="Toddler Talk" id="aat-1U-7dx"/>
                     <simulatedTabBarMetrics key="simulatedBottomBarMetrics"/>
                     <connections>
-                        <outlet property="collectionView" destination="jyS-LG-X9f" id="c1c-Qv-SSC"/>
+                        <outlet property="collectionView" destination="jyS-LG-X9f" id="nGU-xE-Ky2"/>
                         <outlet property="searchBar" destination="lgC-uj-QqZ" id="JgH-zy-hKp"/>
                         <segue destination="fbA-37-1EL" kind="show" id="FGj-ym-iQD"/>
                     </connections>
@@ -74,10 +74,10 @@
             </objects>
             <point key="canvasLocation" x="1063.3587786259541" y="3.5211267605633805"/>
         </scene>
-        <!--New View Controller-->
+        <!--Comment Details View Controller-->
         <scene sceneID="ZQm-V0-jCS">
             <objects>
-                <viewController storyboardIdentifier="NewViewController" id="fbA-37-1EL" customClass="NewViewController" customModule="Faby" customModuleProvider="target" sceneMemberID="viewController">
+                <viewController storyboardIdentifier="commentDetailsViewController" id="fbA-37-1EL" customClass="commentDetailsViewController" customModule="Faby" customModuleProvider="target" sceneMemberID="viewController">
                     <view key="view" contentMode="scaleToFill" id="dNj-Bx-2ow">
                         <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
@@ -120,12 +120,12 @@
                     <navigationItem key="navigationItem" id="QSx-zo-0dF">
                         <barButtonItem key="rightBarButtonItem" title="Item" image="square.and.pencil" catalog="system" id="3og-R2-Q2K">
                             <connections>
-                                <segue destination="w8K-Fu-mDh" kind="show" id="eyW-XU-mEN"/>
+                                <segue destination="w8K-Fu-mDh" kind="show" identifier="PostViewController" id="ZbN-aF-7b0"/>
                             </connections>
                         </barButtonItem>
                     </navigationItem>
                     <connections>
-                        <outlet property="newCollectionView" destination="OCf-12-rJU" id="BeS-ae-FFe"/>
+                        <outlet property="commentCollection" destination="OCf-12-rJU" id="YEB-hb-ahm"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="Sn5-rO-X3R" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
@@ -135,51 +135,77 @@
         <!--Add Post-->
         <scene sceneID="dhD-Fo-K0D">
             <objects>
-                <viewController id="w8K-Fu-mDh" customClass="PostViewController" customModule="Faby" customModuleProvider="target" sceneMemberID="viewController">
+                <viewController storyboardIdentifier="PostViewController" id="w8K-Fu-mDh" customClass="PostViewController" customModule="Faby" customModuleProvider="target" sceneMemberID="viewController">
                     <view key="view" contentMode="scaleToFill" id="tZd-Ok-MLl">
                         <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <collectionView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" dataMode="prototypes" translatesAutoresizingMaskIntoConstraints="NO" id="HBh-Uc-fBj">
-                                <rect key="frame" x="0.0" y="103" width="393" height="666"/>
-                                <color key="backgroundColor" systemColor="systemBackgroundColor"/>
-                                <collectionViewFlowLayout key="collectionViewLayout" automaticEstimatedItemSize="YES" minimumLineSpacing="10" minimumInteritemSpacing="10" id="Lrk-Vm-kJk">
-                                    <size key="itemSize" width="393" height="213"/>
-                                    <size key="headerReferenceSize" width="0.0" height="0.0"/>
-                                    <size key="footerReferenceSize" width="0.0" height="0.0"/>
-                                    <inset key="sectionInset" minX="0.0" minY="0.0" maxX="0.0" maxY="0.0"/>
-                                </collectionViewFlowLayout>
-                                <cells>
-                                    <collectionViewCell opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center" reuseIdentifier="createPostCollectionViewCell" id="VlL-gB-onT" customClass="createPostCollectionViewCell" customModule="Faby" customModuleProvider="target">
-                                        <rect key="frame" x="0.0" y="0.0" width="393" height="213"/>
-                                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
-                                        <collectionViewCellContentView key="contentView" opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center" insetsLayoutMarginsFromSafeArea="NO" id="cSN-oj-SOS">
-                                            <rect key="frame" x="0.0" y="0.0" width="393" height="213"/>
-                                            <autoresizingMask key="autoresizingMask"/>
-                                        </collectionViewCellContentView>
-                                        <size key="customSize" width="393" height="213"/>
-                                    </collectionViewCell>
-                                </cells>
-                            </collectionView>
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Label" lineBreakMode="tailTruncation" numberOfLines="0" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="ttg-aC-wPu">
+                                <rect key="frame" x="82" y="135.66666666666666" width="301" height="20.333333333333343"/>
+                                <fontDescription key="fontDescription" type="system" pointSize="17"/>
+                                <nil key="textColor"/>
+                                <nil key="highlightedColor"/>
+                            </label>
+                            <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" alignment="top" spacing="20" translatesAutoresizingMaskIntoConstraints="NO" id="ibK-zD-IHP">
+                                <rect key="frame" x="82" y="176" width="291" height="182"/>
+                                <subviews>
+                                    <textField opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="248" contentHorizontalAlignment="left" contentVerticalAlignment="center" borderStyle="roundedRect" placeholder="Title..." textAlignment="natural" minimumFontSize="17" translatesAutoresizingMaskIntoConstraints="NO" id="wPu-E8-rB1">
+                                        <rect key="frame" x="0.0" y="0.0" width="200" height="34"/>
+                                        <constraints>
+                                            <constraint firstAttribute="width" constant="200" id="V5O-xD-vom"/>
+                                            <constraint firstAttribute="height" constant="34" id="p4l-WP-Arb"/>
+                                        </constraints>
+                                        <fontDescription key="fontDescription" type="system" pointSize="14"/>
+                                        <textInputTraits key="textInputTraits"/>
+                                    </textField>
+                                    <textView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" textAlignment="natural" translatesAutoresizingMaskIntoConstraints="NO" id="kgq-lp-Iy8">
+                                        <rect key="frame" x="0.0" y="54" width="240" height="128"/>
+                                        <constraints>
+                                            <constraint firstAttribute="height" constant="128" id="eyx-ft-YRS"/>
+                                            <constraint firstAttribute="width" constant="240" id="gFK-CO-5bj"/>
+                                        </constraints>
+                                        <color key="textColor" systemColor="labelColor"/>
+                                        <fontDescription key="fontDescription" type="system" pointSize="14"/>
+                                        <textInputTraits key="textInputTraits" autocapitalizationType="sentences"/>
+                                    </textView>
+                                </subviews>
+                            </stackView>
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="person.circle" catalog="system" translatesAutoresizingMaskIntoConstraints="NO" id="Nw7-VZ-1cH">
+                                <rect key="frame" x="29" y="123.66666666666667" width="45" height="43.666666666666671"/>
+                                <constraints>
+                                    <constraint firstAttribute="height" constant="45" id="iTT-Yi-d1l"/>
+                                    <constraint firstAttribute="width" constant="45" id="oub-MF-eS3"/>
+                                </constraints>
+                            </imageView>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="wcd-5z-ZPc"/>
                         <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                         <constraints>
-                            <constraint firstItem="HBh-Uc-fBj" firstAttribute="top" secondItem="wcd-5z-ZPc" secondAttribute="top" id="FJ8-FG-mnn"/>
-                            <constraint firstItem="wcd-5z-ZPc" firstAttribute="bottom" secondItem="HBh-Uc-fBj" secondAttribute="bottom" id="fyA-TM-eOr"/>
-                            <constraint firstItem="wcd-5z-ZPc" firstAttribute="trailing" secondItem="HBh-Uc-fBj" secondAttribute="trailing" id="hwh-sa-E58"/>
-                            <constraint firstItem="HBh-Uc-fBj" firstAttribute="leading" secondItem="wcd-5z-ZPc" secondAttribute="leading" id="xNW-h7-Ooh"/>
+                            <constraint firstItem="Nw7-VZ-1cH" firstAttribute="top" secondItem="wcd-5z-ZPc" secondAttribute="top" constant="20" id="Hx6-lw-nn1"/>
+                            <constraint firstItem="wcd-5z-ZPc" firstAttribute="trailing" secondItem="ibK-zD-IHP" secondAttribute="trailing" constant="20" id="JCv-cY-Nsi"/>
+                            <constraint firstItem="ibK-zD-IHP" firstAttribute="top" secondItem="ttg-aC-wPu" secondAttribute="bottom" constant="20" id="O75-jB-aTd"/>
+                            <constraint firstItem="ttg-aC-wPu" firstAttribute="leading" secondItem="Nw7-VZ-1cH" secondAttribute="trailing" constant="8" symbolic="YES" id="PL4-sg-c0w"/>
+                            <constraint firstItem="wcd-5z-ZPc" firstAttribute="trailing" secondItem="ttg-aC-wPu" secondAttribute="trailing" constant="10" id="Z5b-0e-8J6"/>
+                            <constraint firstItem="wcd-5z-ZPc" firstAttribute="bottom" secondItem="ibK-zD-IHP" secondAttribute="bottom" constant="411" id="c1V-fK-whv"/>
+                            <constraint firstItem="ibK-zD-IHP" firstAttribute="leading" secondItem="wcd-5z-ZPc" secondAttribute="leading" constant="82" id="gZP-vr-1Eh"/>
+                            <constraint firstItem="wcd-5z-ZPc" firstAttribute="bottom" secondItem="Nw7-VZ-1cH" secondAttribute="bottom" constant="601" id="k2B-l3-EJ9"/>
+                            <constraint firstItem="Nw7-VZ-1cH" firstAttribute="leading" secondItem="wcd-5z-ZPc" secondAttribute="leading" constant="29" id="luO-iO-BHT"/>
+                            <constraint firstItem="ttg-aC-wPu" firstAttribute="top" secondItem="wcd-5z-ZPc" secondAttribute="top" constant="32.670000000000002" id="prg-uP-GGr"/>
                         </constraints>
                     </view>
                     <navigationItem key="navigationItem" title="Add Post" id="8v5-P2-RNH">
                         <barButtonItem key="rightBarButtonItem" title="Post" id="X9S-VB-2eX">
                             <connections>
-                                <action selector="postButtonTappedAction:" destination="w8K-Fu-mDh" id="Zq9-2E-l9I"/>
+                                <action selector="postComment:" destination="w8K-Fu-mDh" id="FKc-fF-LUT"/>
                             </connections>
                         </barButtonItem>
                     </navigationItem>
                     <connections>
-                        <outlet property="createCollection" destination="HBh-Uc-fBj" id="FPd-ML-v5g"/>
+                        <outlet property="commentTextView" destination="kgq-lp-Iy8" id="rZr-Ad-JDW"/>
+                        <outlet property="stackView" destination="ibK-zD-IHP" id="rtE-hH-NlP"/>
+                        <outlet property="titleTextBox" destination="wPu-E8-rB1" id="PVt-Du-O8t"/>
+                        <outlet property="userImage" destination="Nw7-VZ-1cH" id="Vgg-Ir-HPX"/>
+                        <outlet property="userName" destination="ttg-aC-wPu" id="8AA-pK-YeF"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="YB1-Ho-ATn" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
@@ -209,7 +235,11 @@
     <resources>
         <image name="person.3" catalog="system" width="128" height="66"/>
         <image name="person.3.fill" catalog="system" width="128" height="66"/>
+        <image name="person.circle" catalog="system" width="128" height="123"/>
         <image name="square.and.pencil" catalog="system" width="128" height="121"/>
+        <systemColor name="labelColor">
+            <color white="0.0" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+        </systemColor>
         <systemColor name="systemBackgroundColor">
             <color white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
         </systemColor>
