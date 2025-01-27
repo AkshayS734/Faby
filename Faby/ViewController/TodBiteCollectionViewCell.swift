@@ -1,8 +1,11 @@
 import UIKit
 
+// Define the delegate protocol
 protocol TodBiteCollectionViewCellDelegate: AnyObject {
     func didTapAddButton(for item: Item, in category: CategoryType)
 }
+
+import UIKit
 
 class TodBiteCollectionViewCell: UICollectionViewCell {
     @IBOutlet weak var foodNameLabel: UILabel!
@@ -20,12 +23,27 @@ class TodBiteCollectionViewCell: UICollectionViewCell {
         self.layer.cornerRadius = 12
         self.layer.masksToBounds = true
 
+        // Configure Image View
         myImageView.layer.cornerRadius = 12
         myImageView.layer.masksToBounds = true
+        myImageView.contentMode = .scaleAspectFill
 
-        foodNameLabel.font = UIFont.boldSystemFont(ofSize: foodNameLabel.font.pointSize)
+        // Configure Food Name Label
+        foodNameLabel.font = UIFont.boldSystemFont(ofSize: 12) // Bold font for title
+        foodNameLabel.textAlignment = .left
+        foodNameLabel.textColor = .black
+        foodNameLabel.lineBreakMode = .byTruncatingTail // Truncate text with ellipses
+        foodNameLabel.numberOfLines = 1 // Restrict to one line
+
+        // Configure Nutrition Label
+        nutritionLabel.font = UIFont.systemFont(ofSize: 12, weight: .regular) // Regular font for description
+        nutritionLabel.textAlignment = .left
+        nutritionLabel.textColor = .darkGray
+        nutritionLabel.lineBreakMode = .byTruncatingTail // Truncate text with ellipses
+        nutritionLabel.numberOfLines = 1 // Restrict to one line
 
         setupAddButton()
+        setupConstraints()
     }
 
     private func setupAddButton() {
@@ -46,6 +64,35 @@ class TodBiteCollectionViewCell: UICollectionViewCell {
 
         addButton.addTarget(self, action: #selector(addButtonTapped), for: .touchUpInside)
     }
+
+    private func setupConstraints() {
+        foodNameLabel.translatesAutoresizingMaskIntoConstraints = false
+        nutritionLabel.translatesAutoresizingMaskIntoConstraints = false
+        myImageView.translatesAutoresizingMaskIntoConstraints = false
+
+        contentView.addSubview(foodNameLabel)
+        contentView.addSubview(nutritionLabel)
+
+        NSLayoutConstraint.activate([
+            // Image View Constraints
+            myImageView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 8),
+            myImageView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            myImageView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+            myImageView.heightAnchor.constraint(equalTo: myImageView.widthAnchor),
+
+            // Food Name Label Constraints
+            foodNameLabel.topAnchor.constraint(equalTo: myImageView.bottomAnchor, constant: 8),
+            foodNameLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            foodNameLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+
+            // Nutrition Label Constraints with Minimal Spacing
+            nutritionLabel.topAnchor.constraint(equalTo: foodNameLabel.bottomAnchor, constant: 1), // Reduced to 1 point
+            nutritionLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            nutritionLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+            nutritionLabel.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -8)
+        ])
+    }
+
 
     func configure(with item: Item, category: CategoryType) {
         self.currentItem = item
