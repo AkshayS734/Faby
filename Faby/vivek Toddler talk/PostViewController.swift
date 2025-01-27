@@ -1,78 +1,10 @@
-//import UIKit
 //
-//// Define the delegate protocol
-//protocol PostViewDelegate: AnyObject {
-//    func didPostComment(_ comment: Comment)
-//}
+//  PostViewController.swift
+//  Toddler Talk1
 //
-//class PostViewController: UIViewController {
+//  Created by Vivek Kumar on 26/01/25.
 //
-//    @IBOutlet var CreateCollection: UICollectionView! // Connect this to your storyboard
-//    weak var delegate: PostViewDelegate? // Delegate property
-//
-//    override func viewDidLoad() {
-//        super.viewDidLoad()
-//
-//        // Register the XIB file
-//        CreateCollection.register(UINib(nibName: "createPostCollectionViewCell", bundle: nil), forCellWithReuseIdentifier: "createPostCollectionViewCell")
-//
-//        // Set the delegate and data source
-//        CreateCollection.delegate = self
-//        CreateCollection.dataSource = self
-//    }
-//
-//    @IBAction func postButtonTappedAction(_ sender: UIBarButtonItem) {
-//        // Ensure the cell is valid
-//        guard let cell = CreateCollection.cellForItem(at: IndexPath(item: 0, section: 0)) as? createPostCollectionViewCell else {
-//            print("Cell not found!")
-//            return
-//        }
-//
-//        // Ensure the comment box is not empty
-//        guard let commentText = cell.commentBox.text, !commentText.isEmpty else {
-//            let alert = UIAlertController(title: "Error", message: "Comment cannot be empty!", preferredStyle: .alert)
-//            alert.addAction(UIAlertAction(title: "OK", style: .destructive, handler: nil))
-//            present(alert, animated: true, completion: nil)
-//            return
-//        }
-//
-//        // Create a new Comment object
-//        let newComment = Comment(
-//            username: cell.userName.text ?? "vivek kumar",
-//            title: "Sample Title", // You can replace with actual dynamic title if necessary
-//            text: commentText,
-//            likes: 0,
-//            replies: []
-//        )
-//
-//        // Notify the delegate to handle the new comment
-//        delegate?.didPostComment(newComment)
-//
-//        // Go back to the previous view
-//        navigationController?.popViewController(animated: true)
-//    }
-//}
-//
-//extension PostViewController: UICollectionViewDelegate, UICollectionViewDataSource {
-//    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-//        return 1 // One input form per `PostViewController`
-//    }
-//
-//    func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-//        guard let cell = collectionView.dequeueReusableCell(
-//            withReuseIdentifier: "createPostCollectionViewCell",
-//            for: indexPath
-//        ) as? createPostCollectionViewCell else {
-//            fatalError("Unable to dequeue createPostCollectionViewCell")
-//        }
-//
-//        // Configure the cell (optional if needed)
-//        cell.userName.text = "Vivek kumar" // Replace with dynamic data if available
-//        cell.userImage.image = UIImage(systemName: "person.circle") // Example placeholder
-//
-//        return cell
-//    }
-//}
+
 import UIKit
 
 // Define the delegate protocol
@@ -80,71 +12,74 @@ protocol PostViewDelegate: AnyObject {
     func didPostComment(_ comment: Comment)
 }
 
-class PostViewController: UIViewController {
+class PostViewController: UIViewController, UITextViewDelegate {
+
+    // Outlets
+    @IBOutlet weak var commentTextView: UITextView!
+    @IBOutlet weak var titleTextBox: UITextField!
+    @IBOutlet weak var userName: UILabel!
+    @IBOutlet weak var stackView: UIStackView!
+    @IBOutlet weak var userImage: UIImageView!
     
-    @IBOutlet var createCollection: UICollectionView! // Connect this to your storyboard
-    weak var delegate: PostViewDelegate? // Delegate property
+    // Placeholder label for the UITextView
+    let placeholderLabel = UILabel()
+    
+    // Delegate property
+    weak var delegate: PostViewDelegate?
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        // Register the XIB file
-        createCollection.register(UINib(nibName: "createPostCollectionViewCell", bundle: nil), forCellWithReuseIdentifier: "createPostCollectionViewCell")
+        // Set up the user interface
+        userName.text = "VIVEK CHAUDHARY"
+        stackView.layer.cornerRadius = 12
         
-        // Set the delegate and data source
-        createCollection.delegate = self
-        createCollection.dataSource = self
+        // Configure placeholder for UITextView
+        configurePlaceholder()
+        
+        // Set the UITextView delegate
+        commentTextView.delegate = self
     }
     
-    @IBAction func postButtonTappedAction(_ sender: UIBarButtonItem) {
-        // Ensure the cell is valid
-        guard let cell = createCollection.cellForItem(at: IndexPath(item: 0, section: 0)) as? createPostCollectionViewCell else {
-            print("Cell not found!")
-            return
-        }
-        
-        // Ensure the comment box is not empty
-        guard let commentText = cell.commentBox.text, !commentText.isEmpty else {
-            let alert = UIAlertController(title: "Error", message: "Comment cannot be empty!", preferredStyle: .alert)
-            alert.addAction(UIAlertAction(title: "OK", style: .destructive, handler: nil))
-            present(alert, animated: true, completion: nil)
+    // Action for posting a comment
+    @IBAction func postComment(_ sender: Any) {
+        // Ensure valid input
+        guard let title = titleTextBox.text, let text = commentTextView.text, !title.isEmpty, !text.isEmpty else {
+            showAlert(message: "Please enter both a title and a comment.")
             return
         }
         
         // Create a new Comment object
-        let newComment = Comment(
-            username: cell.userName.text ?? "vivek kumar",
-            title: "Sample Title", // Can be replaced with dynamic data
-            text: commentText,
-            likes: 0,
-            replies: []
-        )
+        let newComment = Comment(username: "VIVEK CHAUDHARY", title: title, text: text, likes: 0, replies: [])
         
-        // Notify the delegate
+        // Call the delegate method
         delegate?.didPostComment(newComment)
         
-        // Navigate back to the previous view
+        // Navigate back to the previous screen
         navigationController?.popViewController(animated: true)
     }
-}
-
-extension PostViewController: UICollectionViewDelegate, UICollectionViewDataSource {
-    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return 1 // One input form per `PostViewController`
+    
+    // Helper function to show an alert
+    private func showAlert(message: String) {
+        let alert = UIAlertController(title: "Error", message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
+        present(alert, animated: true)
     }
     
-    func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-        guard let cell = collectionView.dequeueReusableCell(
-            withReuseIdentifier: "createPostCollectionViewCell",
-            for: indexPath
-        ) as? createPostCollectionViewCell else {
-            fatalError("Unable to dequeue CreatePostCollectionViewCell")
-        }
+    // Configure the placeholder label for UITextView
+    private func configurePlaceholder() {
+        placeholderLabel.text = "Enter your comment here..."
+        placeholderLabel.font = UIFont.systemFont(ofSize: 16)
+        placeholderLabel.textColor = .lightGray
+        placeholderLabel.frame = CGRect(x: 5, y: 8, width: commentTextView.frame.width - 10, height: 20)
+        commentTextView.addSubview(placeholderLabel)
         
-        // Configure the cell
-        cell.userName.text = "VIVEK CHAUDHARY" // Replace with dynamic user name if available
-        cell.userImage.image = UIImage(systemName: "person.circle") // Example placeholder
-        
-        return cell
+        // Initially show or hide the placeholder based on the text
+        placeholderLabel.isHidden = !commentTextView.text.isEmpty
+    }
+    
+    // UITextViewDelegate method to manage placeholder visibility
+    func textViewDidChange(_ textView: UITextView) {
+        placeholderLabel.isHidden = !textView.text.isEmpty
     }
 }

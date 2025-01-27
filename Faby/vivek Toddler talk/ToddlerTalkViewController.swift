@@ -2,10 +2,9 @@ import UIKit
 
 class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UICollectionViewDataSource, UISearchBarDelegate {
     
-    @IBOutlet var searchBar: UISearchBar!
+    @IBOutlet weak var searchBar: UISearchBar!
     @IBOutlet weak var collectionView: UICollectionView!
-    
-    // Fetching card data from the provider
+        // Fetching card data from the provider
     let cardData = CardDataProvider.shared.cardData
     var filteredCardData: [Card] = []
     
@@ -26,8 +25,8 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
         collectionView.collectionViewLayout = layout
         
         // Register the custom cell from the XIB file
-        let nib = UINib(nibName: "MycellCollectionViewCell", bundle: nil)
-        collectionView.register(nib, forCellWithReuseIdentifier: "MycellCollectionViewCell")
+        let nib = UINib(nibName: "cardDetailsCollectionViewCell", bundle: nil)
+        collectionView.register(nib, forCellWithReuseIdentifier: "cardDetailsCollectionViewCell")
         
         // Set the delegate and data source
         collectionView.delegate = self
@@ -45,7 +44,7 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         // Dequeue the custom cell
-        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "MycellCollectionViewCell", for: indexPath) as! MycellCollectionViewCell
+        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cardDetailsCollectionViewCell", for: indexPath) as! cardDetailsCollectionViewCell
         
         // Configure the cell with the filtered card data
         let card = filteredCardData[indexPath.row]
@@ -63,15 +62,15 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
         return cell
     }
     
-    // MARK: - UICollectionView Delegate Method
+//     MARK: - UICollectionView Delegate Method
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         // Get the selected card
         let selectedCard = filteredCardData[indexPath.row]
         
         // Instantiate NewViewController from the storyboard
-        let storyboard = UIStoryboard(name: "Main", bundle: nil)
-        if let newVC = storyboard.instantiateViewController(withIdentifier: "NewViewController") as? NewViewController {
+        let storyboard = UIStoryboard(name: "ToddlerTalk", bundle: nil)
+        if let newVC = storyboard.instantiateViewController(withIdentifier: "commentDetailsViewController") as? commentDetailsViewController {
             // Pass the title and subtitle to NewViewController
             newVC.passedTitle = selectedCard.title
             newVC.passedSubtitle = selectedCard.subtitle
