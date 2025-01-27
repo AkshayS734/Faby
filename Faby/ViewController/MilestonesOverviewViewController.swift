@@ -21,6 +21,7 @@ class MilestonesOverviewViewController: UIViewController, UITableViewDelegate, U
     private var totalMilestones = 0
     private var achievedMilestones = 0
     
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemGray6
@@ -37,18 +38,17 @@ class MilestonesOverviewViewController: UIViewController, UITableViewDelegate, U
     }
     
     func reloadMilestones() {
-        if let baby = BabyDataModel.shared.babyList.first {
-            milestones = baby.milestonesAchieved.keys.filter { milestone in
-                return baby.milestonesAchieved[milestone] != nil
-            }
+        let categoryKey = categoryName[selectedCategory].lowercased()
+        milestones = baby.achievedMilestonesByCategory[categoryKey] ?? []
+        let allCategoryMilestones = GrowthMilestonesDataModel().milestones.filter {
+            $0.category.rawValue == categoryName[selectedCategory].lowercased()
         }
-        
-        let allMilestones = GrowthMilestonesDataModel().milestones.filter { $0.category.rawValue == categoryName[selectedCategory].lowercased() }
-        totalMilestones = allMilestones.count
-        achievedMilestones = milestones.filter { baby.milestonesAchieved[$0] != nil }.count
+        totalMilestones = allCategoryMilestones.count
+        achievedMilestones = milestones.count
         updateDonutChart()
         tableView.reloadData()
     }
+
     
     @objc private func handleMilestoneUpdate() {
         reloadMilestones()
@@ -102,26 +102,30 @@ class MilestonesOverviewViewController: UIViewController, UITableViewDelegate, U
     }
     
     @objc private func segmentChanged(_ sender: UISegmentedControl) {
-        updateCategory(index: sender.selectedSegmentIndex)
+        let newSelectedCategory = sender.selectedSegmentIndex
+        if newSelectedCategory != selectedCategory {
+            selectedCategory = newSelectedCategory
+            updateCategory(index: selectedCategory)
+        }
     }
-    
+
     private func updateCategory(index: Int) {
         selectedCategory = index
-        milestones = fetchMilestones(for: index)
-            
-        guard let currentBaby = BabyDataModel.shared.babyList.first else { return }
-        
-        milestones = milestones.filter { milestone in
-            return currentBaby.milestonesAchieved.keys.contains { $0.id == milestone.id }
+        let categoryKey = categoryName[selectedCategory].lowercased()
+        if baby.achievedMilestonesByCategory[categoryKey] == nil {
+            baby.achievedMilestonesByCategory[categoryKey] = []
         }
-        let allMilestones = GrowthMilestonesDataModel().milestones.filter { $0.category.rawValue == String(selectedCategory).lowercased() }
-        print(allMilestones)
-        totalMilestones = allMilestones.count
-        achievedMilestones = milestones.filter { currentBaby.milestonesAchieved[$0] != nil }.count
         
+        milestones = baby.achievedMilestonesByCategory[categoryKey] ?? []
+        let allCategoryMilestones = GrowthMilestonesDataModel().milestones.filter {
+            $0.category.rawValue == categoryName[selectedCategory].lowercased()
+        }
+        totalMilestones = allCategoryMilestones.count
+        achievedMilestones = milestones.count
         updateDonutChart()
         tableView.reloadData()
     }
+
     
     private func updateDonutChart() {
         let percentage = totalMilestones > 0 ? CGFloat(achievedMilestones) / CGFloat(totalMilestones) : 0.0
@@ -143,41 +147,41 @@ class MilestonesOverviewViewController: UIViewController, UITableViewDelegate, U
         backgroundLayer.lineWidth = lineWidth
         backgroundLayer.fillColor = UIColor.clear.cgColor
         donutChartView.layer.addSublayer(backgroundLayer)
-            
+//        
+//        let remainingLayer = CAShapeLayer()
+//        remainingLayer.path = circularPath.cgPath
+//        remainingLayer.strokeColor = UIColor.gray.cgColor
+//        remainingLayer.lineWidth = lineWidth
+//        remainingLayer.fillColor = UIColor.clear.cgColor
+//        remainingLayer.strokeEnd = 1 - percentage
+//        donutChartView.layer.addSublayer(remainingLayer)
+        
         let achievedLayer = CAShapeLayer()
         achievedLayer.path = circularPath.cgPath
-        achievedLayer.strokeColor = UIColor.blue.cgColor
+        achievedLayer.strokeColor = UIColor.green.cgColor
         achievedLayer.lineWidth = lineWidth
         achievedLayer.fillColor = UIColor.clear.cgColor
         achievedLayer.strokeEnd = percentage
         donutChartView.layer.addSublayer(achievedLayer)
     
-        let remainingLayer = CAShapeLayer()
-        remainingLayer.path = circularPath.cgPath
-        remainingLayer.strokeColor = UIColor.gray.cgColor
-        remainingLayer.lineWidth = lineWidth
-        remainingLayer.fillColor = UIColor.clear.cgColor
-        remainingLayer.strokeEnd = 1 - percentage
-        donutChartView.layer.addSublayer(remainingLayer)
+        
             
             // Percentage Label
-        let percentageLabel = UILabel()
-        percentageLabel.text = "\(Int(percentage * 100))%"
-        percentageLabel.textAlignment = .center
-        percentageLabel.font = UIFont.boldSystemFont(ofSize: 24)
-        percentageLabel.textColor = .black
-        percentageLabel.translatesAutoresizingMaskIntoConstraints = false
-        donutChartView.addSubview(percentageLabel)
+//        let percentageLabel = UILabel()
+//        percentageLabel.text = "\(Int(percentage * 100))%"
+//        percentageLabel.textAlignment = .center
+//        percentageLabel.font = UIFont.boldSystemFont(ofSize: 24)
+//        percentageLabel.textColor = .black
+//        percentageLabel.translatesAutoresizingMaskIntoConstraints = false
+//        donutChartView.addSubview(percentageLabel)
             
-        NSLayoutConstraint.activate([
-            percentageLabel.centerXAnchor.constraint(equalTo: donutChartView.centerXAnchor),
-            percentageLabel.centerYAnchor.constraint(equalTo: donutChartView.centerYAnchor)
-        ])
+//        NSLayoutConstraint.activate([
+//            percentageLabel.centerXAnchor.constraint(equalTo: donutChartView.centerXAnchor),
+//            percentageLabel.centerYAnchor.constraint(equalTo: donutChartView.centerYAnchor)
+//        ])
     }
     
     private func fetchMilestones(for categoryIndex: Int) -> [GrowthMilestone] {
-        guard let currentBaby = BabyDataModel.shared.babyList.first else { return [] }
-        
         let category: GrowthCategory = {
             switch categoryIndex {
             case 0: return .cognitive
@@ -187,22 +191,20 @@ class MilestonesOverviewViewController: UIViewController, UITableViewDelegate, U
             default: return .cognitive
             }
         }()
-        
-        let milestonesInCategory = GrowthMilestonesDataModel().milestones.filter { $0.category == category }
-        
+        let milestonesInCategory = GrowthMilestonesDataModel().milestones.filter {
+            $0.category == category
+        }
         return milestonesInCategory.map { milestone in
             var updatedMilestone = milestone
-            if let achievedDate = currentBaby.milestonesAchieved[milestone] {
-                if let userImage = currentBaby.loadUserImage(for: milestone) {
-                    let filename = "\(milestone.id.uuidString)_userImage.jpg"
-                    let userImagePath = currentBaby.saveImageToDocumentsDirectory(image: userImage, filename: filename)
-                    updatedMilestone.userImagePath = userImagePath
-                }
+            if let achievedDate = baby.milestonesAchieved[milestone] {
                 updatedMilestone.description += "\nAchieved on \(achievedDate.formatted())"
             }
+            
             return updatedMilestone
         }
     }
+
+
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return milestones.count
