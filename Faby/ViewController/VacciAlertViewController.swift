@@ -52,6 +52,8 @@ class VacciAlertViewController: UIViewController {
         let reminderVC = VaccineReminderViewController()
         show(reminderVC, sender: self)
     }
+    
+    
     // Date changed event handler when user selects a date from the date picker
     @objc func dateChanged(_ datePicker: UIDatePicker) {
         selectedDateSubject.send(datePicker.date) // Send the selected date to the publisher

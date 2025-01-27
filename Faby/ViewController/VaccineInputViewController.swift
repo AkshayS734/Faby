@@ -18,12 +18,13 @@ class VaccineInputViewController: UIViewController, UITableViewDataSource, UITab
     
     // Vaccine data with sections and rows
     let vaccineData: [(sectionTitle: String, vaccines: [String])] = [
-        ("Birth", ["Hepatitis B"]),
-        ("6 weeks", ["DTaP", "Hib", "Polio", "Hepatitis B"]),
-        ("10 weeks", ["Rotavirus", "Pneumococcal"]),
-        ("14 weeks", ["DTaP", "Hib", "Polio"]),
-        ("9–12 months", ["Measles", "Mumps", "Rubella"]),
-        ("16–24 months", ["DTaP", "Hib", "Polio", "Varicella"])
+        ("Birth", ["Hepatitis B(Dose 1)"]),
+        ("6 weeks", ["DTaP (Dose 1)", "Hib (Dose 1)", "Polio (Dose 1)", "Hepatitis B (Dose 2)"]),
+        ("10 weeks", ["DTAP (Dose 2) ","Hib (Dose 2)","Rotavirus (Dose 1)", "Pneumococcal (Dose 1) "]),
+        ("14 weeks", ["DTaP (Dose 3)", "Hib (Dose 3)", "Polio (Dose 3)","Rotavirus (Dose 2)","Pneumococcal(Dose 2)"]),
+        ("6 Months", ["Hepatitis B (Dose 3)"]),
+        ("9 months", ["MMR (Dose 1)"]),
+        ("12 months",["Hepatitis A(Dose 1)","Varicella(Dose 1)"])
     ]
     
     // Array to store selected vaccines
@@ -50,6 +51,12 @@ class VaccineInputViewController: UIViewController, UITableViewDataSource, UITab
             instructionsLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             instructionsLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16)
         ])
+        NotificationCenter.default.addObserver(self, selector: #selector(navigateToNextPage), name: .popupProceedTapped, object: nil)
+    }
+    @objc private func navigateToNextPage() {
+        let vacciAlertVC = VacciAlertViewController()
+        vacciAlertVC.selectedVaccines = selectedVaccines
+        navigationController?.pushViewController(vacciAlertVC, animated: true)
     }
     
     private func configureTableView() {
@@ -170,11 +177,23 @@ class VaccineInputViewController: UIViewController, UITableViewDataSource, UITab
     }
     
     @objc private func continueButtonTapped() {
-        print("Selected vaccines on continue: \(selectedVaccines)")
+        if selectedVaccines.isEmpty {
+            // Show an alert if no vaccines are selected
+            let noSelectionAlert = UIAlertController(
+                title: "No Vaccines Selected",
+                message: "Please select at least one vaccine to continue.",
+                preferredStyle: .alert
+            )
+            noSelectionAlert.addAction(UIAlertAction(title: "OK", style: .default))
+            present(noSelectionAlert, animated: true)
+            return
+        }
         
-        // Navigate to the next view controller
-        let vacciAlertVC = VacciAlertViewController()  // Create the new view controller
-        vacciAlertVC.selectedVaccines = selectedVaccines  // Pass the selected vaccines
-        navigationController?.pushViewController(vacciAlertVC, animated: true)  // Navigate to the next view
+        // Create and present the custom popup
+        let popupVC = VaccinePopupViewController()
+        popupVC.selectedVaccines = selectedVaccines
+        popupVC.modalPresentationStyle = .overCurrentContext
+        popupVC.modalTransitionStyle = .crossDissolve
+        present(popupVC, animated: true)
     }
 }
