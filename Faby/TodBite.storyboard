@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="23504" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="Y6W-OH-hqX">
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="23504" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="8bJ-w1-Qto">
     <device id="retina6_12" orientation="portrait" appearance="light"/>
     <dependencies>
         <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="23506"/>
@@ -11,19 +11,59 @@
         <!--TodBite-->
         <scene sceneID="s0d-6b-0kx">
             <objects>
-                <viewController id="Y6W-OH-hqX" sceneMemberID="viewController">
+                <viewController storyboardIdentifier="TodBiteViewController" id="Y6W-OH-hqX" customClass="TodBiteViewController" customModule="Faby" customModuleProvider="target" sceneMemberID="viewController">
                     <view key="view" contentMode="scaleToFill" id="5EZ-qb-Rvc">
                         <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <subviews>
+                            <segmentedControl opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="left" contentVerticalAlignment="top" segmentControlStyle="plain" selectedSegmentIndex="0" translatesAutoresizingMaskIntoConstraints="NO" id="7ld-g7-PtP">
+                                <rect key="frame" x="0.0" y="103" width="393" height="32"/>
+                                <segments>
+                                    <segment title="Recommended Meal"/>
+                                    <segment title="My Bowl"/>
+                                </segments>
+                                <connections>
+                                    <action selector="segmentedControlTapped:" destination="Y6W-OH-hqX" eventType="valueChanged" id="lOp-N9-Es8"/>
+                                </connections>
+                            </segmentedControl>
+                        </subviews>
                         <viewLayoutGuide key="safeArea" id="vDu-zF-Fre"/>
                         <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                        <constraints>
+                            <constraint firstItem="vDu-zF-Fre" firstAttribute="trailing" secondItem="7ld-g7-PtP" secondAttribute="trailing" id="1ay-VU-1Me"/>
+                            <constraint firstItem="7ld-g7-PtP" firstAttribute="leading" secondItem="vDu-zF-Fre" secondAttribute="leading" id="3WO-SU-jl3"/>
+                            <constraint firstItem="vDu-zF-Fre" firstAttribute="bottom" secondItem="7ld-g7-PtP" secondAttribute="bottom" constant="635" id="RGa-WD-RfJ"/>
+                            <constraint firstItem="7ld-g7-PtP" firstAttribute="top" secondItem="vDu-zF-Fre" secondAttribute="top" id="fuQ-ay-zkQ"/>
+                        </constraints>
                     </view>
-                    <tabBarItem key="tabBarItem" title="TodBite" image="carrot" catalog="system" selectedImage="carrot.fill" id="jzx-zy-fmO"/>
+                    <navigationItem key="navigationItem" title="TodBite" id="nZC-Va-gvq"/>
                     <simulatedTabBarMetrics key="simulatedBottomBarMetrics"/>
+                    <connections>
+                        <outlet property="segmentedControl" destination="7ld-g7-PtP" id="8Xb-Ra-opX"/>
+                    </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="Ief-a0-LHa" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="138" y="4"/>
+            <point key="canvasLocation" x="1063.3587786259541" y="3.5211267605633805"/>
+        </scene>
+        <!--TodBite-->
+        <scene sceneID="Y1f-Ng-X2i">
+            <objects>
+                <navigationController automaticallyAdjustsScrollViewInsets="NO" id="8bJ-w1-Qto" sceneMemberID="viewController">
+                    <tabBarItem key="tabBarItem" title="TodBite" image="carrot" catalog="system" selectedImage="carrot.fill" id="jzx-zy-fmO"/>
+                    <toolbarItems/>
+                    <navigationBar key="navigationBar" contentMode="scaleToFill" id="fzv-Gq-6pk">
+                        <rect key="frame" x="0.0" y="59" width="393" height="44"/>
+                        <autoresizingMask key="autoresizingMask"/>
+                    </navigationBar>
+                    <nil name="viewControllers"/>
+                    <connections>
+                        <segue destination="Y6W-OH-hqX" kind="relationship" relationship="rootViewController" id="1he-1e-fby"/>
+                    </connections>
+                </navigationController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="tvD-jV-duK" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="136.64122137404578" y="3.5211267605633805"/>
         </scene>
     </scenes>
     <resources>
