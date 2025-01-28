@@ -62,15 +62,17 @@
                             <constraint firstItem="gMV-eZ-APs" firstAttribute="leading" secondItem="vDu-zF-Fre" secondAttribute="leading" constant="38" id="zru-Mi-Lt5"/>
                         </constraints>
                     </view>
-<<<<<<< HEAD
+
                     <toolbarItems>
                         <barButtonItem title="Item" id="ANq-QN-UWV"/>
                     </toolbarItems>
                     <navigationItem key="navigationItem" title="TodBite" id="6jO-cy-kd2"/>
                     <simulatedToolbarMetrics key="simulatedBottomBarMetrics"/>
-=======
+
                     <navigationItem key="navigationItem" id="6jO-cy-kd2"/>
->>>>>>> parent of 543d6c6 (TodBite Added)
+
+                    <navigationItem key="navigationItem" title="TodBite" id="6jO-cy-kd2"/>
+
                     <connections>
                         <outlet property="CollectionView" destination="fQc-a8-Ib0" id="J7w-eF-EZs"/>
                         <outlet property="segmentedControl" destination="gMV-eZ-APs" id="taf-Hq-EWu"/>
@@ -83,10 +85,10 @@
         <!--Navigation Controller-->
         <scene sceneID="oYS-lA-UmF">
             <objects>
-<<<<<<< HEAD
+
                 <viewController id="PJx-UQ-aKa" sceneMemberID="viewController">
                     <view key="view" contentMode="scaleToFill" id="XYj-qc-r6G">
-                        <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
+                        <rect key="frame" x="0.0" y="0.0" width="393" height="842"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <viewLayoutGuide key="safeArea" id="xBU-FB-P55"/>
                         <color key="backgroundColor" systemColor="systemBackgroundColor"/>
@@ -94,7 +96,7 @@
                     <navigationItem key="navigationItem" id="w9f-Gd-AnN"/>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="WYv-OL-LVg" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
-=======
+
                 <navigationController automaticallyAdjustsScrollViewInsets="NO" id="ubG-24-8Xz" sceneMemberID="viewController">
                     <toolbarItems/>
                     <navigationBar key="navigationBar" contentMode="scaleToFill" id="aVo-V0-RQY">
@@ -107,7 +109,7 @@
                     </connections>
                 </navigationController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="39e-4I-afM" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
->>>>>>> parent of 543d6c6 (TodBite Added)
+
             </objects>
             <point key="canvasLocation" x="136.64122137404578" y="3.5211267605633805"/>
         </scene>
