@@ -9,7 +9,30 @@ class MilestoneCardCell: UICollectionViewCell {
         imageView.layer.cornerRadius = 8
         return imageView
     }()
-    
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        if milestoneImageView.bounds.width > 0 && milestoneImageView.bounds.height > 0 {
+            applyLeftSideCornerRadius()
+        }
+    }
+    private func applyLeftSideCornerRadius() {
+        let cornerRadius: CGFloat = 8
+        let path = UIBezierPath()
+
+        path.move(to: CGPoint(x: 0, y: 0))
+        path.addLine(to: CGPoint(x: milestoneImageView.bounds.width, y: 0))
+        path.addLine(to: CGPoint(x: milestoneImageView.bounds.width, y: milestoneImageView.bounds.height))
+        path.addLine(to: CGPoint(x: 0, y: milestoneImageView.bounds.height))
+        path.addLine(to: CGPoint(x: 0, y: cornerRadius))
+        path.addArc(withCenter: CGPoint(x: cornerRadius, y: cornerRadius), radius: cornerRadius, startAngle: CGFloat.pi, endAngle: -CGFloat.pi / 2, clockwise: true)
+        path.close()
+
+        let shapeLayer = CAShapeLayer()
+        shapeLayer.path = path.cgPath
+        milestoneImageView.layer.mask = shapeLayer
+        milestoneImageView.clipsToBounds = false
+    }
+
     private let queryLabel: UILabel = {
         let label = UILabel()
         label.font = UIFont.systemFont(ofSize: 16, weight: .medium)
@@ -34,7 +57,7 @@ class MilestoneCardCell: UICollectionViewCell {
         contentView.addSubview(queryLabel)
         contentView.addSubview(chevronButton)
         contentView.backgroundColor = .white
-        // Layout
+
         milestoneImageView.translatesAutoresizingMaskIntoConstraints = false
         queryLabel.translatesAutoresizingMaskIntoConstraints = false
         chevronButton.translatesAutoresizingMaskIntoConstraints = false
@@ -70,5 +93,7 @@ class MilestoneCardCell: UICollectionViewCell {
 //        print("\(milestone.query)")
         milestoneImageView.image = UIImage(named: milestone.image)
         queryLabel.text = milestone.query
+        layoutIfNeeded()
+        applyLeftSideCornerRadius()
     }
 }
