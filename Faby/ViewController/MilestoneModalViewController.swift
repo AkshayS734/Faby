@@ -62,6 +62,7 @@ class MilestoneModalViewController: UIViewController {
         descriptionLabel.font = .systemFont(ofSize: 16)
         descriptionLabel.numberOfLines = 0
         descriptionLabel.textAlignment = .center
+        descriptionLabel.textColor = .gray
         view.addSubview(descriptionLabel)
         descriptionLabel.translatesAutoresizingMaskIntoConstraints = false
         
@@ -136,7 +137,7 @@ class MilestoneModalViewController: UIViewController {
             cardView.topAnchor.constraint(equalTo: descriptionLabel.bottomAnchor, constant: 40),
             cardView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             cardView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            cardView.heightAnchor.constraint(equalToConstant: 102),
+            cardView.heightAnchor.constraint(equalToConstant: 100),
             
             reachedOnLabel.topAnchor.constraint(equalTo: cardView.topAnchor, constant: 8),
             reachedOnLabel.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 16),
@@ -150,9 +151,11 @@ class MilestoneModalViewController: UIViewController {
             separatorLine.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 16),
             separatorLine.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -16),
             separatorLine.heightAnchor.constraint(equalToConstant: 1),
+            separatorLine.centerYAnchor.constraint(equalTo: cardView.centerYAnchor),
             
             specialMomentLabel.topAnchor.constraint(equalTo: separatorLine.bottomAnchor, constant: 8),
             specialMomentLabel.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 16),
+            specialMomentLabel.bottomAnchor.constraint(equalTo: cardView.bottomAnchor, constant: -8),
             
             addImageButton.topAnchor.constraint(equalTo: separatorLine.bottomAnchor, constant: 8),
             addImageButton.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -16),
