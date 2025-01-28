@@ -20,6 +20,15 @@ class MilestonesOverviewViewController: UIViewController, UITableViewDelegate, U
     private var milestones: [GrowthMilestone] = []
     private var totalMilestones = 0
     private var achievedMilestones = 0
+    private let emptyLabel: UILabel = {
+        let label = UILabel()
+        label.text = "No milestone added yet"
+        label.font = UIFont.systemFont(ofSize: 16, weight: .medium)
+        label.textColor = .gray
+        label.textAlignment = .center
+        label.isHidden = false
+        return label
+    }()
     
     
     override func viewDidLoad() {
@@ -47,6 +56,7 @@ class MilestonesOverviewViewController: UIViewController, UITableViewDelegate, U
         achievedMilestones = milestones.count
         updateDonutChart()
         tableView.reloadData()
+        emptyLabel.isHidden = !milestones.isEmpty
     }
 
     
@@ -84,6 +94,9 @@ class MilestonesOverviewViewController: UIViewController, UITableViewDelegate, U
         view.addSubview(tableView)
         tableView.translatesAutoresizingMaskIntoConstraints = false
         
+        view.addSubview(emptyLabel)
+        emptyLabel.translatesAutoresizingMaskIntoConstraints = false
+        
         NSLayoutConstraint.activate([
             segmentedControl.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16),
             segmentedControl.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
@@ -98,6 +111,9 @@ class MilestonesOverviewViewController: UIViewController, UITableViewDelegate, U
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            
+            emptyLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            emptyLabel.topAnchor.constraint(equalTo: tableView.topAnchor, constant: 65),
         ])
     }
     
@@ -124,8 +140,8 @@ class MilestonesOverviewViewController: UIViewController, UITableViewDelegate, U
         achievedMilestones = milestones.count
         updateDonutChart()
         tableView.reloadData()
+//        emptyLabel.isHidden = !milestones.isEmpty
     }
-
     
     private func updateDonutChart() {
         let percentage = totalMilestones > 0 ? CGFloat(achievedMilestones) / CGFloat(totalMilestones) : 0.0
@@ -179,6 +195,18 @@ class MilestonesOverviewViewController: UIViewController, UITableViewDelegate, U
 //            percentageLabel.centerXAnchor.constraint(equalTo: donutChartView.centerXAnchor),
 //            percentageLabel.centerYAnchor.constraint(equalTo: donutChartView.centerYAnchor)
 //        ])
+        let progressLabel = UILabel()
+        progressLabel.text = "Progress"
+        progressLabel.font = UIFont.boldSystemFont(ofSize: 24)
+        progressLabel.textAlignment = .center
+        progressLabel.textColor = .black
+        progressLabel.translatesAutoresizingMaskIntoConstraints = false
+        donutChartView.addSubview(progressLabel)
+        
+        NSLayoutConstraint.activate([
+            progressLabel.centerXAnchor.constraint(equalTo: donutChartView.centerXAnchor),
+            progressLabel.centerYAnchor.constraint(equalTo: donutChartView.centerYAnchor)
+        ])
     }
     
     private func fetchMilestones(for categoryIndex: Int) -> [GrowthMilestone] {
@@ -208,6 +236,30 @@ class MilestonesOverviewViewController: UIViewController, UITableViewDelegate, U
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return milestones.count
+    }
+    
+    func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
+        let headerView = UIView()
+        headerView.backgroundColor = .systemGray6
+        let label = UILabel()
+        label.text = "Recently Achieved Milestones"
+        label.font = UIFont.boldSystemFont(ofSize: 18)
+        label.textColor = .black
+        label.translatesAutoresizingMaskIntoConstraints = false
+        headerView.addSubview(label)
+            
+        NSLayoutConstraint.activate([
+            label.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
+            label.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -16),
+            label.topAnchor.constraint(equalTo: headerView.topAnchor, constant: 8),
+            label.bottomAnchor.constraint(equalTo: headerView.bottomAnchor, constant: -8)
+        ])
+            
+        return headerView
+    }
+    
+    func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
+        return 40
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {

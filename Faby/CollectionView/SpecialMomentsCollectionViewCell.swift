@@ -8,7 +8,6 @@ class SpecialMomentsCollectionViewCell: UICollectionViewCell {
     @IBOutlet weak var specialMomentsImage: UIImageView!
     override func awakeFromNib() {
         super.awakeFromNib()
-        // Initialization code
         setupUI()
     }
     private func setupUI() {
@@ -16,7 +15,6 @@ class SpecialMomentsCollectionViewCell: UICollectionViewCell {
         specialMomentsImage.clipsToBounds = true
         specialMomentsImage.contentMode = .scaleAspectFill
         
-        // Styling for the labels
         specialMomentTitle.font = UIFont.systemFont(ofSize: 16, weight: .semibold)
         specialMomentTitle.textColor = .darkText
         
@@ -26,8 +24,7 @@ class SpecialMomentsCollectionViewCell: UICollectionViewCell {
         specialMomentDate.font = UIFont.systemFont(ofSize: 12, weight: .light)
         specialMomentDate.textColor = .lightGray
     }
-        
-        // MARK: - Configure Cell
+    
     func configure(with milestone: (GrowthMilestone, Date)) {
         let (milestoneDetail, achievedDate) = milestone
         specialMomentTitle.text = milestoneDetail.title
