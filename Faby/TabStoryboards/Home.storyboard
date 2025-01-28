@@ -17,12 +17,12 @@
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
                             <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="peq-yi-Qn1">
-                                <rect key="frame" x="138" y="389" width="75" height="35"/>
+                                <rect key="frame" x="159" y="409" width="75" height="35"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <state key="normal" title="Button"/>
                                 <buttonConfiguration key="configuration" style="plain" title="Button"/>
                                 <connections>
-                                    <segue destination="bHN-TG-dF4" kind="showDetail" id="ZHk-4y-64v"/>
+                                    <segue destination="bHN-TG-dF4" kind="show" id="OfE-bw-TdX"/>
                                 </connections>
                             </button>
                         </subviews>
@@ -40,7 +40,9 @@
         <!--TodBite-->
         <scene sceneID="Iqf-ln-YJE">
             <objects>
-                <viewControllerPlaceholder storyboardName="TodBite" id="bHN-TG-dF4" sceneMemberID="viewController"/>
+                <viewControllerPlaceholder storyboardIdentifier="TodBiteViewController" storyboardName="TodBite" id="bHN-TG-dF4" sceneMemberID="viewController">
+                    <navigationItem key="navigationItem" id="gl7-Sf-W3M"/>
+                </viewControllerPlaceholder>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="Vtz-r7-iIy" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
             </objects>
             <point key="canvasLocation" x="1708.3969465648854" y="-97.183098591549296"/>
