@@ -34,8 +34,6 @@ class VaccineInputViewController: UIViewController, UITableViewDataSource, UITab
         super.viewDidLoad()
         
         view.backgroundColor = UIColor(hex: "#f2f2f7")
-        
-        // Set up the navigation bar title
         self.title = "VacciTime"
         view.backgroundColor = .white
         
@@ -45,13 +43,16 @@ class VaccineInputViewController: UIViewController, UITableViewDataSource, UITab
         // Configure the table view
         configureTableView()
         
-        // Set up Auto Layout constraints for the label
+        // Configure the "Continue" button
+        configureContinueButton()
+        
         NSLayoutConstraint.activate([
             instructionsLabel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
             instructionsLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             instructionsLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16)
         ])
-        NotificationCenter.default.addObserver(self, selector: #selector(navigateToNextPage), name: .popupProceedTapped, object: nil)
+        
+        UserDefaults.standard.removeObject(forKey: "SavedVaccines") // Clear old data for testing
     }
     @objc private func navigateToNextPage() {
         let vacciAlertVC = VacciAlertViewController()
@@ -79,24 +80,23 @@ class VaccineInputViewController: UIViewController, UITableViewDataSource, UITab
             tableView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -80) // Leave space for the "Continue" button
         ])
     }
-    private func storeVaccinationDetails(childName: String, vaccines: [String]) {
-        // Create a dictionary to hold the vaccine details
-        let vaccinationDetails: [String: Any] = [
-            "childName": childName,
-            "vaccines": vaccines,
-            "date": Date()  // You can store the current date when vaccines were marked as completed
-        ]
+    private func storeVaccinationDetails(vaccines: [String]) {
+        print("Attempting to save vaccines: \(vaccines)")
         
-        // Retrieve existing data from UserDefaults
-        var existingData = UserDefaults.standard.array(forKey: "ChildrenVaccinations") as? [[String: Any]] ?? []
+        var existingData = UserDefaults.standard.array(forKey: "SavedVaccines") as? [String] ?? []
+        print("Existing data before saving: \(existingData)")
         
-        // Add the new vaccination details to the list
-        existingData.append(vaccinationDetails)
+        // Append new vaccines and remove duplicates
+        existingData.append(contentsOf: vaccines)
+        existingData = Array(Set(existingData)) // Remove duplicates
         
-        // Store the updated data back into UserDefaults
-        UserDefaults.standard.set(existingData, forKey: "ChildrenVaccinations")
+        // Save to UserDefaults
+        UserDefaults.standard.set(existingData, forKey: "SavedVaccines")
+        UserDefaults.standard.synchronize()
         
-        print("Vaccination details saved for \(childName): \(vaccines)")
+        // Debug UserDefaults
+        print("All UserDefaults after saving: \(UserDefaults.standard.dictionaryRepresentation())")
+        print("Saved to UserDefaults: \(existingData)")
     }
     
     // MARK: - UITableViewDataSource Methods
@@ -163,8 +163,10 @@ class VaccineInputViewController: UIViewController, UITableViewDataSource, UITab
         continueButton.layer.cornerRadius = 10
         continueButton.addTarget(self, action: #selector(continueButtonTapped), for: .touchUpInside)
         
+        
         // Add the button to the view hierarchy
         view.addSubview(continueButton)
+        
         
         // Set up Auto Layout constraints for the button
         continueButton.translatesAutoresizingMaskIntoConstraints = false
@@ -177,8 +179,9 @@ class VaccineInputViewController: UIViewController, UITableViewDataSource, UITab
     }
     
     @objc private func continueButtonTapped() {
+        print("Continue button tapped. Selected vaccines: \(selectedVaccines)")
+        
         if selectedVaccines.isEmpty {
-            // Show an alert if no vaccines are selected
             let noSelectionAlert = UIAlertController(
                 title: "No Vaccines Selected",
                 message: "Please select at least one vaccine to continue.",
@@ -189,11 +192,25 @@ class VaccineInputViewController: UIViewController, UITableViewDataSource, UITab
             return
         }
         
-        // Create and present the custom popup
-        let popupVC = VaccinePopupViewController()
-        popupVC.selectedVaccines = selectedVaccines
-        popupVC.modalPresentationStyle = .overCurrentContext
-        popupVC.modalTransitionStyle = .crossDissolve
-        present(popupVC, animated: true)
+        // Save vaccines
+        storeVaccinationDetails(vaccines: selectedVaccines)
+        
+        // Show confirmation alert
+        let confirmationAlert = UIAlertController(
+            title: "Vaccines Selected",
+            message: "You have selected the following vaccines:\n\n\(selectedVaccines.joined(separator: "\n"))",
+            preferredStyle: .alert
+        )
+        
+        // Add an "OK" action to navigate to VacciAlertViewController
+        let okAction = UIAlertAction(title: "OK", style: .default) { _ in
+            let vacciAlertVC = VacciAlertViewController()
+            vacciAlertVC.selectedVaccines = self.selectedVaccines
+            self.navigationController?.pushViewController(vacciAlertVC, animated: true)
+        }
+        confirmationAlert.addAction(okAction)
+        
+        // Present the confirmation alert
+        present(confirmationAlert, animated: true)
     }
 }
