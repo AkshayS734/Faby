@@ -105,8 +105,8 @@ class MilestonesOverviewViewController: UIViewController, UITableViewDelegate, U
             donutChartView.topAnchor.constraint(equalTo: segmentedControl.bottomAnchor, constant: 20),
             donutChartView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             donutChartView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            donutChartView.heightAnchor.constraint(equalTo: donutChartView.widthAnchor),
-            
+            donutChartView.heightAnchor.constraint(equalTo: donutChartView.widthAnchor, multiplier: 0.75),
+
             tableView.topAnchor.constraint(equalTo: donutChartView.bottomAnchor, constant: 20),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
@@ -151,7 +151,7 @@ class MilestonesOverviewViewController: UIViewController, UITableViewDelegate, U
     private func drawDonutChart(percentage: CGFloat) {
         donutChartView.layer.sublayers?.forEach { $0.removeFromSuperlayer() }
         
-        let radius: CGFloat = donutChartView.frame.width / 3
+        let radius: CGFloat = donutChartView.frame.width / 4
         let lineWidth: CGFloat = 18.0
         
         let backgroundLayer = CAShapeLayer()

@@ -25,7 +25,7 @@ class GrowthMilestonesDataModel {
         GrowthMilestone(
             title: "Calls Parent by Name",
             query: "Does your child call a parent 'mama' or 'dada' or another special name?",
-            image: "calls_parent_image",
+            image: "waves_bye_image",
             milestoneMonth: .month12,
             description: "Using specific words like 'mama' or 'dada' demonstrates growing language skills and emotional connection to caregivers.",
             category: .language
@@ -33,7 +33,7 @@ class GrowthMilestonesDataModel {
         GrowthMilestone(
             title: "Understands 'No'",
             query: "Does your child pause or stop briefly when you say 'no'?",
-            image: "understands_no_image",
+            image: "waves_bye_image",
             milestoneMonth: .month12,
             description: "Understanding 'no' reflects your child’s ability to process and respond to simple commands, a foundation for discipline and safety awareness.",
             category: .language
@@ -61,7 +61,7 @@ class GrowthMilestonesDataModel {
         GrowthMilestone(
             title: "Pulls to Stand",
             query: "Does your child pull up to stand?",
-            image: "pulls_to_stand_image",
+            image: "waves_bye_image",
             milestoneMonth: .month12,
             description: "Pulling up to stand indicates strengthening leg muscles and developing balance, key steps toward independent walking.",
             category: .physical
@@ -69,7 +69,7 @@ class GrowthMilestonesDataModel {
         GrowthMilestone(
             title: "Cruises Along Furniture",
             query: "Does your child walk while holding on to furniture?",
-            image: "cruises_along_furniture_image",
+            image: "waves_bye_image",
             milestoneMonth: .month12,
             description: "Walking while holding furniture helps build confidence and coordination, preparing your child for walking independently.",
             category: .physical
@@ -77,7 +77,7 @@ class GrowthMilestonesDataModel {
         GrowthMilestone(
             title: "Drinks from Cup You Hold",
             query: "Does your child drink from a cup without a lid, as you hold it?",
-            image: "drinks_from_cup_image",
+            image: "waves_bye_image",
             milestoneMonth: .month12,
             description: "Drinking from a cup introduces self-feeding skills and strengthens oral coordination, which is important for eating and speaking.",
             category: .physical
@@ -85,7 +85,7 @@ class GrowthMilestonesDataModel {
         GrowthMilestone(
             title: "Picks Up Small Objects",
             query: "Does your child pick up small objects between their thumb and pointer finger?",
-            image: "picks_up_small_objects_image",
+            image: "waves_bye_image",
             milestoneMonth: .month12,
             description: "Picking up small objects using the thumb and pointer finger is a sign of developing fine motor skills and hand control, critical for self-feeding and play.",
             category: .physical
@@ -96,7 +96,7 @@ class GrowthMilestonesDataModel {
         GrowthMilestone(
         title: "Imitates Play",
             query: "Does your child copy others during play?",
-            image: "imitates_play_image",
+            image: "waves_bye_image",
             milestoneMonth: .month15,
             description: "At 15 months, children often mimic others' actions during play, like taking toys out of a container. This shows their growing awareness of social interactions and their ability to learn by observing.",
             category: .social
@@ -104,7 +104,7 @@ class GrowthMilestonesDataModel {
         GrowthMilestone(
             title: "Shows Objects",
             query: "Does your child show you objects they like?",
-            image: "shows_objects_image",
+            image: "waves_bye_image",
             milestoneMonth: .month15,
             description: "Your child may begin showing you objects they find interesting, which reflects their desire to share experiences and communicate their preferences, an important step in building social connections.",
             category: .social
@@ -112,7 +112,7 @@ class GrowthMilestonesDataModel {
         GrowthMilestone(
             title: "Claps When Excited",
             query: "Does your child clap when excited?",
-            image: "clapping_image",
+            image: "waves_bye_image",
             milestoneMonth: .month15,
             description: "Clapping when excited is an early sign of emotional expression and social engagement, helping your child connect their feelings to actions.",
             category: .social
@@ -120,7 +120,7 @@ class GrowthMilestonesDataModel {
         GrowthMilestone(
             title: "Hugs a Toy",
             query: "Does your child hug stuffed toys or dolls?",
-            image: "hugs_toy_image",
+            image: "waves_bye_image",
             milestoneMonth: .month15,
             description: "Hugging a stuffed toy reflects your child’s growing ability to express affection and empathy, laying the foundation for meaningful relationships later in life.",
             category: .social
@@ -128,7 +128,7 @@ class GrowthMilestonesDataModel {
         GrowthMilestone(
             title: "Shows Affection",
             query: "Does your child show affection, like hugging or cuddling?",
-            image: "shows_affection_image",
+            image: "waves_bye_image",
             milestoneMonth: .month15,
             description: "Displaying affection through hugs or cuddles is an important milestone in emotional development, showing your child is forming secure bondswith caregivers.",
             category: .social
@@ -138,7 +138,7 @@ class GrowthMilestonesDataModel {
         GrowthMilestone(
             title: "Tries New Words",
             query: "Does your child try to say one or two words besides 'mama' or 'dada'?",
-            image: "tries_words_image",
+            image: "waves_bye_image",
             milestoneMonth: .month15,
             description: "At this stage, your child may try to say simple words like 'ba' for ball. This shows progress in language development and their ability to communicate their needs.",
             category: .language
@@ -146,7 +146,7 @@ class GrowthMilestonesDataModel {
         GrowthMilestone(
             title: "Recognizes Named Objects",
             query: "Does your child look at familiar objects when named?",
-            image: "recognizes_objects_image",
+            image: "waves_bye_image",
             milestoneMonth: .month15,
             description: "Recognizing objects by name demonstrates your child’s growing vocabulary and understanding of language, which are key to effective communication.",
             category: .language
@@ -154,7 +154,7 @@ class GrowthMilestonesDataModel {
         GrowthMilestone(
             title: "Follows Directions with Gestures",
             query: "Does your child follow directions that involve gestures and words?",
-            image: "follows_gestures_image",
+            image: "waves_bye_image",
             milestoneMonth: .month15,
             description: "Following instructions paired with gestures shows your child’s ability to understand and process both verbal and nonverbal cues, an important skill for learning.",
             category: .language
@@ -162,7 +162,7 @@ class GrowthMilestonesDataModel {
         GrowthMilestone(
             title: "Points for Help",
             query: "Does your child point to ask for something or to get help?",
-            image: "points_for_help_image",
+            image: "waves_bye_image",
             milestoneMonth: .month15,
             description: "Pointing to ask for help demonstrates problem-solving and the ability to seek assistance, essential skills for effective communication and independence.",
             category: .language
@@ -172,7 +172,7 @@ class GrowthMilestonesDataModel {
         GrowthMilestone(
             title: "Uses Objects Correctly",
             query: "Does your child try to use things the right way, like a phone, cup, or book?",
-            image: "uses_objects_image",
+            image: "waves_bye_image",
             milestoneMonth: .month15,
             description: "Using objects correctly, like pretending to drink from a cup, reflects your child’s understanding of how things work and their ability to imitate everyday actions.",
             category: .cognitive
@@ -180,7 +180,7 @@ class GrowthMilestonesDataModel {
         GrowthMilestone(
             title: "Stacks Objects",
             query: "Does your child stack at least two small objects, like blocks?",
-            image: "stacks_objects_image",
+            image: "waves_bye_image",
             milestoneMonth: .month15,
             description: "Stacking objects shows developing hand-eye coordination, fine motor skills, and the ability to solve simple problems through experimentation.",
             category: .cognitive
@@ -190,7 +190,7 @@ class GrowthMilestonesDataModel {
         GrowthMilestone(
             title: "Takes Steps Independently",
             query: "Does your child take a few steps on their own?",
-            image: "takes_steps_image",
+            image: "waves_bye_image",
             milestoneMonth: .month15,
             description: "Walking independently is a major physical milestone that indicates strengthening muscles and balance, key to mobility and exploration.",
             category: .physical
@@ -198,7 +198,7 @@ class GrowthMilestonesDataModel {
         GrowthMilestone(
             title: "Feeds with Fingers",
             query: "Does your child use their fingers to feed themselves some food?",
-            image: "feeds_with_fingers_image",
+            image: "waves_bye_image",
             milestoneMonth: .month15,
             description: "Using fingers to self-feed shows your child’s growing independence, fine motor skills, and ability to coordinate movements for practical tasks.",
             category: .physical
@@ -209,7 +209,7 @@ class GrowthMilestonesDataModel {
         GrowthMilestone(
             title: "Explores but Checks for You",
             query: "Does your child move away from you but look back to make sure you’re close by?",
-            image: "explores_checks_image",
+            image: "waves_bye_image",
             milestoneMonth: .month18,
             description: "This milestone shows your child is developing independence while maintaining a sense of security by checking in with you.",
             category: .social
@@ -269,7 +269,7 @@ class GrowthMilestonesDataModel {
         GrowthMilestone(
             title: "Copies Chores",
             query: "Does your child copy you doing chores, like sweeping with a broom?",
-            image: "copies_chores_image",
+            image: "waves_bye_image",
             milestoneMonth: .month18,
             description: "Imitating chores reflects learning through observation and shows your child is beginning to understand daily routines.",
             category: .cognitive
