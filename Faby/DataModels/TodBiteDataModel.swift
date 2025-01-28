@@ -1,5 +1,11 @@
-import UIKit
+//
+//  TodBiteDataModel.swift
+//  Faby
+//
+//  Created by Batch - 2 on 20/01/25.
+//
 
+<<<<<<< HEAD
 enum CategoryType: String, CaseIterable {
     case EarlyBite = "EarlyBite"
     case NourishBite = "NourishBite"
@@ -27,11 +33,21 @@ enum AgeGroup: String, CaseIterable {
 }
 
 struct Item {
+=======
+import Foundation
+struct MealItem {
+>>>>>>> parent of 543d6c6 (TodBite Added)
     let name: String
-    let description: String
-    let image: String
+    let imageName: String // Name of the image in your assets folder
+    let description: String // Example: "Rich in calcium, protein, vitamin D"
+}
+struct MealCategory {
+    let title: String // Example: "EarlyBite"
+    let interval: String // Example: "7:00 AM - 8:00 AM"
+    let items: [MealItem] // Array of MealItem objects
 }
 
+<<<<<<< HEAD
 struct MealSchedule {
     let startDate: Date
     let endDate: Date
@@ -96,3 +112,5 @@ class Todbite {
         return mealSchedule
     }
 }
+=======
+>>>>>>> parent of 543d6c6 (TodBite Added)

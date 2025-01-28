@@ -1,7 +1,15 @@
+//
+//  TodBiteViewController.swift
+//  Faby
+//
+//  Created by Batch - 1 on 13/01/25.
+//
+
 import UIKit
 
-class TodBiteViewController: UIViewController, UITableViewDelegate {
+class TodBiteViewController: UIViewController {
 
+<<<<<<< HEAD
     // MARK: - UI Components
     @IBOutlet weak var segmentedControl: UISegmentedControl! // Connect this in storyboard
     var collectionView: UICollectionView!
@@ -34,8 +42,20 @@ class TodBiteViewController: UIViewController, UITableViewDelegate {
         setupCreatePlanButton()
         setupPlaceholderLabel()
         loadDefaultContent()
-    }
+=======
+    @IBOutlet weak var segmentedControl: UISegmentedControl!
+    @IBOutlet weak var CollectionView: UICollectionView!
+    override func viewDidLoad() {
+        super.viewDidLoad()
 
+        // Do any additional setup after loading the view.
+        let nib = UINib(nibName: "TodBitCollectionViewCell", bundle: nil)
+        CollectionView.register(nib, forCellWithReuseIdentifier: "cell")
+>>>>>>> parent of 543d6c6 (TodBite Added)
+    }
+    
+
+<<<<<<< HEAD
     // MARK: - UI Setup
     private func setupCollectionView() {
         let layout = createCompositionalLayout()
@@ -111,9 +131,13 @@ class TodBiteViewController: UIViewController, UITableViewDelegate {
     }
 
     // MARK: - Actions
+=======
+>>>>>>> parent of 543d6c6 (TodBite Added)
     @IBAction func segmentedControlTapped(_ sender: UISegmentedControl) {
-        switch sender.selectedSegmentIndex {
+        let select = segmentedControl.selectedSegmentIndex
+        switch select{
         case 0:
+<<<<<<< HEAD
             collectionView.isHidden = false
             tableView.isHidden = true
             createPlanButton.isHidden = true
@@ -124,9 +148,20 @@ class TodBiteViewController: UIViewController, UITableViewDelegate {
             tableView.reloadData()
         default:
             break
+=======
+            CollectionView.isHidden = false
+        case 1:
+            CollectionView.isHidden = true
+        default :
+            CollectionView.isHidden = false
+>>>>>>> parent of 543d6c6 (TodBite Added)
         }
+    
+        
     }
+    
 
+<<<<<<< HEAD
     @objc private func createPlanButtonTapped() {
         let createPlanVC = CreatePlanViewController()
         createPlanVC.selectedItems = myBowlItemsDict.flatMap { $0.value }
@@ -361,4 +396,6 @@ extension TodBiteViewController: TodBiteCollectionViewCellDelegate {
             tableView.reloadData()
         }
     }
+=======
+>>>>>>> parent of 543d6c6 (TodBite Added)
 }
