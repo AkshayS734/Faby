@@ -7,7 +7,7 @@ class GrowTrackViewController: UIViewController, MilestonesOverviewDelegate{
     @IBOutlet weak var topSegmentedControl: UISegmentedControl!
     
     @IBAction func showMilestoneOverviewTapped(_ sender: UIBarButtonItem) {
-        print("Button was tapped!")
+//        print("Button was tapped!")
         let milestonesVC = MilestonesOverviewViewController()
         milestonesVC.delegate = self
         navigationController?.pushViewController(milestonesVC, animated: true)
@@ -29,6 +29,17 @@ class GrowTrackViewController: UIViewController, MilestonesOverviewDelegate{
     ]
     private var filteredMilestones: [GrowthMilestone] = []
     
+    private var emptyLabel: UILabel = {
+        let label = UILabel()
+        label.text = "Congratulations! Your child has reached all the milestones here."
+        label.textColor = .darkGray
+        label.font = UIFont.systemFont(ofSize: 16, weight: .medium)
+        label.textAlignment = .center
+        label.numberOfLines = 0
+        label.isHidden = true
+        return label
+    }()
+    
     @IBOutlet weak var bodyMeasurementCollectionView: UICollectionView!
     private let bodyMeasurements = ["Height", "Weight", "Head Circumference"]
     let units = ["cm", "kg", "cm"]
@@ -44,6 +55,16 @@ class GrowTrackViewController: UIViewController, MilestonesOverviewDelegate{
         let button = UIBarButtonItem(image: UIImage(systemName: "clock.arrow.trianglehead.counterclockwise.rotate.90")?.withRenderingMode(.alwaysOriginal), style: .plain, target: self, action: #selector(showMilestoneOverviewTapped))
         self.navigationItem.rightBarButtonItem = button
         navigationItem.rightBarButtonItem = button
+        
+        view.addSubview(emptyLabel)
+
+        emptyLabel.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            emptyLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            emptyLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            emptyLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            emptyLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16)
+        ])
         
         monthButtonCollectionView = ButtonsCollectionView(
             buttonTitles: monthButtonTitles,
@@ -62,7 +83,7 @@ class GrowTrackViewController: UIViewController, MilestonesOverviewDelegate{
             categoryButtonTitles: categoryButtonTitles,
             categoryButtonImages: categoryButtonImages,
             buttonSize: categoryButtonSize,
-            minimumLineSpacing: 7,
+            minimumLineSpacing: 5,
             cornerRadius: 7
         )
         categoryButtonCollectionView.delegate = self
@@ -167,6 +188,8 @@ class GrowTrackViewController: UIViewController, MilestonesOverviewDelegate{
             let isMatchingCategory = milestone.category.rawValue == category.lowercased()
             return isMatchingMonth && isMatchingCategory
         }
+        emptyLabel.isHidden = !filteredMilestones.isEmpty
+        
         milestonesCollectionView.reloadData()
     }
     func milestonesOverviewDidUpdate() {
