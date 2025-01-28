@@ -24,10 +24,9 @@ class TodBiteTableViewCell: UITableViewCell {
         contentView.addSubview(itemImageView)
 
         // Configure nameLabel
-        nameLabel.font = UIFont.systemFont(ofSize: 16)
+        nameLabel.font = UIFont.boldSystemFont(ofSize: 16)
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
         contentView.addSubview(nameLabel)
-        
 
         // Configure descriptionLabel
         descriptionLabel.font = UIFont.systemFont(ofSize: 14)
@@ -53,7 +52,7 @@ class TodBiteTableViewCell: UITableViewCell {
             // nameLabel Constraints
             nameLabel.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 8),
             nameLabel.leadingAnchor.constraint(equalTo: itemImageView.trailingAnchor, constant: 16),
-            nameLabel.trailingAnchor.constraint(equalTo: moreOptionsButton.leadingAnchor, constant: 5),
+            nameLabel.trailingAnchor.constraint(equalTo: moreOptionsButton.leadingAnchor, constant: -8),
 
             // descriptionLabel Constraints
             descriptionLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 4),

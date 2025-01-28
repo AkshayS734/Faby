@@ -168,7 +168,6 @@ class TodBiteViewController: UIViewController, UITableViewDelegate {
             alignment: .top
         )
         section.boundarySupplementaryItems = [header]
-        
 
         return UICollectionViewCompositionalLayout { (sectionIndex, layoutEnvironment) -> NSCollectionLayoutSection? in
             return section
