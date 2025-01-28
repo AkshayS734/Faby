@@ -1,6 +1,18 @@
 import UIKit
 
 class HomeViewController: UIViewController {
+
+    
+    struct Vaccination {
+        let title: String
+        let date: String
+        let location: String
+        var isChecked: Bool
+    }
+    
+    var vaccinationsData: [Vaccination] = []  // Holds vaccination data
+
+    // MARK: - UI Components
     var baby = BabyDataModel.shared.babyList[0]
     private let scrollView: UIScrollView = {
         let scrollView = UIScrollView()
@@ -134,7 +146,7 @@ class HomeViewController: UIViewController {
             contentView.topAnchor.constraint(equalTo: scrollView.topAnchor),
             contentView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
             contentView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
-            contentView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
+            contentView.bottomAnchor.constraint(equalTo: vaccinationsStackView.bottomAnchor, constant: 20), // Fix this line
             contentView.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
 
             // Name Label
@@ -176,6 +188,19 @@ class HomeViewController: UIViewController {
             vaccinationsStackView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -20)
         ])
     }
+    
+    // Update the scroll view's content size after loading content
+    private func updateScrollViewContentSize() {
+        let totalHeight = nameLabel.frame.height +
+                          dateLabel.frame.height +
+                          specialMomentsLabel.frame.height +
+                          specialMomentsCollectionView.frame.height +
+                          todaysBitesLabel.frame.height +
+                          todaysBitesCollectionView.frame.height +
+                          upcomingVaccinationLabel.frame.height +
+                          vaccinationsStackView.frame.height + 20 // Add padding
+        scrollView.contentSize = CGSize(width: view.frame.width, height: totalHeight)
+    }
 
     private func setupDelegates() {
         specialMomentsCollectionView.delegate = self
@@ -185,16 +210,29 @@ class HomeViewController: UIViewController {
     }
 
     private func loadVaccinationData() {
+        // Example: Dynamic data loading (from UserDefaults, network, etc.)
         if let savedData = UserDefaults.standard.array(forKey: "VaccinationSchedules") as? [[String: String]] {
-            for vaccination in savedData {
-                if let title = vaccination["hospital"], let date = vaccination["date"], let location = vaccination["address"] {
-                    addVaccinationCard(title: title, date: date, location: location)
-                }
+            vaccinationsData = savedData.compactMap { vaccination in
+                guard let title = vaccination["hospital"], let date = vaccination["date"], let location = vaccination["address"] else { return nil }
+                return Vaccination(title: title, date: date, location: location, isChecked: false)
             }
+            updateVaccinationUI()
+        }
+    }
+    
+    private func updateVaccinationUI() {
+        // Remove all existing cards first
+        for subview in vaccinationsStackView.arrangedSubviews {
+            subview.removeFromSuperview()
+        }
+
+        // Add new vaccination cards based on the updated data
+        for vaccination in vaccinationsData {
+            addVaccinationCard(vaccination: vaccination)
         }
     }
 
-    private func addVaccinationCard(title: String, date: String, location: String) {
+    private func addVaccinationCard(vaccination: Vaccination) {
         let card = UIView()
         card.backgroundColor = .white
         card.layer.cornerRadius = 10
@@ -204,16 +242,16 @@ class HomeViewController: UIViewController {
         card.translatesAutoresizingMaskIntoConstraints = false
 
         let titleLabel = UILabel()
-        titleLabel.text = title
+        titleLabel.text = vaccination.title
         titleLabel.font = UIFont.boldSystemFont(ofSize: 16)
 
         let dateLabel = UILabel()
-        dateLabel.text = date
+        dateLabel.text = vaccination.date
         dateLabel.font = UIFont.systemFont(ofSize: 14)
         dateLabel.textColor = .gray
 
         let locationLabel = UILabel()
-        locationLabel.text = location
+        locationLabel.text = vaccination.location
         locationLabel.font = UIFont.systemFont(ofSize: 14)
         locationLabel.textColor = .gray
 
@@ -221,6 +259,7 @@ class HomeViewController: UIViewController {
         checkmarkButton.setImage(UIImage(systemName: "circle"), for: .normal)
         checkmarkButton.setImage(UIImage(systemName: "checkmark.circle.fill"), for: .selected)
         checkmarkButton.tintColor = UIColor(hex: "#0076BA") // Custom color
+        checkmarkButton.isSelected = vaccination.isChecked
         checkmarkButton.addTarget(self, action: #selector(didToggleCheckmark(_:)), for: .touchUpInside)
         checkmarkButton.translatesAutoresizingMaskIntoConstraints = false
 
@@ -248,6 +287,10 @@ class HomeViewController: UIViewController {
 
     @objc private func didToggleCheckmark(_ sender: UIButton) {
         sender.isSelected.toggle()
+        
+        if let index = vaccinationsStackView.arrangedSubviews.firstIndex(of: sender.superview!) {
+            vaccinationsData[index].isChecked = sender.isSelected
+        }
     }
 }
 

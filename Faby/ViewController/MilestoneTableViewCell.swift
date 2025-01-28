@@ -1,25 +1,25 @@
 import UIKit
 
 class MilestoneTableViewCell: UITableViewCell {
-    private let milestoneImageView = UIImageView()
+    private var milestoneImageView = UIImageView()
     private let titleLabel = UILabel()
     private let dateLabel = UILabel()
-    
+    var baby: Baby = BabyDataModel.shared.babyList[0]
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
         
-        milestoneImageView.contentMode = .scaleAspectFill
+        milestoneImageView.contentMode = .scaleToFill
         milestoneImageView.layer.cornerRadius = 8
         milestoneImageView.clipsToBounds = true
         
         titleLabel.font = .systemFont(ofSize: 16, weight: .medium)
-        titleLabel.numberOfLines = 1
+        titleLabel.numberOfLines = 0
         
         dateLabel.font = .systemFont(ofSize: 14)
         dateLabel.textColor = .gray
         dateLabel.numberOfLines = 1
         
-        let stackView = UIStackView(arrangedSubviews: [milestoneImageView, titleLabel, dateLabel])
+        let stackView = UIStackView(arrangedSubviews: [milestoneImageView, titleLabel])
         stackView.axis = .horizontal
         stackView.spacing = 10
         stackView.alignment = .center
@@ -27,13 +27,26 @@ class MilestoneTableViewCell: UITableViewCell {
         
         stackView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            stackView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 8),
-            stackView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -8),
-            stackView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-            stackView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+//            stackView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 8),
+//            stackView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -8),
+//            stackView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+//            stackView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
             
             milestoneImageView.widthAnchor.constraint(equalToConstant: 50),
             milestoneImageView.heightAnchor.constraint(equalTo: milestoneImageView.widthAnchor)
+        ])
+        
+        let superStackView = UIStackView(arrangedSubviews: [stackView, dateLabel])
+        superStackView.axis = .horizontal
+        superStackView.distribution = .fillEqually
+        superStackView.spacing = 10
+        contentView.addSubview(superStackView)
+        superStackView.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            superStackView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 8),
+            superStackView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -8),
+            superStackView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            superStackView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16)
         ])
     }
     
@@ -50,11 +63,6 @@ class MilestoneTableViewCell: UITableViewCell {
             dateLabel.text = "Not yet achieved"
         }
         
-        if let userImagePath = milestone.userImagePath,
-           let userImage = UIImage(contentsOfFile: userImagePath) {
-            milestoneImageView.image = userImage
-        } else {
-            milestoneImageView.image = UIImage(named: milestone.image) ?? UIImage(named: "defaultMilestone")
-        }
+        milestoneImageView.image = baby.loadUserImage(for: milestone)!
     }
 }
