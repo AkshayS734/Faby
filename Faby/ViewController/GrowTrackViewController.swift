@@ -164,18 +164,21 @@ class GrowTrackViewController: UIViewController, MilestonesOverviewDelegate{
             milestonesCollectionView.isHidden = false
             bodyMeasurementCollectionView.isHidden = true
             bodyMeasurementCollectionView.reloadData()
+            emptyLabel.isHidden = !filteredMilestones.isEmpty
             case 1:
             monthButtonCollectionView.isHidden = true
             categoryButtonCollectionView.isHidden = true
             milestonesCollectionView.isHidden = true
             bodyMeasurementCollectionView.isHidden = false
             bodyMeasurementCollectionView.reloadData()
+            emptyLabel.isHidden = true
             default:
             monthButtonCollectionView.isHidden = false
             categoryButtonCollectionView.isHidden = false
             milestonesCollectionView.isHidden = false
             bodyMeasurementCollectionView.isHidden = true
             bodyMeasurementCollectionView.reloadData()
+            emptyLabel.isHidden = !filteredMilestones.isEmpty
             
         }
     }
