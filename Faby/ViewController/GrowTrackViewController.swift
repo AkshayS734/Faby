@@ -62,7 +62,7 @@ class GrowTrackViewController: UIViewController, MilestonesOverviewDelegate{
             categoryButtonTitles: categoryButtonTitles,
             categoryButtonImages: categoryButtonImages,
             buttonSize: categoryButtonSize,
-            minimumLineSpacing: 5,
+            minimumLineSpacing: 7,
             cornerRadius: 7
         )
         categoryButtonCollectionView.delegate = self
