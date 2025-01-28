@@ -63,6 +63,7 @@
                         </constraints>
                     </view>
 
+
                     <toolbarItems>
                         <barButtonItem title="Item" id="ANq-QN-UWV"/>
                     </toolbarItems>
@@ -72,6 +73,9 @@
                     <navigationItem key="navigationItem" id="6jO-cy-kd2"/>
 
                     <navigationItem key="navigationItem" title="TodBite" id="6jO-cy-kd2"/>
+
+
+                    <navigationItem key="navigationItem" id="6jO-cy-kd2"/>
 
                     <connections>
                         <outlet property="CollectionView" destination="fQc-a8-Ib0" id="J7w-eF-EZs"/>
@@ -86,6 +90,7 @@
         <scene sceneID="oYS-lA-UmF">
             <objects>
 
+
                 <viewController id="PJx-UQ-aKa" sceneMemberID="viewController">
                     <view key="view" contentMode="scaleToFill" id="XYj-qc-r6G">
                         <rect key="frame" x="0.0" y="0.0" width="393" height="842"/>
@@ -96,6 +101,7 @@
                     <navigationItem key="navigationItem" id="w9f-Gd-AnN"/>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="WYv-OL-LVg" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
+
 
                 <navigationController automaticallyAdjustsScrollViewInsets="NO" id="ubG-24-8Xz" sceneMemberID="viewController">
                     <toolbarItems/>

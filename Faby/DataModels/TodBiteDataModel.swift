@@ -5,7 +5,8 @@
 //  Created by Batch - 2 on 20/01/25.
 //
 
-<<<<<<< HEAD
+import Foundation
+
 enum CategoryType: String, CaseIterable {
     case EarlyBite = "EarlyBite"
     case NourishBite = "NourishBite"
@@ -32,26 +33,22 @@ enum AgeGroup: String {
     case months33to36 = "33-36 months"
 }
 
-struct Item {
-=======
-import Foundation
 struct MealItem {
->>>>>>> parent of 543d6c6 (TodBite Added)
     let name: String
     let imageName: String // Name of the image in your assets folder
     let description: String // Example: "Rich in calcium, protein, vitamin D"
 }
+
 struct MealCategory {
     let title: String // Example: "EarlyBite"
     let interval: String // Example: "7:00 AM - 8:00 AM"
     let items: [MealItem] // Array of MealItem objects
 }
 
-<<<<<<< HEAD
 struct MealSchedule {
     let startDate: Date
     let endDate: Date
-    let meals: [Item]
+    let meals: [MealItem]
 }
 
 class Todbite {
@@ -59,45 +56,41 @@ class Todbite {
 
     private init() {}
 
-    var categories: [CategoryType: [Item]] = [
+    var categories: [CategoryType: [MealItem]] = [
         .EarlyBite: [
-            Item(name: "Dalia with Milk", description: "High in fiber, calcium, and protein.", image: "Dalia with Milk"),
-            Item(name: "Poha with Vegetables", description: "Light, iron-rich, and full of vitamins.", image: "Poha with Vegetables"),
-            Item(name: "Mashed Banana with Milk", description: "Rich in potassium and calcium.", image: "Mashed Banana with Milk"),
-            Item(name: "Poha with Vegetables", description: "Light, iron-rich, and full of vitamins", image: "Poha with Vegetables")
-           
+            MealItem(name: "Dalia with Milk", imageName: "Dalia with Milk", description: "High in fiber, calcium, and protein."),
+            MealItem(name: "Poha with Vegetables", imageName: "Poha with Vegetables", description: "Light, iron-rich, and full of vitamins."),
+            MealItem(name: "Mashed Banana with Milk", imageName: "Mashed Banana with Milk", description: "Rich in potassium and calcium."),
+            MealItem(name: "Poha with Vegetables", imageName: "Poha with Vegetables", description: "Light, iron-rich, and full of vitamins")
         ],
         .NourishBite: [
-            Item(name: "Boiled Green Peas and Potatoes", description: "High in fiber, vitamins, and natural energy.", image: "Boiled Green Peas and Potatoes"),
-            Item(name: "Mashed Lentils with Ghee Rice ", description: "Rich in protein, iron, and healthy fats.", image: "Mashed Lentils with Ghee Rice "),
-            Item(name: "Moong Dal Khichdi with Vegetables", description: "Packed with protein, fiber", image: "Moong Dal Khichdi with Vegetables"),
-            Item(name: "Spinach Dal with Rice", description: "Loaded with iron, calcium, and vitamins", image: "Spinach Dal with Rice")
+            MealItem(name: "Boiled Green Peas and Potatoes", imageName: "Boiled Green Peas and Potatoes", description: "High in fiber, vitamins, and natural energy."),
+            MealItem(name: "Mashed Lentils with Ghee Rice ", imageName: "Mashed Lentils with Ghee Rice ", description: "Rich in protein, iron, and healthy fats."),
+            MealItem(name: "Moong Dal Khichdi with Vegetables", imageName: "Moong Dal Khichdi with Vegetables", description: "Packed with protein, fiber"),
+            MealItem(name: "Spinach Dal with Rice", imageName: "Spinach Dal with Rice", description: "Loaded with iron, calcium, and vitamins")
         ],
         .MidDayBite: [
-            Item(name: "Aloo Gobhi with Roti ", description: "Stuffed flatbread served with fresh curd.", image: "Aloo Gobhi with Roti "),
-            Item(name: "Dal Chawal with Ghee", description: "Provides protein, fiber and fats.", image: "Dal Chawal with Ghee"),
-            Item(name: "Palak Paneer with Rice", description: "High in iron, calcium, and protein.", image: "Palak Paneer with Rice"),
-            Item(name: "Vegetable Pulao", description: "Packed with vitamins, fiber", image: "Vegetable Pulao")
-            
+            MealItem(name: "Aloo Gobhi with Roti ", imageName: "Aloo Gobhi with Roti ", description: "Stuffed flatbread served with fresh curd."),
+            MealItem(name: "Dal Chawal with Ghee", imageName: "Dal Chawal with Ghee", description: "Provides protein, fiber and fats."),
+            MealItem(name: "Palak Paneer with Rice", imageName: "Palak Paneer with Rice", description: "High in iron, calcium, and protein."),
+            MealItem(name: "Vegetable Pulao", imageName: "Vegetable Pulao", description: "Packed with vitamins, fiber")
         ],
         .SnackBite: [
-            Item(name: "Mashed Seasonal Fruits", description: "Packed with vitamins, fiber, and natural sugars", image: "Mashed Seasonal Fruits"),
-            Item(name: "Boiled Sweet Corn ", description: "Rich in fiber, vitamins, and natural energy.", image: "Boiled Sweet Corn "),
-            Item(name: "Dhokla (Steamed) ", description: "High in protein and easy to digest.", image: "Dhokla (Steamed) "),
-            Item(name: "Puffed Rice with Jaggery", description: "Iron-rich snack with natural sweetness.", image: "Puffed Rice with Jaggery"),
-            
+            MealItem(name: "Mashed Seasonal Fruits", imageName: "Mashed Seasonal Fruits", description: "Packed with vitamins, fiber, and natural sugars"),
+            MealItem(name: "Boiled Sweet Corn ", imageName: "Boiled Sweet Corn ", description: "Rich in fiber, vitamins, and natural energy."),
+            MealItem(name: "Dhokla (Steamed) ", imageName: "Dhokla (Steamed) ", description: "High in protein and easy to digest."),
+            MealItem(name: "Puffed Rice with Jaggery", imageName: "Puffed Rice with Jaggery", description: "Iron-rich snack with natural sweetness.")
         ],
         .NightBite: [
-            Item(name: "Gobhi Aloo With Roti", description: "Rich in vitamins, fiber, and energy.", image: "Gobhi Aloo With Roti"),
-            Item(name: "Moong Dal Khichdi with Vegetables", description: "Rich protein, fiber, and essential nutrients", image: "Moong Dal Khichdi with Vegetables"),
-            Item(name: "Spinach Dal with Rice", description: "Loaded with iron, calcium, and vitamins.", image: "Spinach Dal with Rice")
-          
+            MealItem(name: "Gobhi Aloo With Roti", imageName: "Gobhi Aloo With Roti", description: "Rich in vitamins, fiber, and energy."),
+            MealItem(name: "Moong Dal Khichdi with Vegetables", imageName: "Moong Dal Khichdi with Vegetables", description: "Rich protein, fiber, and essential nutrients"),
+            MealItem(name: "Spinach Dal with Rice", imageName: "Spinach Dal with Rice", description: "Loaded with iron, calcium, and vitamins.")
         ]
     ]
     
-    var myBowl: [Item] = []
+    var myBowl: [MealItem] = []
     
-    func getItems(for category: CategoryType, in region: RegionType, for ageGroup: AgeGroup) -> [Item] {
+    func getItems(for category: CategoryType, in region: RegionType, for ageGroup: AgeGroup) -> [MealItem] {
         return categories[category] ?? []
     }
 
@@ -110,11 +103,9 @@ class Todbite {
     ]
 
     // MARK: - New Feature: Add Plan Scheduling
-    func schedulePlan(for items: [Item], startDate: Date, endDate: Date) -> MealSchedule {
+    func schedulePlan(for items: [MealItem], startDate: Date, endDate: Date) -> MealSchedule {
         let mealSchedule = MealSchedule(startDate: startDate, endDate: endDate, meals: items)
         print("Plan scheduled from \(startDate) to \(endDate) with meals: \(items.map { $0.name })")
         return mealSchedule
     }
 }
-=======
->>>>>>> parent of 543d6c6 (TodBite Added)
