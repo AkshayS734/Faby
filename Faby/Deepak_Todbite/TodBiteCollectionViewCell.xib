@@ -31,13 +31,12 @@
                                 <nil key="textColor"/>
                                 <nil key="highlightedColor"/>
                             </label>
-
                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Label" lineBreakMode="tailTruncation" numberOfLines="0" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="a7W-C9-LZq">
                                 <rect key="frame" x="0.0" y="20" width="250" height="42"/>
                                 <constraints>
                                     <constraint firstAttribute="height" constant="42" id="C5c-nk-voN"/>
                                 </constraints>
-                                <fontDescription key="font
+                                <fontDescription key="fontDescription" type="system" pointSize="13"/>
                                 <nil key="textColor"/>
                                 <nil key="highlightedColor"/>
                             </label>
