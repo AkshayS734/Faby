@@ -5,13 +5,13 @@ class GrowTrackViewController: UIViewController, MilestonesOverviewDelegate{
     var baby: Baby! = BabyDataModel.shared.babyList[0]
     
     @IBOutlet weak var topSegmentedControl: UISegmentedControl!
-    
-    @IBAction func showMilestoneOverviewTapped(_ sender: UIBarButtonItem) {
-//        print("Button was tapped!")
-        let milestonesVC = MilestonesOverviewViewController()
-        milestonesVC.delegate = self
-        navigationController?.pushViewController(milestonesVC, animated: true)
-    }
+//    
+//    @IBAction func showMilestoneOverviewTapped(_ sender: UIBarButtonItem) {
+////        print("Button was tapped!")
+//        let milestonesVC = MilestonesOverviewViewController()
+//        milestonesVC.delegate = self
+//        navigationController?.pushViewController(milestonesVC, animated: true)
+//    }
     
     private var monthButtonCollectionView: ButtonsCollectionView!
     private var categoryButtonCollectionView: ButtonsCollectionView!
@@ -52,9 +52,9 @@ class GrowTrackViewController: UIViewController, MilestonesOverviewDelegate{
                 self?.bodyMeasurementCollectionView.reloadData()
             }
         }
-        let button = UIBarButtonItem(image: UIImage(systemName: "clock.arrow.trianglehead.counterclockwise.rotate.90")?.withRenderingMode(.alwaysOriginal), style: .plain, target: self, action: #selector(showMilestoneOverviewTapped))
-        self.navigationItem.rightBarButtonItem = button
-        navigationItem.rightBarButtonItem = button
+//        let button = UIBarButtonItem(image: UIImage(systemName: "clock.arrow.trianglehead.counterclockwise.rotate.90")?.withRenderingMode(.alwaysOriginal), style: .plain, target: self, action: #selector(showMilestoneOverviewTapped))
+//        self.navigationItem.rightBarButtonItem = button
+//        navigationItem.rightBarButtonItem = button
         
         view.addSubview(emptyLabel)
 
