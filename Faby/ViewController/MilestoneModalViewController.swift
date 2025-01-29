@@ -17,15 +17,17 @@ class MilestoneModalViewController: UIViewController {
     private let addImageButton = UIButton(type: .system)
     private let saveButton = UIButton(type: .system)
     private let cancelButton = UIButton(type: .system)
-    
+    var milestone: GrowthMilestone?
     weak var delegate: MilestoneModalViewControllerDelegate?
+    var baby: Baby?
     
     var onSave: ((Date, UIImage?) -> Void)?
     
-    init(category: String, title: String, description: String) {
+    init(category: String, title: String, description: String, milestone: GrowthMilestone) {
         self.category = category
         self.milestoneTitle = title
         self.milestoneDescription = description
+        self.milestone = milestone
         super.init(nibName: nil, bundle: nil)
     }
     
@@ -51,7 +53,7 @@ class MilestoneModalViewController: UIViewController {
         modalTitle.translatesAutoresizingMaskIntoConstraints = false
         
         titleLabel.text = milestoneTitle
-        titleLabel.font = .systemFont(ofSize: 20)
+        titleLabel.font = .systemFont(ofSize: 20) 
         titleLabel.textAlignment = .center
         view.addSubview(titleLabel)
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -60,6 +62,7 @@ class MilestoneModalViewController: UIViewController {
         descriptionLabel.font = .systemFont(ofSize: 16)
         descriptionLabel.numberOfLines = 0
         descriptionLabel.textAlignment = .center
+        descriptionLabel.textColor = .gray
         view.addSubview(descriptionLabel)
         descriptionLabel.translatesAutoresizingMaskIntoConstraints = false
         
@@ -134,7 +137,7 @@ class MilestoneModalViewController: UIViewController {
             cardView.topAnchor.constraint(equalTo: descriptionLabel.bottomAnchor, constant: 40),
             cardView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             cardView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            cardView.heightAnchor.constraint(equalToConstant: 102),
+            cardView.heightAnchor.constraint(equalToConstant: 100),
             
             reachedOnLabel.topAnchor.constraint(equalTo: cardView.topAnchor, constant: 8),
             reachedOnLabel.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 16),
@@ -148,9 +151,11 @@ class MilestoneModalViewController: UIViewController {
             separatorLine.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 16),
             separatorLine.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -16),
             separatorLine.heightAnchor.constraint(equalToConstant: 1),
+            separatorLine.centerYAnchor.constraint(equalTo: cardView.centerYAnchor),
             
             specialMomentLabel.topAnchor.constraint(equalTo: separatorLine.bottomAnchor, constant: 8),
             specialMomentLabel.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 16),
+            specialMomentLabel.bottomAnchor.constraint(equalTo: cardView.bottomAnchor, constant: -8),
             
             addImageButton.topAnchor.constraint(equalTo: separatorLine.bottomAnchor, constant: 8),
             addImageButton.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -16),
@@ -184,7 +189,6 @@ class MilestoneModalViewController: UIViewController {
             }
             alertController.addAction(cameraAction)
         }
-        
         let photoLibraryAction = UIAlertAction(title: "Choose from Library", style: .default) { _ in
             let picker = UIImagePickerController()
             picker.sourceType = .photoLibrary
@@ -192,22 +196,26 @@ class MilestoneModalViewController: UIViewController {
             self.present(picker, animated: true, completion: nil)
         }
         alertController.addAction(photoLibraryAction)
-        
         let cancelAction = UIAlertAction(title: "Cancel", style: .destructive, handler: nil)
         alertController.addAction(cancelAction)
-        
         present(alertController, animated: true, completion: nil)
     }
     
     @objc private func saveTapped() {
-        onSave?(datePicker.date, imageView.image)
+        guard let milestone = milestone else { return }
+        if let image = imageView.image {
+            onSave?(datePicker.date, image)
+        } else {
+            onSave?(datePicker.date, nil)
+        }
+
+        delegate?.milestoneDidReach(milestone)
         dismiss(animated: true, completion: nil)
     }
     
     @objc private func cancelTapped() {
         dismiss(animated: true, completion: nil)
     }
-    
 }
 
 extension MilestoneModalViewController: UIImagePickerControllerDelegate, UINavigationControllerDelegate {

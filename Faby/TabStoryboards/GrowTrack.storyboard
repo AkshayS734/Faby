@@ -5,6 +5,7 @@
         <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="23506"/>
         <capability name="Safe area layout guides" minToolsVersion="9.0"/>
         <capability name="System colors in document resources" minToolsVersion="11.0"/>
+        <capability name="collection view cell content view" minToolsVersion="11.0"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
     <scenes>
@@ -26,24 +27,94 @@
                                     <action selector="segmentedControlSwitched:" destination="Y6W-OH-hqX" eventType="valueChanged" id="TLU-bc-pzh"/>
                                 </connections>
                             </segmentedControl>
+                            <collectionView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" dataMode="prototypes" translatesAutoresizingMaskIntoConstraints="NO" id="yDL-jR-bTF">
+                                <rect key="frame" x="16" y="226" width="361" height="543"/>
+                                <color key="backgroundColor" systemColor="systemGray6Color"/>
+                                <collectionViewFlowLayout key="collectionViewLayout" automaticEstimatedItemSize="YES" minimumLineSpacing="10" minimumInteritemSpacing="10" id="bIi-CY-1wF">
+                                    <size key="itemSize" width="128" height="128"/>
+                                    <size key="headerReferenceSize" width="0.0" height="0.0"/>
+                                    <size key="footerReferenceSize" width="0.0" height="0.0"/>
+                                    <inset key="sectionInset" minX="0.0" minY="0.0" maxX="0.0" maxY="0.0"/>
+                                </collectionViewFlowLayout>
+                                <cells>
+                                    <collectionViewCell opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center" id="ADG-zG-8zc">
+                                        <rect key="frame" x="0.0" y="0.0" width="128" height="128"/>
+                                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                        <collectionViewCellContentView key="contentView" opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center" insetsLayoutMarginsFromSafeArea="NO" id="ErT-ku-ddA">
+                                            <rect key="frame" x="0.0" y="0.0" width="128" height="128"/>
+                                            <autoresizingMask key="autoresizingMask"/>
+                                        </collectionViewCellContentView>
+                                        <connections>
+                                            <segue destination="QcD-le-w5v" kind="show" identifier="showMeasurementDetail" id="ZJr-gN-U3S"/>
+                                        </connections>
+                                    </collectionViewCell>
+                                </cells>
+                            </collectionView>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="vDu-zF-Fre"/>
                         <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                         <constraints>
+                            <constraint firstItem="yDL-jR-bTF" firstAttribute="top" secondItem="u9M-sU-hb4" secondAttribute="bottom" constant="20" id="00N-c9-vxc"/>
+                            <constraint firstItem="yDL-jR-bTF" firstAttribute="leading" secondItem="vDu-zF-Fre" secondAttribute="leading" constant="16" id="Dca-Rj-ExF"/>
                             <constraint firstItem="vDu-zF-Fre" firstAttribute="trailing" secondItem="u9M-sU-hb4" secondAttribute="trailing" constant="16" id="MVc-MS-pdV"/>
+                            <constraint firstItem="vDu-zF-Fre" firstAttribute="bottom" secondItem="yDL-jR-bTF" secondAttribute="bottom" id="UyL-ey-gNb"/>
                             <constraint firstItem="u9M-sU-hb4" firstAttribute="leading" secondItem="vDu-zF-Fre" secondAttribute="leading" constant="16" id="srr-53-bPg"/>
                             <constraint firstItem="u9M-sU-hb4" firstAttribute="top" secondItem="vDu-zF-Fre" secondAttribute="top" constant="20" id="wio-BX-9VL"/>
+                            <constraint firstItem="vDu-zF-Fre" firstAttribute="trailing" secondItem="yDL-jR-bTF" secondAttribute="trailing" constant="16" id="xeG-1H-Fq5"/>
                         </constraints>
                     </view>
-                    <navigationItem key="navigationItem" title="GrowTrack" id="zmZ-sQ-EVr"/>
+                    <navigationItem key="navigationItem" title="GrowTrack" largeTitleDisplayMode="always" id="zmZ-sQ-EVr"/>
                     <simulatedTabBarMetrics key="simulatedBottomBarMetrics"/>
                     <connections>
+                        <outlet property="bodyMeasurementCollectionView" destination="yDL-jR-bTF" id="mx3-tA-6Ff"/>
                         <outlet property="topSegmentedControl" destination="u9M-sU-hb4" id="kTg-Ao-rd6"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="Ief-a0-LHa" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
             </objects>
             <point key="canvasLocation" x="1064.885496183206" y="-2.1126760563380285"/>
+        </scene>
+        <!--Measurement Details View Controller-->
+        <scene sceneID="HCe-Q9-Ymd">
+            <objects>
+                <viewController id="QcD-le-w5v" customClass="MeasurementDetailsViewController" customModule="Faby" customModuleProvider="target" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="EBu-h2-Oyu">
+                        <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <subviews>
+                            <segmentedControl opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="left" contentVerticalAlignment="top" segmentControlStyle="plain" selectedSegmentIndex="0" translatesAutoresizingMaskIntoConstraints="NO" id="6mZ-XZ-7nq">
+                                <rect key="frame" x="16" y="119" width="361" height="32"/>
+                                <segments>
+                                    <segment title="First"/>
+                                    <segment title="Second"/>
+                                </segments>
+                                <connections>
+                                    <action selector="timeSpanChanged:" destination="QcD-le-w5v" eventType="valueChanged" id="Vce-dR-Z1p"/>
+                                </connections>
+                            </segmentedControl>
+                        </subviews>
+                        <viewLayoutGuide key="safeArea" id="1Yt-oc-edc"/>
+                        <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                        <constraints>
+                            <constraint firstItem="6mZ-XZ-7nq" firstAttribute="leading" secondItem="1Yt-oc-edc" secondAttribute="leading" constant="16" id="Cpd-fx-GtE"/>
+                            <constraint firstItem="1Yt-oc-edc" firstAttribute="trailing" secondItem="6mZ-XZ-7nq" secondAttribute="trailing" constant="16" id="MJ2-zn-R25"/>
+                            <constraint firstItem="6mZ-XZ-7nq" firstAttribute="top" secondItem="1Yt-oc-edc" secondAttribute="top" constant="16" id="QMw-fV-7zg"/>
+                        </constraints>
+                    </view>
+                    <navigationItem key="navigationItem" largeTitleDisplayMode="never" id="U2k-HR-C8r">
+                        <barButtonItem key="rightBarButtonItem" title="Add data" style="plain" id="bAM-dm-qGH">
+                            <connections>
+                                <action selector="addButtonTapped:" destination="QcD-le-w5v" id="7Mn-7Y-wkF"/>
+                            </connections>
+                        </barButtonItem>
+                    </navigationItem>
+                    <connections>
+                        <outlet property="timeSpanSegmentedControl" destination="6mZ-XZ-7nq" id="vf6-wS-T7v"/>
+                    </connections>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="iyR-o2-XQr" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="1799" y="-2"/>
         </scene>
         <!--GrowTrack-->
         <scene sceneID="bic-aL-8O4">
@@ -69,6 +140,9 @@
         <image name="chart.line.uptrend.xyaxis" catalog="system" width="128" height="102"/>
         <systemColor name="systemBackgroundColor">
             <color white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+        </systemColor>
+        <systemColor name="systemGray6Color">
+            <color red="0.94901960780000005" green="0.94901960780000005" blue="0.96862745100000003" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
         </systemColor>
     </resources>
 </document>

@@ -6,19 +6,23 @@ protocol ButtonsCollectionViewDelegate: AnyObject {
 
 class ButtonsCollectionView: UIView, UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     
-    private var collectionView : UICollectionView!
-    private var buttonTitles : [String]
+    private var collectionView: UICollectionView!
+    private var buttonTitles: [String]
     private var buttonSize: CGSize
     private var minimumLineSpacing: CGFloat
     private var cornerRadius: CGFloat
     var selectedIndex: Int?
     var selectedCell: ButtonCollectionViewCell?
     private var defaultSelectedIndex: Int
+    var categoryButtonTitles: [String]
+    var categoryButtonImages: [UIImage]
     
     weak var delegate: ButtonsCollectionViewDelegate?
     
-    init(buttonTitles: [String], buttonSize: CGSize, minimumLineSpacing: CGFloat, cornerRadius: CGFloat, defaultSelectedIndex: Int = 0) {
+    init(buttonTitles: [String], categoryButtonTitles: [String], categoryButtonImages: [UIImage], buttonSize: CGSize, minimumLineSpacing: CGFloat, cornerRadius: CGFloat, defaultSelectedIndex: Int = 0) {
         self.buttonTitles = buttonTitles
+        self.categoryButtonTitles = categoryButtonTitles
+        self.categoryButtonImages = categoryButtonImages
         self.buttonSize = buttonSize
         self.minimumLineSpacing = minimumLineSpacing
         self.cornerRadius = cornerRadius
@@ -41,7 +45,6 @@ class ButtonsCollectionView: UIView, UICollectionViewDelegate, UICollectionViewD
         collectionView.showsHorizontalScrollIndicator = false
         collectionView.register(ButtonCollectionViewCell.self, forCellWithReuseIdentifier: ButtonCollectionViewCell.identifier)
         
-        
         collectionView.dataSource = self
         collectionView.delegate = self
         collectionView.isUserInteractionEnabled = true
@@ -56,6 +59,7 @@ class ButtonsCollectionView: UIView, UICollectionViewDelegate, UICollectionViewD
             collectionView.trailingAnchor.constraint(equalTo: trailingAnchor),
             collectionView.bottomAnchor.constraint(equalTo: bottomAnchor)
         ])
+        
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
             if let defaultIndex = self.selectedIndex {
@@ -69,23 +73,31 @@ class ButtonsCollectionView: UIView, UICollectionViewDelegate, UICollectionViewD
         }
     }
     
-    
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        buttonTitles.count
+        return buttonTitles.count
     }
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: ButtonCollectionViewCell.identifier, for: indexPath) as! ButtonCollectionViewCell
         let title = buttonTitles[indexPath.row]
-        cell.configure(with: title)
+        
+        if categoryButtonTitles.contains(title) {
+            if let imageIndex = categoryButtonTitles.firstIndex(of: title) {
+                let image = categoryButtonImages[imageIndex]
+                cell.configureCategoryButton(with: title, image: image)
+            }
+        } else {
+            cell.configureMonthButton(with: title)
+        }
+        
         return cell
     }
     
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
         return buttonSize
     }
+    
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        //        print("Button tapped at index: \(indexPath.row)")
         if let newSelectedCell = collectionView.cellForItem(at: indexPath) as? ButtonCollectionViewCell {
             selectedCell?.isSelected = false
             newSelectedCell.isSelected = true
@@ -98,14 +110,11 @@ class ButtonsCollectionView: UIView, UICollectionViewDelegate, UICollectionViewD
     func selectButton(at index: Int) {
         guard index >= 0 && index < buttonTitles.count else { return }
         selectedIndex = index
-        if let defaultIndexPath = IndexPath(item: index, section: 0) as? IndexPath {
-            collectionView.selectItem(at: defaultIndexPath, animated: false, scrollPosition: .centeredHorizontally)
-            if let defaultCell = collectionView.cellForItem(at: defaultIndexPath) as? ButtonCollectionViewCell {
-                defaultCell.isSelected = true
-                selectedCell = defaultCell
-            }
+        let defaultIndexPath = IndexPath(item: index, section: 0)
+        collectionView.selectItem(at: defaultIndexPath, animated: false, scrollPosition: .centeredHorizontally)
+        if let defaultCell = collectionView.cellForItem(at: defaultIndexPath) as? ButtonCollectionViewCell {
+            defaultCell.isSelected = true
+            selectedCell = defaultCell
         }
     }
-    
 }
-
