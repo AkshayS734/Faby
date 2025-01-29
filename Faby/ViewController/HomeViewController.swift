@@ -25,7 +25,7 @@ class HomeViewController: UIViewController {
     private let nameLabel: UILabel = {
         let label = UILabel()
         label.text = "Name"
-        label.font = UIFont.boldSystemFont(ofSize: 30)
+        label.font = UIFont.boldSystemFont(ofSize: 34)
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
     }()
@@ -86,7 +86,13 @@ class HomeViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemGray6
-        
+        navigationController?.navigationBar.prefersLargeTitles = false
+        navigationItem.rightBarButtonItem = UIBarButtonItem(
+            image: UIImage(systemName: "gear"),
+            style: .plain,
+            target: self,
+            action: #selector(goToSettings)
+        )
         NotificationCenter.default.addObserver(self, selector: #selector(updateSpecialMoments), name: .milestonesAchievedUpdated, object: nil)
         setupUI()
         setupDelegates()
@@ -95,7 +101,10 @@ class HomeViewController: UIViewController {
         updateDateLabel()
         embedSpecialMomentsViewController()
     }
-    
+    @objc func goToSettings() {
+        let settingsVC = SettingsViewController()
+        navigationController?.pushViewController(settingsVC, animated: true)
+    }
     @objc func updateSpecialMoments() {
         embedSpecialMomentsViewController()
     }
@@ -124,8 +133,8 @@ class HomeViewController: UIViewController {
             contentView.bottomAnchor.constraint(equalTo: vaccinationsStackView.bottomAnchor, constant: 20),
             contentView.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
 
-            nameLabel.topAnchor.constraint(equalTo: contentView.safeAreaLayoutGuide.topAnchor, constant: 20),
-            nameLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
+            nameLabel.topAnchor.constraint(equalTo: contentView.safeAreaLayoutGuide.topAnchor),
+            nameLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
 
             dateLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 5),
             dateLabel.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
