@@ -18,6 +18,16 @@ class SpecialMomentsViewController: UIViewController {
         collectionView.register(UINib(nibName: "SpecialMomentsCollectionViewCell", bundle: nil), forCellWithReuseIdentifier: "SpecialMomentsCollectionViewCell")
         return collectionView
     }()
+    
+    private let emptyLabel: UILabel = {
+        let label = UILabel()
+        label.text = "No Special Moments added yet"
+        label.textColor = .darkGray
+        label.font = UIFont.systemFont(ofSize: 16)
+        label.textAlignment = .center
+        label.translatesAutoresizingMaskIntoConstraints = false
+        return label
+    }()
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -42,7 +52,11 @@ class SpecialMomentsViewController: UIViewController {
             guard let imagePath = milestone.userImagePath else { return false }
             return !imagePath.isEmpty
         }
-
+        if milestones.isEmpty {
+            emptyLabel.isHidden = false
+        } else {
+            emptyLabel.isHidden = true
+        }
         collectionView.reloadData()
     }
 }
