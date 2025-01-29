@@ -31,7 +31,7 @@ class GrowTrackViewController: UIViewController, MilestonesOverviewDelegate{
     
     private var emptyLabel: UILabel = {
         let label = UILabel()
-        label.text = "Congratulations! Your child has reached all the milestones here."
+        label.text = "Congratulations! Your child has reached all the milestones in this section."
         label.textColor = .darkGray
         label.font = UIFont.systemFont(ofSize: 16, weight: .medium)
         label.textAlignment = .center
