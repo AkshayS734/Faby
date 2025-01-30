@@ -18,7 +18,6 @@
                         <viewLayoutGuide key="safeArea" id="vDu-zF-Fre"/>
                         <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                     </view>
-                    <tabBarItem key="tabBarItem" title="Item" selectedImage="syringe.fill" catalog="system" id="O3T-ek-QXo"/>
                     <navigationItem key="navigationItem" title="VacciTime" id="Pyj-oc-eqW">
                         <rightBarButtonItems>
                             <barButtonItem title="Item" image="gearshape" catalog="system" id="4vI-hj-23A">
@@ -60,7 +59,7 @@
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
                             <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="01q-YN-NOj">
-                                <rect key="frame" x="16" y="752" width="361" height="50"/>
+                                <rect key="frame" x="16" y="703" width="361" height="50"/>
                                 <constraints>
                                     <constraint firstAttribute="height" constant="50" id="rg3-Ei-iYX"/>
                                 </constraints>
@@ -76,7 +75,9 @@
                             <constraint firstItem="SIE-Jd-W4U" firstAttribute="bottom" secondItem="01q-YN-NOj" secondAttribute="bottom" constant="16" id="yDC-8K-Mxa"/>
                         </constraints>
                     </view>
+                    <tabBarItem key="tabBarItem" title="VacciTime" image="syringe" catalog="system" selectedImage="syringe.fill" id="Tmd-j7-DwT"/>
                     <navigationItem key="navigationItem" title="VacciTime" id="ZBA-Y9-wB5"/>
+                    <simulatedTabBarMetrics key="simulatedBottomBarMetrics"/>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="q6D-XM-VRT" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
             </objects>
@@ -104,6 +105,7 @@
     <resources>
         <image name="bell.badge.fill" catalog="system" width="117" height="128"/>
         <image name="gearshape" catalog="system" width="128" height="123"/>
+        <image name="syringe" catalog="system" width="128" height="115"/>
         <image name="syringe.fill" catalog="system" width="128" height="115"/>
         <systemColor name="systemBackgroundColor">
             <color white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
