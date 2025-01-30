@@ -1,6 +1,6 @@
 import UIKit
 
-// MARK: - Enums for Category, Region, and Age Group
+
 enum CategoryType: String, CaseIterable {
     case EarlyBite = "EarlyBite"
     case NourishBite = "NourishBite"

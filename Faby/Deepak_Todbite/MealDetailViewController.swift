@@ -54,7 +54,7 @@ class MealDetailViewController: UIViewController, UITableViewDataSource, UITable
         tableView.delegate = self
         tableView.rowHeight = UITableView.automaticDimension
         tableView.estimatedRowHeight = 80
-        tableView.tableFooterView = UIView() // Removes extra separators
+        tableView.tableFooterView = UIView()
         tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor)
         tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor)
         tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
@@ -107,7 +107,7 @@ class MealDetailViewController: UIViewController, UITableViewDataSource, UITable
         let item = sectionItems[indexPath.row]
         cell.configure(with: item)
         
-        // Set the delegate
+    
         cell.delegate = self
 
         return cell
@@ -123,7 +123,7 @@ class MealDetailViewController: UIViewController, UITableViewDataSource, UITable
     // MARK: - SectionItemTableViewCellDelegate
     extension MealDetailViewController: SectionItemTableViewCellDelegate {
         func didTapAddButton(for item: Item) {
-            print("Adding item: \(item.name)") // Debugging print statement
+            print("Adding item: \(item.name)")
             guard let category = Todbite.shared.categories.first(where: { $0.value.contains(where: { $0.name == item.name }) })?.key else {
                 print("Category not found for item: \(item.name)")
                 return
@@ -135,11 +135,9 @@ class MealDetailViewController: UIViewController, UITableViewDataSource, UITable
                 }
                 todBiteVC.myBowlItemsDict[category]?.append(item)
                 todBiteVC.showToast(message: "\"\(item.name)\" added to MyBowl!")
-                
-                // Show pop-up alert
+              
                 showAlert(for: item.name)
-                
-                // Debug reload logic
+               
                 print("MyBowl updated: \(todBiteVC.myBowlItemsDict)")
                 
                 if todBiteVC.segmentedControl.selectedSegmentIndex == 1 {

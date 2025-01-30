@@ -40,19 +40,19 @@ class CreatePlanViewController: UIViewController, UITableViewDelegate, UITableVi
     }()
     
     // MARK: - Properties
-    var selectedItemsDict: [CategoryType: [Item]] = [:]  // Stores MyBowl selected items
+    var selectedItemsDict: [CategoryType: [Item]] = [:]  // Storing MyBowl selected items
     var selectedFromDate: Date?
     var selectedToDate: Date?
-    private var expandedSections: Set<CategoryType> = [] // Tracks expanded sections
+    private var expandedSections: Set<CategoryType> = [] // Tracking expanded sections
 
-    weak var delegate: HomeViewController? // 🔥 Add delegate for data passing
+    weak var delegate: HomeViewController? // 🔥  delegate ko add kre hai for data passing
 
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .white
         setupUI()
-        print("✅ MyBowl Items Received: \(selectedItemsDict)") // Debugging
+        print("✅ MyBowl Items Received: \(selectedItemsDict)") 
     }
 
     // MARK: - Setup UI
@@ -88,15 +88,15 @@ class CreatePlanViewController: UIViewController, UITableViewDelegate, UITableVi
             submitButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20)
         ])
 
-        submitButton.addTarget(self, action: #selector(submitPlan), for: .touchUpInside)
+//        submitButton.addTarget(self, action: #selector(submitPlan), for: .touchUpInside)
     }
     
-    // MARK: - Submit Plan
-    @objc private func submitPlan() {
-        delegate?.myBowlItemsDict = selectedItemsDict
-        delegate?.updateTodaysBitesData()
-        navigationController?.popViewController(animated: true)
-    }
+   
+//    @objc private func submitPlan() {
+//        delegate?.myBowlItemsDict = selectedItemsDict
+//        delegate?.updateTodaysBitesData()
+//        navigationController?.popViewController(animated: true)
+//    }
 
     // MARK: - SectionExpandableDelegate
     func didTapExpandCollapse(for section: Int) {

@@ -8,7 +8,7 @@ protocol SectionExpandableDelegate: AnyObject {
 class IntervalTableViewCell: UITableViewCell {
     
     weak var delegate: SectionExpandableDelegate?
-    private var sectionIndex: Int = 0  // Track section index
+    private var sectionIndex: Int = 0  
 
     private let sectionLabel: UILabel = {
         let label = UILabel()

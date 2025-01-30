@@ -3,7 +3,7 @@ import UIKit
 class TodBiteViewController: UIViewController, UITableViewDelegate {
 
     // MARK: - UI Components
-    @IBOutlet weak var segmentedControl: UISegmentedControl! // Connect this in storyboard
+    @IBOutlet weak var segmentedControl: UISegmentedControl!
     var collectionView: UICollectionView!
     var tableView: UITableView!
     private let placeholderLabel: UILabel = {
@@ -12,7 +12,7 @@ class TodBiteViewController: UIViewController, UITableViewDelegate {
         label.textAlignment = .center
         label.textColor = .lightGray
         label.numberOfLines = 0
-        label.isHidden = true // Initially hidden
+        label.isHidden = true
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
     }()
@@ -23,7 +23,7 @@ class TodBiteViewController: UIViewController, UITableViewDelegate {
     var selectedRegion: RegionType = .East
     var selectedAgeGroup: AgeGroup = .months12to15
 
-    // Items for MyBowl grouped by category
+    // ye items ke liye hai yaha pe
     var myBowlItemsDict: [CategoryType: [Item]] = [:]
 
     // MARK: - Lifecycle Methods
@@ -76,7 +76,6 @@ class TodBiteViewController: UIViewController, UITableViewDelegate {
     @objc private func createPlanButtonTapped() {
         let createPlanVC = CreatePlanViewController()
         
-        // ✅ Directly pass myBowlItemsDict instead of converting to Strings
         createPlanVC.selectedItemsDict = myBowlItemsDict
         print("✅ MyBowl Data Before Passing:", myBowlItemsDict)
 
@@ -102,7 +101,7 @@ class TodBiteViewController: UIViewController, UITableViewDelegate {
             createPlanButton.heightAnchor.constraint(equalToConstant: 50)
         ])
 
-        createPlanButton.isHidden = true // Initially hidden
+        createPlanButton.isHidden = true
     }
 
     private func setupPlaceholderLabel() {
@@ -140,7 +139,7 @@ class TodBiteViewController: UIViewController, UITableViewDelegate {
 
 //    @objc private func createPlanButtonTapped() {
 //        let createPlanVC = CreatePlanViewController()
-//        // Map items to their names
+//        // Map items to their names yaha ham items ko unke name ke sath map kr rhe hai
 //        createPlanVC.selectedItems = myBowlItemsDict.flatMap { $0.value }.map { $0.name }
 //        navigationController?.pushViewController(createPlanVC, animated: true)
 //    }
@@ -287,10 +286,23 @@ extension TodBiteViewController: UICollectionViewDataSource {
         }
 
         let sectionName = CategoryType.allCases[indexPath.section].rawValue
-        let intervalText = "\(7 + indexPath.section):30 AM - \(8 + indexPath.section):00 AM"
-        headerView.configure(with: sectionName, interval: intervalText)
+
+        let timeIntervals = [
+            "7:30 AM - 8:00 AM",
+            "10:00 AM - 10:30 AM",
+            "12:30 PM - 1:00 PM",
+            "3:30 PM - 4:00 PM",
+            "6:30 PM - 7:00 PM"
+        ]
+
+        let intervalText = indexPath.section < timeIntervals.count ? timeIntervals[indexPath.section] : "Other"
+
+        // ✅ Now this will work because `configure` accepts `textColor`
+//        headerView.configure(with: sectionName, interval: intervalText, textColor: UIColor.systemGray6)
+
         return headerView
     }
+
 }
 
 // MARK: - UICollectionViewDelegate

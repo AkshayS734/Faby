@@ -103,12 +103,12 @@ class TodBiteCollectionViewCell: UICollectionViewCell {
         self.currentItem = item
         self.currentCategory = category
 
-        // Update UI with item details
+       
         foodNameLabel.text = item.name
         nutritionLabel.text = item.description
         myImageView.image = UIImage(named: item.image)
 
-        // Update button state (Plus or Tick)
+       
         let buttonImage = isAdded ? "checkmark.circle.fill" : "plus.square.fill"
         addButton.setImage(UIImage(systemName: buttonImage), for: .normal)
         addButton.tintColor = isAdded ? .systemGreen : .white
