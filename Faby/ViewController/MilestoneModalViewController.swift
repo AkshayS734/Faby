@@ -113,6 +113,7 @@ class MilestoneModalViewController: UIViewController {
         imageView.translatesAutoresizingMaskIntoConstraints = false
         
         saveButton.setTitle("Save", for: .normal)
+        saveButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: saveButton.titleLabel?.font.pointSize ?? 17)
         saveButton.addTarget(self, action: #selector(saveTapped), for: .touchUpInside)
         view.addSubview(saveButton)
         saveButton.translatesAutoresizingMaskIntoConstraints = false
