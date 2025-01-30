@@ -9,7 +9,7 @@ import UIKit
 
 // Define the delegate protocol
 protocol PostViewDelegate: AnyObject {
-    func didPostComment(_ comment: Comment)
+    func didPostComment(_ comment: Post)
 }
 
 class PostViewController: UIViewController, UITextViewDelegate {
@@ -50,7 +50,7 @@ class PostViewController: UIViewController, UITextViewDelegate {
         }
         
         // Create a new Comment object
-        let newComment = Comment(username: "VIVEK CHAUDHARY", title: title, text: text, likes: 0, replies: [])
+        let newComment = Post(username: "VIVEK CHAUDHARY", title: title, text: text, likes: 0, replies: [])
         
         // Call the delegate method
         delegate?.didPostComment(newComment)

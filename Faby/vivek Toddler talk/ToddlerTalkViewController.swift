@@ -9,7 +9,7 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
     var filteredCardData: [Card] = []
     
     // Add a property to hold the comment data
-    var comments: [Comment] = []
+    var comments: [Post] = []
     
     override func viewDidLoad() {
         super.viewDidLoad()
