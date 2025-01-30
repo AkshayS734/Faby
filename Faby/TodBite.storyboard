@@ -17,7 +17,7 @@
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
                             <segmentedControl opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="left" contentVerticalAlignment="top" segmentControlStyle="plain" selectedSegmentIndex="0" translatesAutoresizingMaskIntoConstraints="NO" id="7ld-g7-PtP">
-                                <rect key="frame" x="0.0" y="103" width="393" height="32"/>
+                                <rect key="frame" x="16" y="171" width="361" height="32"/>
                                 <segments>
                                     <segment title="Recommended Meal"/>
                                     <segment title="My Bowl"/>
@@ -30,10 +30,9 @@
                         <viewLayoutGuide key="safeArea" id="vDu-zF-Fre"/>
                         <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                         <constraints>
-                            <constraint firstItem="vDu-zF-Fre" firstAttribute="trailing" secondItem="7ld-g7-PtP" secondAttribute="trailing" id="1ay-VU-1Me"/>
-                            <constraint firstItem="7ld-g7-PtP" firstAttribute="leading" secondItem="vDu-zF-Fre" secondAttribute="leading" id="3WO-SU-jl3"/>
-                            <constraint firstItem="vDu-zF-Fre" firstAttribute="bottom" secondItem="7ld-g7-PtP" secondAttribute="bottom" constant="635" id="RGa-WD-RfJ"/>
-                            <constraint firstItem="7ld-g7-PtP" firstAttribute="top" secondItem="vDu-zF-Fre" secondAttribute="top" id="fuQ-ay-zkQ"/>
+                            <constraint firstItem="vDu-zF-Fre" firstAttribute="trailing" secondItem="7ld-g7-PtP" secondAttribute="trailing" constant="16" id="1ay-VU-1Me"/>
+                            <constraint firstItem="7ld-g7-PtP" firstAttribute="leading" secondItem="vDu-zF-Fre" secondAttribute="leading" constant="16" id="3WO-SU-jl3"/>
+                            <constraint firstItem="7ld-g7-PtP" firstAttribute="top" secondItem="vDu-zF-Fre" secondAttribute="top" constant="16" id="fuQ-ay-zkQ"/>
                         </constraints>
                     </view>
                     <navigationItem key="navigationItem" title="TodBite" id="nZC-Va-gvq"/>
@@ -52,8 +51,8 @@
                 <navigationController automaticallyAdjustsScrollViewInsets="NO" id="8bJ-w1-Qto" sceneMemberID="viewController">
                     <tabBarItem key="tabBarItem" title="TodBite" image="carrot" catalog="system" selectedImage="carrot.fill" id="jzx-zy-fmO"/>
                     <toolbarItems/>
-                    <navigationBar key="navigationBar" contentMode="scaleToFill" id="fzv-Gq-6pk">
-                        <rect key="frame" x="0.0" y="59" width="393" height="44"/>
+                    <navigationBar key="navigationBar" contentMode="scaleToFill" largeTitles="YES" id="fzv-Gq-6pk">
+                        <rect key="frame" x="0.0" y="59" width="393" height="96"/>
                         <autoresizingMask key="autoresizingMask"/>
                     </navigationBar>
                     <nil name="viewControllers"/>
