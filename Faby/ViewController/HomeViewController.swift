@@ -6,15 +6,22 @@ struct Vaccination {
     let location: String
     var isChecked: Bool
 }
+struct TodayBite {
+    let title: String
+    let time: String
+    let imageName: String
+}
 
 class HomeViewController: UIViewController {
     
     var vaccinationsData: [Vaccination] = []
     var baby = BabyDataModel.shared.babyList[0]
-
+    
     private let scrollView: UIScrollView = {
         let scrollView = UIScrollView()
         scrollView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.showsVerticalScrollIndicator = false
+        scrollView.showsVerticalScrollIndicator = false
         return scrollView
     }()
     private let contentView: UIView = {
@@ -63,6 +70,7 @@ class HomeViewController: UIViewController {
         layout.minimumLineSpacing = 10
         let collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
         collectionView.translatesAutoresizingMaskIntoConstraints = false
+        collectionView.backgroundColor = .systemGray6
         collectionView.showsHorizontalScrollIndicator = false
         return collectionView
     }()
@@ -81,7 +89,15 @@ class HomeViewController: UIViewController {
         return stackView
     }()
     
-    var todaysBitesData: [String] = []
+    
+    var todaysBitesData: [TodayBite] = [
+        TodayBite(title: "Early Bite", time: "7:30 AM - 8:00 AM", imageName: "Mashed Banana with Milk"),
+        TodayBite(title: "Nourish Bite", time: "10:00 AM - 10:30 AM", imageName: "Poha with Vegetables"),
+        TodayBite(title: "Midday Bite", time: "1:00 PM - 1:30 AM", imageName: "Spinach Dal with Rice"),
+        TodayBite(title: "Snack Bite", time: "4:00 PM - 4:30 PM", imageName: "Vegetable Pulao"),
+        TodayBite(title: "Night Bite", time: "7:30 PM - 8:00 PM", imageName: "Gobhi Aloo With Roti")
+    ]
+    
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -94,6 +110,8 @@ class HomeViewController: UIViewController {
             action: #selector(goToSettings)
         )
         NotificationCenter.default.addObserver(self, selector: #selector(updateSpecialMoments), name: .milestonesAchievedUpdated, object: nil)
+        todaysBitesCollectionView.register(UINib(nibName: "TodayBiteCollectionViewCell", bundle: nil), forCellWithReuseIdentifier: "BitesCell")
+        
         setupUI()
         setupDelegates()
         loadVaccinationData()
@@ -111,7 +129,7 @@ class HomeViewController: UIViewController {
     private func setupUI() {
         view.addSubview(scrollView)
         scrollView.addSubview(contentView)
-
+        
         contentView.addSubview(nameLabel)
         contentView.addSubview(dateLabel)
         contentView.addSubview(specialMomentsLabel)
@@ -120,47 +138,47 @@ class HomeViewController: UIViewController {
         contentView.addSubview(todaysBitesCollectionView)
         contentView.addSubview(upcomingVaccinationLabel)
         contentView.addSubview(vaccinationsStackView)
-
+        
         NSLayoutConstraint.activate([
             scrollView.topAnchor.constraint(equalTo: view.topAnchor),
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-
+            
             contentView.topAnchor.constraint(equalTo: scrollView.topAnchor),
             contentView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
             contentView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
-            contentView.bottomAnchor.constraint(equalTo: vaccinationsStackView.bottomAnchor, constant: 20),
+            contentView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
             contentView.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
-
+            
             nameLabel.topAnchor.constraint(equalTo: contentView.safeAreaLayoutGuide.topAnchor),
             nameLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-
+            
             dateLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 5),
             dateLabel.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
-
+            
             specialMomentsLabel.topAnchor.constraint(equalTo: dateLabel.bottomAnchor, constant: 20),
             specialMomentsLabel.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
-
+            
             specialMomentsContainerView.topAnchor.constraint(equalTo: specialMomentsLabel.bottomAnchor, constant: 10),
             specialMomentsContainerView.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
-            specialMomentsContainerView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
-            specialMomentsContainerView.heightAnchor.constraint(equalToConstant: 225),
-
-            todaysBitesLabel.topAnchor.constraint(equalTo: specialMomentsContainerView.bottomAnchor, constant: 20),
+            specialMomentsContainerView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+            specialMomentsContainerView.heightAnchor.constraint(equalToConstant: 220),
+            
+            todaysBitesLabel.topAnchor.constraint(equalTo: specialMomentsContainerView.bottomAnchor),
             todaysBitesLabel.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
-
+            
             todaysBitesCollectionView.topAnchor.constraint(equalTo: todaysBitesLabel.bottomAnchor, constant: 10),
             todaysBitesCollectionView.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
-            todaysBitesCollectionView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
-            todaysBitesCollectionView.heightAnchor.constraint(equalToConstant: 150),
-
+            todaysBitesCollectionView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+            todaysBitesCollectionView.heightAnchor.constraint(equalToConstant: 190),
+            
             upcomingVaccinationLabel.topAnchor.constraint(equalTo: todaysBitesCollectionView.bottomAnchor, constant: 20),
             upcomingVaccinationLabel.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
-
+            
             vaccinationsStackView.topAnchor.constraint(equalTo: upcomingVaccinationLabel.bottomAnchor, constant: 10),
             vaccinationsStackView.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
-            vaccinationsStackView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
+            vaccinationsStackView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
             vaccinationsStackView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -20)
         ])
     }
@@ -205,29 +223,29 @@ class HomeViewController: UIViewController {
         card.layer.shadowOpacity = 0.1
         card.layer.shadowOffset = CGSize(width: 0, height: 2)
         card.translatesAutoresizingMaskIntoConstraints = false
-
+        
         let titleLabel = UILabel()
         titleLabel.text = vaccination.title
         titleLabel.font = UIFont.boldSystemFont(ofSize: 16)
-
+        
         let dateLabel = UILabel()
         dateLabel.text = vaccination.date
         dateLabel.font = UIFont.systemFont(ofSize: 14)
         dateLabel.textColor = .gray
-
+        
         let locationLabel = UILabel()
         locationLabel.text = vaccination.location
         locationLabel.font = UIFont.systemFont(ofSize: 14)
         locationLabel.textColor = .gray
-
+        
         let stackView = UIStackView(arrangedSubviews: [titleLabel, dateLabel, locationLabel])
         stackView.axis = .vertical
         stackView.spacing = 5
         stackView.translatesAutoresizingMaskIntoConstraints = false
         card.addSubview(stackView)
-
+        
         vaccinationsStackView.addArrangedSubview(card)
-
+        
         NSLayoutConstraint.activate([
             card.heightAnchor.constraint(equalToConstant: 80),
             stackView.topAnchor.constraint(equalTo: card.topAnchor, constant: 10),
@@ -249,21 +267,28 @@ class HomeViewController: UIViewController {
             specialMomentsVC.view.trailingAnchor.constraint(equalTo: specialMomentsContainerView.trailingAnchor),
             specialMomentsVC.view.bottomAnchor.constraint(equalTo: specialMomentsContainerView.bottomAnchor)
         ])
-
+        
         specialMomentsVC.didMove(toParent: self)
         
     }
-
+    
 }
 
-extension HomeViewController: UICollectionViewDelegate, UICollectionViewDataSource {
+extension HomeViewController: UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         return todaysBitesData.count
     }
-
+    
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "BitesCell", for: indexPath)
-        cell.backgroundColor = .systemBlue
+        guard let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "BitesCell", for: indexPath) as? TodayBiteCollectionViewCell else {
+            return UICollectionViewCell()
+        }
+        
+        let bite = todaysBitesData[indexPath.row]
+        cell.configure(with: bite)
         return cell
+    }
+    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
+        return CGSize(width: 250, height: 190)
     }
 }
