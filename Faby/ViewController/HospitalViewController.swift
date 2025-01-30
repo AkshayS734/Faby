@@ -134,8 +134,16 @@ class HospitalViewController: UIViewController, UITableViewDataSource, UITableVi
     }
 
     private func saveVaccinationData(hospital: Hospital, date: String) {
+        // Get vaccine type from navigation title
+        let vaccineType = navigationItem.title?.replacingOccurrences(of: " Vaccination", with: "") ?? "Unknown"
+        
         // Create a dictionary to store the hospital and date
-        let vaccinationData = ["hospital": hospital.name, "address": hospital.address, "date": date]
+        let vaccinationData = [
+            "type": vaccineType,
+            "hospital": hospital.name,
+            "address": hospital.address,
+            "date": date
+        ]
 
         // Retrieve existing data (if any)
         var savedData = UserDefaults.standard.array(forKey: "VaccinationSchedules") as? [[String: String]] ?? []
@@ -216,5 +224,4 @@ class HospitalCell: UITableViewCell {
         distanceLabel.text = hospital.distance
     }
 }
-
 

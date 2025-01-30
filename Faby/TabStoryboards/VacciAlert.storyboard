@@ -18,6 +18,7 @@
                         <viewLayoutGuide key="safeArea" id="vDu-zF-Fre"/>
                         <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                     </view>
+                    <tabBarItem key="tabBarItem" title="Item" selectedImage="syringe.fill" catalog="system" id="O3T-ek-QXo"/>
                     <navigationItem key="navigationItem" title="VacciTime" id="Pyj-oc-eqW">
                         <rightBarButtonItems>
                             <barButtonItem title="Item" image="gearshape" catalog="system" id="4vI-hj-23A">
@@ -103,6 +104,7 @@
     <resources>
         <image name="bell.badge.fill" catalog="system" width="117" height="128"/>
         <image name="gearshape" catalog="system" width="128" height="123"/>
+        <image name="syringe.fill" catalog="system" width="128" height="115"/>
         <systemColor name="systemBackgroundColor">
             <color white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
         </systemColor>
