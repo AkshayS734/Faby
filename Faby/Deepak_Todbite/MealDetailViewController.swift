@@ -24,7 +24,7 @@ class MealDetailViewController: UIViewController, UITableViewDataSource, UITable
     private func setupUI() {
         // Configure Top Image View
         topImageView.translatesAutoresizingMaskIntoConstraints = false
-//        topImageView.contentMode = .scaleToFill
+        //topImageView.contentMode = .scaleToFill
         topImageView.leadingAnchor.constraint(equalTo: view.leadingAnchor,constant: 16)
         topImageView.trailingAnchor.constraint(equalTo: view.trailingAnchor,constant: 16)
         topImageView.layer.cornerRadius = 12

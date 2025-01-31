@@ -77,7 +77,7 @@ class TodBiteViewController: UIViewController, UITableViewDelegate {
         let createPlanVC = CreatePlanViewController()
         
         createPlanVC.selectedItemsDict = myBowlItemsDict
-        print("✅ MyBowl Data Before Passing:", myBowlItemsDict)
+        print("MyBowl Data Before Passing:", myBowlItemsDict)
 
         navigationController?.pushViewController(createPlanVC, animated: true)
     }
@@ -297,7 +297,7 @@ extension TodBiteViewController: UICollectionViewDataSource {
 
         let intervalText = indexPath.section < timeIntervals.count ? timeIntervals[indexPath.section] : "Other"
 
-        // ✅ Now this will work because `configure` accepts `textColor`
+        // Now this will work because `configure` accepts `textColor`
 //        headerView.configure(with: sectionName, interval: intervalText, textColor: UIColor.systemGray6)
 
         return headerView

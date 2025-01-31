@@ -23,7 +23,7 @@ enum AgeGroup: String, CaseIterable {
     case months33to36 = "33-36 months"
 }
 
-// MARK: - Structs for Items and Meal Schedule
+
 struct Item: Equatable {
     let name: String
     let description: String
@@ -40,7 +40,7 @@ struct MealSchedule {
     let meals: [Item]
 }
 
-// MARK: - Todbite Data Model
+
 class Todbite {
     static let shared = Todbite()
 
@@ -92,7 +92,7 @@ class Todbite {
         "NightBite"
     ]
 
-    // MARK: - Plan Scheduling
+    
     func schedulePlan(for items: [Item], startDate: Date, endDate: Date) -> MealSchedule {
         let mealSchedule = MealSchedule(startDate: startDate, endDate: endDate, meals: items)
         print("Plan scheduled from \(startDate) to \(endDate) with meals: \(items.map { $0.name })")
