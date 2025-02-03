@@ -20,30 +20,36 @@ class PostViewController: UIViewController, UITextViewDelegate {
     @IBOutlet weak var userName: UILabel!
     @IBOutlet weak var stackView: UIStackView!
     @IBOutlet weak var userImage: UIImageView!
-
+    
+    // Placeholder label for the UITextView
     let placeholderLabel = UILabel()
-
+    
+    // Delegate property
     weak var delegate: PostViewDelegate?
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        // Set up the user interface
         userName.text = "VIVEK CHAUDHARY"
         stackView.layer.cornerRadius = 12
+        
+        // Configure placeholder for UITextView
         configurePlaceholder()
+        
+        // Set the UITextView delegate
         commentTextView.delegate = self
     }
-  
+    
+    // Action for posting a comment
     @IBAction func postComment(_ sender: Any) {
-       
+        // Ensure valid input
         guard let title = titleTextBox.text, let text = commentTextView.text, !title.isEmpty, !text.isEmpty else {
             showAlert(message: "Please enter both a title and a comment.")
             return
         }
-        PostDataManager.shared.addPost(username: "CurrentUser", title: title, text: text)
-
-            print("✅ Post added successfully, navigating back!")
-
-//            self.navigationController?.popViewController(animated: true)
+        
+        // Create a new Comment object
         let newComment = Post(username: "VIVEK CHAUDHARY", title: title, text: text, likes: 0, replies: [])
         
         // Call the delegate method

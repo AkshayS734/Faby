@@ -5,8 +5,8 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
     @IBOutlet weak var searchBar: UISearchBar!
     @IBOutlet weak var collectionView: UICollectionView!
         // Fetching card data from the provider
-    let cardData = TopicsDataManager.shared.cardData
-    var filteredCardData: [Topics] = []
+    let cardData = CardDataProvider.shared.cardData
+    var filteredCardData: [Card] = []
     
     // Add a property to hold the comment data
     var comments: [Post] = []
