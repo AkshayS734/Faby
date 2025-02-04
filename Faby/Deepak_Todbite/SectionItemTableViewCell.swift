@@ -92,8 +92,37 @@ class SectionItemTableViewCell: UITableViewCell {
     }
 
     // MARK: - Actions
+    // MARK: - Actions
     @objc private func addButtonTapped() {
         guard let item = currentItem else { return }
+        
+        // Check if item is already added
+        if addButton.currentImage == UIImage(systemName: "checkmark.circle.fill") {
+            showAlert(for: item.name) // Show pop-up message
+            return
+        }
+
+        // Change button image to indicate item is added
+        addButton.setImage(UIImage(systemName: "checkmark.circle.fill"), for: .normal)
+        addButton.tintColor = .green
+
+        // Notify delegate that the item is added
         delegate?.didTapAddButton(for: item)
     }
+
+    // Show Alert Message when already added
+    private func showAlert(for itemName: String) {
+        guard let viewController = self.window?.rootViewController else { return }
+        
+        let alert = UIAlertController(
+            title: "Already Added",
+            message: "\"\(itemName)\" is already added to MyBowl.",
+            preferredStyle: .alert
+        )
+        
+        alert.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
+        viewController.present(alert, animated: true, completion: nil)
+    }
+
+
 }

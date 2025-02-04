@@ -49,6 +49,5 @@ class HeaderCollectionReusableView: UICollectionReusableView {
     func configure(with title: String, interval: String) {
         headerLabel.text = title
         intervalLabel.text = interval
-//        intervalLabel.textColor = textColor // Apply systemGray6 color
     }
 }

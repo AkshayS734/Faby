@@ -3,7 +3,7 @@ import UIKit
 class TodBiteViewController: UIViewController, UITableViewDelegate {
 
     // MARK: - UI Components
-    @IBOutlet weak var segmentedControl: UISegmentedControl!
+    @IBOutlet weak var segmentedControl: UISegmentedControl! // Connect this in storyboard
     var collectionView: UICollectionView!
     var tableView: UITableView!
     private let placeholderLabel: UILabel = {
@@ -12,29 +12,33 @@ class TodBiteViewController: UIViewController, UITableViewDelegate {
         label.textAlignment = .center
         label.textColor = .lightGray
         label.numberOfLines = 0
-        label.isHidden = true
+        label.isHidden = true // Initially hidden
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
     }()
-    private var createPlanButton: UIButton!
+//    private var createPlanButton: UIButton!
 
     // MARK: - Properties
     var selectedCategory: CategoryType? = nil
     var selectedRegion: RegionType = .East
     var selectedAgeGroup: AgeGroup = .months12to15
 
-    // ye items ke liye hai yaha pe
+    // Items for MyBowl grouped by category
     var myBowlItemsDict: [CategoryType: [Item]] = [:]
+    var customBitesDict: [String: [Item]] = [:]
+    
 
     // MARK: - Lifecycle Methods
     override func viewDidLoad() {
         super.viewDidLoad()
         setupCollectionView()
         setupTableView()
-        setupCreatePlanButton()
         setupPlaceholderLabel()
         loadDefaultContent()
     }
+    
+    
+    
 
     // MARK: - UI Setup
     private func setupCollectionView() {
@@ -65,45 +69,15 @@ class TodBiteViewController: UIViewController, UITableViewDelegate {
         tableView.rowHeight = UITableView.automaticDimension
         tableView.estimatedRowHeight = 100
         view.addSubview(tableView)
-
+        
         NSLayoutConstraint.activate([
             tableView.topAnchor.constraint(equalTo: segmentedControl.bottomAnchor, constant: 8),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
-    }
-    @objc private func createPlanButtonTapped() {
-        let createPlanVC = CreatePlanViewController()
         
-        createPlanVC.selectedItemsDict = myBowlItemsDict
-        print("MyBowl Data Before Passing:", myBowlItemsDict)
-
-        navigationController?.pushViewController(createPlanVC, animated: true)
     }
-
-
-
-    private func setupCreatePlanButton() {
-        createPlanButton = UIButton(type: .system)
-        createPlanButton.setTitle("Create Plan", for: .normal)
-        createPlanButton.translatesAutoresizingMaskIntoConstraints = false
-        createPlanButton.backgroundColor = .systemBlue
-        createPlanButton.setTitleColor(.white, for: .normal)
-        createPlanButton.layer.cornerRadius = 10
-        createPlanButton.addTarget(self, action: #selector(createPlanButtonTapped), for: .touchUpInside)
-        view.addSubview(createPlanButton)
-
-        NSLayoutConstraint.activate([
-            createPlanButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -16),
-            createPlanButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            createPlanButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            createPlanButton.heightAnchor.constraint(equalToConstant: 50)
-        ])
-
-        createPlanButton.isHidden = true
-    }
-
     private func setupPlaceholderLabel() {
         view.addSubview(placeholderLabel)
         NSLayoutConstraint.activate([
@@ -123,33 +97,53 @@ class TodBiteViewController: UIViewController, UITableViewDelegate {
     // MARK: - Actions
     @IBAction func segmentedControlTapped(_ sender: UISegmentedControl) {
         switch sender.selectedSegmentIndex {
-        case 0:
+        case 0: // Recommended Meal
             collectionView.isHidden = false
             tableView.isHidden = true
-            createPlanButton.isHidden = true
             placeholderLabel.isHidden = true
-        case 1:
+            navigationItem.rightBarButtonItem = nil // ✅ Remove the calendar icon
+
+        case 1: // MyBowl
             collectionView.isHidden = true
             updatePlaceholderVisibility()
             tableView.reloadData()
+
+            // ✅ Show calendar icon if MyBowl has items
+            if !myBowlItemsDict.isEmpty {
+                let calendarButton = UIBarButtonItem(
+                    image: UIImage(systemName: "calendar"),
+                    style: .plain,
+                    target: self,
+                    action: #selector(createPlanButtonTapped)
+                )
+                calendarButton.tintColor = .systemBlue
+                navigationItem.rightBarButtonItem = calendarButton
+            }
         default:
             break
         }
     }
-
-//    @objc private func createPlanButtonTapped() {
-//        let createPlanVC = CreatePlanViewController()
-//        // Map items to their names yaha ham items ko unke name ke sath map kr rhe hai
-//        createPlanVC.selectedItems = myBowlItemsDict.flatMap { $0.value }.map { $0.name }
-//        navigationController?.pushViewController(createPlanVC, animated: true)
-//    }
     
+
+    @objc private func createPlanButtonTapped() {
+        let createPlanVC = CreatePlanViewController()
+        // Map items to their names
+        createPlanVC.selectedItems = myBowlItemsDict.flatMap { $0.value }.map { $0.name }
+        navigationController?.pushViewController(createPlanVC, animated: true)
+    }
 
     private func updatePlaceholderVisibility() {
         let isMyBowlEmpty = myBowlItemsDict.isEmpty
         placeholderLabel.isHidden = !isMyBowlEmpty
         tableView.isHidden = isMyBowlEmpty
-        createPlanButton.isHidden = isMyBowlEmpty
+
+        // ✅ Update navigation bar button dynamically
+        navigationItem.rightBarButtonItem = isMyBowlEmpty ? nil : UIBarButtonItem(
+            image: UIImage(systemName: "calendar"),
+            style: .plain,
+            target: self,
+            action: #selector(createPlanButtonTapped)
+        )
     }
 
     private func createCompositionalLayout() -> UICollectionViewLayout {
@@ -158,34 +152,33 @@ class TodBiteViewController: UIViewController, UITableViewDelegate {
             heightDimension: .fractionalHeight(1.0)
         )
         let item = NSCollectionLayoutItem(layoutSize: itemSize)
-           item.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 8, bottom: 0, trailing: 0)
+        item.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 8, bottom: 0, trailing: 0)
 
-           let groupSize = NSCollectionLayoutSize(
-               widthDimension: .fractionalWidth(0.9),
-               heightDimension: .absolute(215)
-           )
-           let group = NSCollectionLayoutGroup.horizontal(layoutSize: groupSize, subitems: [item])
-           group.interItemSpacing = .fixed(0)
+        let groupSize = NSCollectionLayoutSize(
+            widthDimension: .fractionalWidth(0.9),
+            heightDimension: .absolute(215)
+        )
+        let group = NSCollectionLayoutGroup.horizontal(layoutSize: groupSize, subitems: [item])
+        group.interItemSpacing = .fixed(0)
 
-           let section = NSCollectionLayoutSection(group: group)
-           section.orthogonalScrollingBehavior = .continuous
+        let section = NSCollectionLayoutSection(group: group)
+        section.orthogonalScrollingBehavior = .continuous
 
-           let headerSize = NSCollectionLayoutSize(
-               widthDimension: .fractionalWidth(1.0),
-               heightDimension: .absolute(50)
-           )
-           let header = NSCollectionLayoutBoundarySupplementaryItem(
-               layoutSize: headerSize,
-               elementKind: UICollectionView.elementKindSectionHeader,
-               alignment: .top
-           )
-           section.boundarySupplementaryItems = [header]
+        let headerSize = NSCollectionLayoutSize(
+            widthDimension: .fractionalWidth(1.0),
+            heightDimension: .absolute(50)
+        )
+        let header = NSCollectionLayoutBoundarySupplementaryItem(
+            layoutSize: headerSize,
+            elementKind: UICollectionView.elementKindSectionHeader,
+            alignment: .top
+        )
+        section.boundarySupplementaryItems = [header]
 
-           return UICollectionViewCompositionalLayout { (sectionIndex, layoutEnvironment) -> NSCollectionLayoutSection? in
-               return section
-           }
-       }
-
+        return UICollectionViewCompositionalLayout { (sectionIndex, layoutEnvironment) -> NSCollectionLayoutSection? in
+            return section
+        }
+    }
     internal func showToast(message: String) {
         let toastLabel = UILabel()
         toastLabel.text = message
@@ -212,6 +205,36 @@ class TodBiteViewController: UIViewController, UITableViewDelegate {
             toastLabel.removeFromSuperview()
         })
     }
+    private func moveItem(_ item: Item, from oldCategory: CategoryType, to newCategory: CategoryType, at indexPath: IndexPath) {
+        // Remove from old category
+        myBowlItemsDict[oldCategory]?.remove(at: indexPath.row)
+        if myBowlItemsDict[oldCategory]?.isEmpty == true {
+            myBowlItemsDict.removeValue(forKey: oldCategory)
+        }
+
+        // Add to new category
+        if myBowlItemsDict[newCategory] == nil {
+            myBowlItemsDict[newCategory] = []
+        }
+        myBowlItemsDict[newCategory]?.append(item)
+
+        showToast(message: "\(item.name) moved to \(newCategory.rawValue)!")
+        tableView.reloadData()
+    }
+
+    private func showCategorySelection(for item: Item, from currentCategory: CategoryType, at indexPath: IndexPath) {
+        let categorySelection = UIAlertController(title: "Move to Section", message: "Select a new section for \(item.name)", preferredStyle: .actionSheet)
+
+        for category in CategoryType.allCases where category != currentCategory {
+            categorySelection.addAction(UIAlertAction(title: category.rawValue, style: .default, handler: { _ in
+                self.moveItem(item, from: currentCategory, to: category, at: indexPath)
+            }))
+        }
+
+        categorySelection.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
+        present(categorySelection, animated: true, completion: nil)
+    }
+
 
 
     private func handleMoreOptions(for item: Item, in category: CategoryType, at indexPath: IndexPath) {
@@ -230,14 +253,14 @@ class TodBiteViewController: UIViewController, UITableViewDelegate {
             self.showToast(message: "\(item.name) added to favorites!")
         }))
 
-        alert.addAction(UIAlertAction(title: "Add to Other Section", style: .default, handler: { _ in
-            self.showToast(message: "Feature coming soon!")
+        alert.addAction(UIAlertAction(title: "Add to Other Bites", style: .default, handler: { _ in
+            self.showCategorySelection(for: item, from: category, at: indexPath)
         }))
 
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
-
         present(alert, animated: true, completion: nil)
     }
+
 
     func addItemToMyBowl(item: Item) {
         if myBowlItemsDict[.SnackBite] == nil {
@@ -297,12 +320,10 @@ extension TodBiteViewController: UICollectionViewDataSource {
 
         let intervalText = indexPath.section < timeIntervals.count ? timeIntervals[indexPath.section] : "Other"
 
-        // Now this will work because `configure` accepts `textColor`
-//        headerView.configure(with: sectionName, interval: intervalText, textColor: UIColor.systemGray6)
-
+   
+        headerView.configure(with: sectionName, interval: intervalText)
         return headerView
     }
-
 }
 
 // MARK: - UICollectionViewDelegate
@@ -322,61 +343,63 @@ extension TodBiteViewController: UICollectionViewDelegate {
 
 // MARK: - UITableViewDataSource
 extension TodBiteViewController: UITableViewDataSource {
-    func numberOfSections(in tableView: UITableView) -> Int {
-        return segmentedControl.selectedSegmentIndex == 1 ? myBowlItemsDict.keys.count : 0
-    }
+        
+        func numberOfSections(in tableView: UITableView) -> Int {
+            return segmentedControl.selectedSegmentIndex == 1 ? myBowlItemsDict.keys.count : 0
+        }
 
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        guard segmentedControl.selectedSegmentIndex == 1 else { return 0 }
-        let category = Array(myBowlItemsDict.keys)[section]
-        return myBowlItemsDict[category]?.count ?? 0
-    }
+        func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+            guard segmentedControl.selectedSegmentIndex == 1 else { return 0 }
+            let category = Array(myBowlItemsDict.keys)[section]
+            return myBowlItemsDict[category]?.count ?? 0
+        }
 
-    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        guard segmentedControl.selectedSegmentIndex == 1 else { return UITableViewCell() }
-        let cell = tableView.dequeueReusableCell(withIdentifier: "TableViewCell", for: indexPath) as! TodBiteTableViewCell
-        let category = Array(myBowlItemsDict.keys)[indexPath.section]
-        let item = myBowlItemsDict[category]?[indexPath.row]
-        cell.configure(with: item!)
-
-        // Configure the more options button
-        cell.moreOptionsButton.tag = indexPath.row
-        cell.moreOptionsButton.addTarget(self, action: #selector(moreOptionsTapped(_:)), for: .touchUpInside)
-
-        return cell
-    }
-
-    func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
-        guard segmentedControl.selectedSegmentIndex == 1 else { return nil }
-        let category = Array(myBowlItemsDict.keys)[section]
-        return category.rawValue
-    }
-
-    func tableView(_ tableView: UITableView, canEditRowAt indexPath: IndexPath) -> Bool {
-        return true
-    }
-
-    func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
-        if editingStyle == .delete {
+        func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+            guard segmentedControl.selectedSegmentIndex == 1 else { return UITableViewCell() }
+            let cell = tableView.dequeueReusableCell(withIdentifier: "TableViewCell", for: indexPath) as! TodBiteTableViewCell
             let category = Array(myBowlItemsDict.keys)[indexPath.section]
-            myBowlItemsDict[category]?.remove(at: indexPath.row)
-            if myBowlItemsDict[category]?.isEmpty == true {
-                myBowlItemsDict.removeValue(forKey: category)
+            let item = myBowlItemsDict[category]?[indexPath.row]
+            cell.configure(with: item!)
+
+            // Configure the more options button
+            cell.moreOptionsButton.tag = indexPath.row
+            cell.moreOptionsButton.addTarget(self, action: #selector(moreOptionsTapped(_:)), for: .touchUpInside)
+
+            return cell
+        }
+
+        func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+            guard segmentedControl.selectedSegmentIndex == 1 else { return nil }
+            let category = Array(myBowlItemsDict.keys)[section]
+            return category.rawValue
+        }
+
+        func tableView(_ tableView: UITableView, canEditRowAt indexPath: IndexPath) -> Bool {
+            return true
+        }
+
+        func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
+            if editingStyle == .delete {
+                let category = Array(myBowlItemsDict.keys)[indexPath.section]
+                myBowlItemsDict[category]?.remove(at: indexPath.row)
+                if myBowlItemsDict[category]?.isEmpty == true {
+                    myBowlItemsDict.removeValue(forKey: category)
+                }
+                updatePlaceholderVisibility()
+                tableView.reloadData()
             }
-            updatePlaceholderVisibility()
-            tableView.reloadData()
+        }
+
+        @objc private func moreOptionsTapped(_ sender: UIButton) {
+            guard let cell = sender.superview?.superview as? TodBiteTableViewCell,
+                  let indexPath = tableView.indexPath(for: cell) else { return }
+
+            let category = Array(myBowlItemsDict.keys)[indexPath.section]
+            let item = myBowlItemsDict[category]?[indexPath.row]
+            handleMoreOptions(for: item!, in: category, at: indexPath)
         }
     }
 
-    @objc private func moreOptionsTapped(_ sender: UIButton) {
-        guard let cell = sender.superview?.superview as? TodBiteTableViewCell,
-              let indexPath = tableView.indexPath(for: cell) else { return }
-
-        let category = Array(myBowlItemsDict.keys)[indexPath.section]
-        let item = myBowlItemsDict[category]?[indexPath.row]
-        handleMoreOptions(for: item!, in: category, at: indexPath)
-    }
-}
 
 // MARK: - TodBiteCollectionViewCellDelegate
 extension TodBiteViewController: TodBiteCollectionViewCellDelegate {
