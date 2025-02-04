@@ -17,16 +17,16 @@
                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                 <subviews>
                     <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" translatesAutoresizingMaskIntoConstraints="NO" id="oOO-Q0-a64">
-                        <rect key="frame" x="0.0" y="0.0" width="250" height="128"/>
+                        <rect key="frame" x="5" y="0.0" width="245" height="128"/>
                     </imageView>
                     <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Label" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="lNK-Tp-6GG">
-                        <rect key="frame" x="0.0" y="132" width="250" height="21"/>
+                        <rect key="frame" x="5" y="132" width="245" height="21"/>
                         <fontDescription key="fontDescription" type="system" pointSize="17"/>
                         <nil key="textColor"/>
                         <nil key="highlightedColor"/>
                     </label>
                     <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Label" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="Dzo-wW-uSM">
-                        <rect key="frame" x="0.0" y="158" width="250" height="21"/>
+                        <rect key="frame" x="5" y="158" width="245" height="21"/>
                         <fontDescription key="fontDescription" type="system" pointSize="17"/>
                         <nil key="textColor"/>
                         <nil key="highlightedColor"/>
@@ -35,7 +35,7 @@
             </view>
             <viewLayoutGuide key="safeArea" id="ZTg-uK-7eu"/>
             <constraints>
-                <constraint firstItem="oOO-Q0-a64" firstAttribute="leading" secondItem="gTV-IL-0wX" secondAttribute="leading" id="0Dg-Ih-rfp"/>
+                <constraint firstItem="oOO-Q0-a64" firstAttribute="leading" secondItem="gTV-IL-0wX" secondAttribute="leading" constant="5" id="0Dg-Ih-rfp"/>
                 <constraint firstItem="Dzo-wW-uSM" firstAttribute="top" secondItem="lNK-Tp-6GG" secondAttribute="bottom" constant="5" id="3wy-EY-yT4"/>
                 <constraint firstAttribute="trailing" secondItem="oOO-Q0-a64" secondAttribute="trailing" id="8mi-yi-9dH"/>
                 <constraint firstAttribute="trailing" secondItem="lNK-Tp-6GG" secondAttribute="trailing" id="CVl-DU-r4C"/>
@@ -43,9 +43,9 @@
                 <constraint firstItem="lNK-Tp-6GG" firstAttribute="top" secondItem="oOO-Q0-a64" secondAttribute="bottom" constant="4" id="Y20-G0-tCS"/>
                 <constraint firstAttribute="trailing" secondItem="Dzo-wW-uSM" secondAttribute="trailing" id="bjX-A9-JcN"/>
                 <constraint firstItem="oOO-Q0-a64" firstAttribute="top" secondItem="gTV-IL-0wX" secondAttribute="top" id="ex4-s2-OJL"/>
-                <constraint firstItem="Dzo-wW-uSM" firstAttribute="leading" secondItem="gTV-IL-0wX" secondAttribute="leading" id="gi0-XF-r6q"/>
+                <constraint firstItem="Dzo-wW-uSM" firstAttribute="leading" secondItem="gTV-IL-0wX" secondAttribute="leading" constant="5" id="gi0-XF-r6q"/>
                 <constraint firstItem="oOO-Q0-a64" firstAttribute="top" secondItem="gTV-IL-0wX" secondAttribute="top" id="vzx-7K-0Id"/>
-                <constraint firstItem="lNK-Tp-6GG" firstAttribute="leading" secondItem="gTV-IL-0wX" secondAttribute="leading" id="wl4-Qx-R4y"/>
+                <constraint firstItem="lNK-Tp-6GG" firstAttribute="leading" secondItem="gTV-IL-0wX" secondAttribute="leading" constant="5" id="wl4-Qx-R4y"/>
             </constraints>
             <connections>
                 <outlet property="foodNameLabel" destination="lNK-Tp-6GG" id="cZS-ZT-ja7"/>
