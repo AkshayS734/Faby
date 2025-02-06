@@ -3,6 +3,7 @@ import UIKit
 class VaccineInputViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
 
     private let tableView = UITableView()
+    private let vaccineManager = VaccineManager.shared
 
     private let instructionsLabel: UILabel = {
         let label = UILabel()
@@ -14,18 +15,6 @@ class VaccineInputViewController: UIViewController, UITableViewDataSource, UITab
         return label
     }()
 
-    let vaccineData: [(sectionTitle: String, vaccines: [String])] = [
-        ("Birth", ["Hepatitis B (Dose 1)"]),
-        ("6 weeks", ["DTaP (Dose 1)", "Hib (Dose 1)", "Polio (Dose 1)", "Hepatitis B (Dose 2)"]),
-        ("10 weeks", ["DTaP (Dose 2)", "Hib (Dose 2)", "Rotavirus (Dose 1)", "Pneumococcal (Dose 1)"]),
-        ("14 weeks", ["DTaP (Dose 3)", "Hib (Dose 3)", "Polio (Dose 3)", "Rotavirus (Dose 2)", "Pneumococcal (Dose 2)"]),
-        ("6 Months", ["Hepatitis B (Dose 3)"]),
-        ("9 months", ["MMR (Dose 1)"]),
-        ("12 months", ["Hepatitis A (Dose 1)", "Varicella (Dose 1)"])
-    ]
-
-    var selectedVaccines: [String] = []
-
     override func viewDidLoad() {
         super.viewDidLoad()
 
@@ -33,6 +22,8 @@ class VaccineInputViewController: UIViewController, UITableViewDataSource, UITab
         self.title = "VacciTime"
         view.backgroundColor = .white
 
+        vaccineManager.loadSelectedVaccines()
+        
         view.addSubview(instructionsLabel)
         configureTableView()
         configureButtons()
@@ -76,42 +67,34 @@ class VaccineInputViewController: UIViewController, UITableViewDataSource, UITab
         ])
     }
 
-    private func storeVaccinationDetails(vaccines: [String]) {
-        var existingData = UserDefaults.standard.array(forKey: "SavedVaccines") as? [String] ?? []
-        existingData.append(contentsOf: vaccines)
-        existingData = Array(Set(existingData))
-        UserDefaults.standard.set(existingData, forKey: "SavedVaccines")
-        UserDefaults.standard.synchronize()
-    }
-
     // MARK: - UITableViewDataSource Methods
 
     func numberOfSections(in tableView: UITableView) -> Int {
-        return vaccineData.count
+        return vaccineManager.vaccineData.count
     }
 
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return vaccineData[section].vaccines.count
+        return vaccineManager.vaccineData[section].vaccines.count
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "vaccineCell", for: indexPath)
-        cell.textLabel?.text = vaccineData[indexPath.section].vaccines[indexPath.row]
-        let vaccine = vaccineData[indexPath.section].vaccines[indexPath.row]
-        cell.accessoryType = selectedVaccines.contains(vaccine) ? .checkmark : .none
+        cell.textLabel?.text = vaccineManager.vaccineData[indexPath.section].vaccines[indexPath.row]
+        let vaccine = vaccineManager.vaccineData[indexPath.section].vaccines[indexPath.row]
+        cell.accessoryType = vaccineManager.selectedVaccines.contains(vaccine) ? .checkmark : .none
         return cell
     }
 
     func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
-        return vaccineData[section].sectionTitle
+        return vaccineManager.vaccineData[section].stageTitle
     }
 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        let selectedVaccine = vaccineData[indexPath.section].vaccines[indexPath.row]
-        if let index = selectedVaccines.firstIndex(of: selectedVaccine) {
-            selectedVaccines.remove(at: index)
+        let selectedVaccine = vaccineManager.vaccineData[indexPath.section].vaccines[indexPath.row]
+        if let index = vaccineManager.selectedVaccines.firstIndex(of: selectedVaccine) {
+            vaccineManager.selectedVaccines.remove(at: index)
         } else {
-            selectedVaccines.append(selectedVaccine)
+            vaccineManager.selectedVaccines.append(selectedVaccine)
         }
         tableView.reloadRows(at: [indexPath], with: .automatic)
         tableView.deselectRow(at: indexPath, animated: true)
@@ -120,7 +103,7 @@ class VaccineInputViewController: UIViewController, UITableViewDataSource, UITab
     // MARK: - Continue Button
 
     @objc private func continueButtonTapped() {
-        if selectedVaccines.isEmpty {
+        if vaccineManager.selectedVaccines.isEmpty {
             let noSelectionAlert = UIAlertController(
                 title: "No Vaccines Selected",
                 message: "Please select at least one vaccine to continue.",
@@ -131,21 +114,21 @@ class VaccineInputViewController: UIViewController, UITableViewDataSource, UITab
             return
         }
 
-        storeVaccinationDetails(vaccines: selectedVaccines)
+        vaccineManager.saveSelectedVaccines()
 
         let confirmationAlert = UIAlertController(
             title: "Vaccines Selected",
-            message: "You have selected the following vaccines:\n\n\(selectedVaccines.joined(separator: "\n"))",
+            message: "You have selected the following vaccines:\n\n\(vaccineManager.selectedVaccines.joined(separator: "\n"))",
             preferredStyle: .alert
         )
 
-        // Add "Cancel" button (left position)
+        // Add "Cancel" button
         confirmationAlert.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
 
-        // Add "OK" button (right position)
+        // Add "OK" button
         confirmationAlert.addAction(UIAlertAction(title: "OK", style: .default) { _ in
             let vacciAlertVC = VacciAlertViewController()
-            vacciAlertVC.selectedVaccines = self.selectedVaccines
+            vacciAlertVC.selectedVaccines = self.vaccineManager.selectedVaccines
             self.navigationController?.pushViewController(vacciAlertVC, animated: true)
         })
 

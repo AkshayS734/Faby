@@ -88,15 +88,15 @@ class CreatePlanViewController: UIViewController, UITableViewDelegate, UITableVi
             submitButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20)
         ])
 
-        submitButton.addTarget(self, action: #selector(submitPlan), for: .touchUpInside)
+//        submitButton.addTarget(self, action: #selector(submitPlan), for: .touchUpInside)
     }
     
     // MARK: - Submit Plan
-    @objc private func submitPlan() {
-        delegate?.myBowlItemsDict = selectedItemsDict
-        delegate?.updateTodaysBitesData()
-        navigationController?.popViewController(animated: true)
-    }
+//    @objc private func submitPlan() {
+//        delegate?.myBowlItemsDict = selectedItemsDict
+//        delegate?.updateTodaysBitesData()
+//        navigationController?.popViewController(animated: true)
+//    }
 
     // MARK: - SectionExpandableDelegate
     func didTapExpandCollapse(for section: Int) {

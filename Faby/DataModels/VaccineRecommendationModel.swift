@@ -9,10 +9,10 @@ import Foundation
 
 struct UpcomingVaccinationRecommendation: Codable, Identifiable {
     var id: String
-    var toddlerId: String  // Reference to the Toddler model
-    var vaccineId: String  // Reference to the Vaccine model
-    var regionId: String   // Reference to the Area/Region model
-    var age: Int           // Age of the toddler in months
+    var toddlerId: String
+    var vaccineId: String
+    var regionId: String
+    var age: Int          
     var dateRange: DateRange
 }
 

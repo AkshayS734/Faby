@@ -8,21 +8,23 @@ class VaccineReminderViewController: UIViewController, UISearchBarDelegate {
     let calendarView = UIView()
     let scheduledVaccinationsLabel = UILabel()
     let vaccinationsStackView = UIStackView()
-    var vaccines: [String] = []
+    
+    let dataManager = VaccinationDataManager()
+    var vaccinations: [VaccineSchedule] = []
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
         view.backgroundColor = UIColor(hex: "#f2f2f7")
+        navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .search, target: self, action: #selector(didTapSearch))
         
-        // Configure Navigation Bar
-        let searchButton = UIBarButtonItem(barButtonSystemItem: .search, target: self, action: #selector(didTapSearch))
-        navigationItem.rightBarButtonItem = searchButton
-        
-        // Setup UI
         setupScrollView()
         setupCalendarView()
         setupScheduledVaccinations()
+        
+        // Load vaccination data
+        vaccinations = dataManager.loadVaccinations()
+        displayVaccinations()
     }
     
     // MARK: - Setup Methods
@@ -58,10 +60,6 @@ class VaccineReminderViewController: UIViewController, UISearchBarDelegate {
         datePicker.preferredDatePickerStyle = .inline
         datePicker.addTarget(self, action: #selector(didSelectDate(_:)), for: .valueChanged)
         calendarView.addSubview(datePicker)
-        
-        if let font = UIFont(name: "SFProText-Regular", size: 16) {
-            datePicker.setValue(font, forKeyPath: "textFont")
-        }
         
         NSLayoutConstraint.activate([
             calendarView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 0),
@@ -104,21 +102,16 @@ class VaccineReminderViewController: UIViewController, UISearchBarDelegate {
             vaccinationsStackView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
             vaccinationsStackView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -20)
         ])
+    }
+    
+    private func displayVaccinations() {
+        vaccinationsStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
         
-        // Fetch the saved vaccination data from UserDefaults
-        if let savedData = UserDefaults.standard.array(forKey: "VaccinationSchedules") as? [[String: String]] {
-            // Iterate over the saved data and add vaccination cards
-            for vaccination in savedData {
-                if let type = vaccination["type"],
-                   let hospital = vaccination["hospital"],
-                   let date = vaccination["date"],
-                   let location = vaccination["address"] {
-                    addVaccinationCard(vaccineType: type, hospital: hospital, date: date, location: location)
-                }
-            }
+        for vaccine in vaccinations {
+            addVaccinationCard(vaccineType: vaccine.type, hospital: vaccine.hospital, date: vaccine.date, location: vaccine.location)
         }
     }
-
+    
     private func addVaccinationCard(vaccineType: String, hospital: String, date: String, location: String) {
         let card = UIView()
         card.backgroundColor = .white
