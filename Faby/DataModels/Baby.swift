@@ -2,6 +2,7 @@ import Foundation
 import UIKit
 
 class Baby {
+    var id: String = UUID().uuidString
     var name: String
     var dateOfBirth: String
     var gender: Gender
