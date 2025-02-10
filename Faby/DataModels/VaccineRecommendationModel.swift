@@ -7,12 +7,13 @@
 
 import Foundation
 
+
 struct UpcomingVaccinationRecommendation: Codable, Identifiable {
     var id: String
-    var toddlerId: String
+    var babyId: String // Links to BabyDetail
     var vaccineId: String
     var regionId: String
-    var age: Int          
+    var age: Int
     var dateRange: DateRange
 }
 

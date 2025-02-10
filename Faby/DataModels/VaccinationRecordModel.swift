@@ -10,6 +10,7 @@ import Foundation
 
 
 struct VaccineSchedule {
+    
     let type: String
     let hospital: String
     let date: String
