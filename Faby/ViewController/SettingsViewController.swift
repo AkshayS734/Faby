@@ -160,17 +160,30 @@ class SettingsViewController: UIViewController, UICollectionViewDelegate, UIColl
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
         return 50
     }
+    
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        if tableSections[indexPath.section] == "GROWTRACK" && filteredTableItems[indexPath.section][indexPath.row] == "Milestone track" {
+        // Handle navigation based on selected item
+        let selectedSection = tableSections[indexPath.section]
+        let selectedItem = filteredTableItems[indexPath.section][indexPath.row]
+        
+        switch (selectedSection, selectedItem) {
+        case ("VACCITIME", "Vaccine record"):
+            let savedVaccineVC = SavedVaccineViewController()
+            navigationController?.pushViewController(savedVaccineVC, animated: true)
+            
+        case ("GROWTRACK", "Milestone track"):
             let milestoneOverviewVC = MilestonesOverviewViewController()
             navigationController?.pushViewController(milestoneOverviewVC, animated: true)
-        }
             
-            tableView.deselectRow(at: indexPath, animated: true)
+        default:
+            break
         }
+        
+        tableView.deselectRow(at: indexPath, animated: true)
+    }
 }
 
-// MARK: - Custom Collection View Cell
+// MARK: - Profile Collection View Cell
 class ProfileCollectionViewCell: UICollectionViewCell {
     let imageView = UIImageView()
     let nameLabel = UILabel()
@@ -179,75 +192,75 @@ class ProfileCollectionViewCell: UICollectionViewCell {
     let detail2 = UILabel()
     let detail3 = UILabel()
     let detail4 = UILabel()
-
+    
     override init(frame: CGRect) {
         super.init(frame: frame)
-
+        
         imageView.layer.cornerRadius = 45
         imageView.clipsToBounds = true
         imageView.contentMode = .scaleAspectFill
         imageView.translatesAutoresizingMaskIntoConstraints = false
-
+        
         nameLabel.font = UIFont.boldSystemFont(ofSize: 18)
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
-
+        
         [detail1, detail2, detail3, detail4].forEach { label in
             label.font = UIFont.systemFont(ofSize: 15)
             label.textColor = .black
             label.textAlignment = .left
             label.translatesAutoresizingMaskIntoConstraints = false
         }
-
+        
         detailGrid.axis = .vertical
         detailGrid.spacing = 5
         detailGrid.alignment = .fill
         detailGrid.distribution = .fillEqually
         detailGrid.translatesAutoresizingMaskIntoConstraints = false
-
+        
         let row1 = UIStackView(arrangedSubviews: [detail1, detail2])
         row1.axis = .horizontal
         row1.spacing = 10
         row1.distribution = .fillEqually
-
+        
         let row2 = UIStackView(arrangedSubviews: [detail3, detail4])
         row2.axis = .horizontal
         row2.spacing = 10
         row2.distribution = .fillEqually
-
+        
         detailGrid.addArrangedSubview(row1)
         detailGrid.addArrangedSubview(row2)
-
+        
         contentView.addSubview(imageView)
         contentView.addSubview(nameLabel)
         contentView.addSubview(detailGrid)
-
+        
         NSLayoutConstraint.activate([
             imageView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
             imageView.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
             imageView.widthAnchor.constraint(equalToConstant: 90),
             imageView.heightAnchor.constraint(equalToConstant: 90),
-
+            
             nameLabel.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 15),
             nameLabel.leadingAnchor.constraint(equalTo: imageView.trailingAnchor, constant: 25),
             nameLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -10),
-
+            
             detailGrid.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 10),
             detailGrid.leadingAnchor.constraint(equalTo: imageView.trailingAnchor, constant: 25),
             detailGrid.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -10),
             detailGrid.heightAnchor.constraint(equalToConstant: 60)
         ])
-
+        
         contentView.layer.cornerRadius = 10
         contentView.backgroundColor = .white
         contentView.layer.shadowColor = UIColor.black.cgColor
         contentView.layer.shadowOpacity = 0.1
         contentView.layer.shadowOffset = CGSize(width: 0, height: 2)
     }
-
+    
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
-
+    
     func configure(image: UIImage?, name: String, details: [String]) {
         imageView.image = image
         nameLabel.text = name
@@ -258,7 +271,7 @@ class ProfileCollectionViewCell: UICollectionViewCell {
     }
 }
 
-// MARK: - Custom Table View Cell
+// MARK: - Table View Cell with Arrow
 class TableViewCellWithArrow: UITableViewCell {
     let titleLabel = UILabel()
     let arrowImageView = UIImageView()
@@ -295,3 +308,7 @@ class TableViewCellWithArrow: UITableViewCell {
         titleLabel.text = text
     }
 }
+
+// MARK: - Saved Vaccine View Controller
+
+
