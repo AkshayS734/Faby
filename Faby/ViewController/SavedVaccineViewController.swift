@@ -74,18 +74,88 @@ class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITab
         tableView.reloadData()
     }
     
+    // MARK: - UITableViewDataSource and Delegate Methods
+    func numberOfSections(in tableView: UITableView) -> Int {
+        return stages.count
+    }
+    
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        let stage = stages[section]
+        return groupedVaccines[stage]?.count ?? 0
+    }
+    
+    func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+        return stages[section]
+    }
+    
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: "VaccineCell", for: indexPath) as! VaccineTableViewCell
+        
+        let stage = stages[indexPath.section]
+        if let vaccines = groupedVaccines[stage] {
+            let vaccine = vaccines[indexPath.row]
+            
+            cell.configure(with: vaccine)
+            
+            if let date = vaccineDates[vaccine] {
+                let dateFormatter = DateFormatter()
+                dateFormatter.dateStyle = .medium
+                cell.setDate(dateFormatter.string(from: date))
+            } else {
+                cell.setDate(nil)
+            }
+            
+            cell.onOptionsButtonTapped = { [weak self] in
+                self?.showDatePicker(for: vaccine)
+            }
+        }
+        
+        return cell
+    }
+    
+    // Add support for swipe to delete
+    func tableView(_ tableView: UITableView, canEditRowAt indexPath: IndexPath) -> Bool {
+        return true
+    }
+    
+    func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
+        if editingStyle == .delete {
+            let stage = stages[indexPath.section]
+            guard var vaccines = groupedVaccines[stage],
+                  indexPath.row < vaccines.count else { return }
+            
+            let vaccineToDelete = vaccines[indexPath.row]
+            
+            // Remove from vaccineDates
+            vaccineDates.removeValue(forKey: vaccineToDelete)
+            
+            // Save updated dates to UserDefaults
+            let datesToSave = vaccineDates.mapValues { $0.timeIntervalSince1970 }
+            UserDefaults.standard.set(datesToSave, forKey: "VaccineDates")
+            
+            // Remove from grouped vaccines
+            vaccines.remove(at: indexPath.row)
+            groupedVaccines[stage] = vaccines
+            
+            // Delete row with animation
+            tableView.deleteRows(at: [indexPath], with: .fade)
+        }
+    }
+    
+    func tableView(_ tableView: UITableView, titleForDeleteConfirmationButtonForRowAt indexPath: IndexPath) -> String? {
+        return "Remove"
+    }
+    
     // MARK: - Date Picker
     private func showDatePicker(for vaccine: String) {
         let alert = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
         
-        // Create title label with custom styling
         let titleLabel = UILabel()
         titleLabel.text = "Select Vaccination Date"
         titleLabel.font = .systemFont(ofSize: 17, weight: .bold)
         titleLabel.textAlignment = .center
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         
-        // Create date picker
         let datePicker = UIDatePicker()
         datePicker.datePickerMode = .date
         datePicker.preferredDatePickerStyle = .wheels
@@ -93,7 +163,6 @@ class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITab
             datePicker.date = existingDate
         }
         
-        // Add title and date picker to alert
         alert.view.addSubview(titleLabel)
         alert.view.addSubview(datePicker)
         datePicker.translatesAutoresizingMaskIntoConstraints = false
@@ -109,7 +178,6 @@ class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITab
             datePicker.heightAnchor.constraint(equalToConstant: 200)
         ])
         
-        // Make alert taller to accommodate title and date picker
         let constraintHeight = NSLayoutConstraint(
             item: alert.view!,
             attribute: .height,
@@ -176,7 +244,6 @@ class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITab
                 NSAttributedString.Key.font: UIFont.systemFont(ofSize: 12)
             ]
             
-            // Add header
             let title = "Vaccination Records"
             let titleSize = title.size(withAttributes: titleAttributes)
             let titleRect = CGRect(
@@ -187,7 +254,6 @@ class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITab
             )
             title.draw(in: titleRect, withAttributes: titleAttributes)
             
-            // Add date
             let dateFormatter = DateFormatter()
             dateFormatter.dateStyle = .long
             let currentDate = "Generated on: \(dateFormatter.string(from: Date()))"
@@ -196,7 +262,6 @@ class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITab
                 withAttributes: dateAttributes
             )
             
-            // Draw vaccination records
             var yPosition: CGFloat = titleRect.maxY + 60
             
             for stage in stages {
@@ -254,47 +319,7 @@ class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITab
         alert.addAction(UIAlertAction(title: "OK", style: .default))
         present(alert, animated: true)
     }
-    
-    // MARK: - UITableViewDataSource
-    func numberOfSections(in tableView: UITableView) -> Int {
-        return stages.count
-    }
-    
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        let stage = stages[section]
-        return groupedVaccines[stage]?.count ?? 0
-    }
-    
-    func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
-        return stages[section]
-    }
-    
-    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "VaccineCell", for: indexPath) as! VaccineTableViewCell
-        
-        let stage = stages[indexPath.section]
-        if let vaccines = groupedVaccines[stage] {
-            let vaccine = vaccines[indexPath.row]
-            
-            cell.configure(with: vaccine)
-            
-            if let date = vaccineDates[vaccine] {
-                let dateFormatter = DateFormatter()
-                dateFormatter.dateStyle = .medium
-                cell.setDate(dateFormatter.string(from: date))
-            } else {
-                cell.setDate(nil)
-            }
-            
-            cell.onOptionsButtonTapped = { [weak self] in
-                self?.showDatePicker(for: vaccine)
-            }
-        }
-        
-        return cell
-    }
 }
-
 // MARK: - VaccineTableViewCell
 class VaccineTableViewCell: UITableViewCell {
     private let vaccineLabel = UILabel()
