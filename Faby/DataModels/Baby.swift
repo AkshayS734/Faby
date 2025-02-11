@@ -2,7 +2,7 @@ import Foundation
 import UIKit
 
 class Baby {
-    var id: String = UUID().uuidString
+    var id: UUID
     var name: String
     var dateOfBirth: String
     var gender: Gender
@@ -22,7 +22,8 @@ class Baby {
     
     var measurementUpdated: (() -> Void)?
     
-    init(name: String, dateOfBirth: String, gender: Gender, parent: Parent) {
+    init(id: UUID = UUID(),name: String, dateOfBirth: String, gender: Gender, parent: Parent) {
+        self.id = id
         self.name = name
         self.dateOfBirth = dateOfBirth
         self.gender = gender
@@ -125,3 +126,4 @@ enum Gender {
 extension Notification.Name {
     static let milestonesAchievedUpdated = Notification.Name("milestonesAchievedUpdated")
 }
+

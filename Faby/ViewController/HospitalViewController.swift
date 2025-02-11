@@ -167,10 +167,11 @@ class HospitalViewController: UIViewController, UITableViewDataSource, UITableVi
     }
 
     // Mock Data
+    // Mock Data
     let hospitals = [
-        Hospital(name: "Kailash Hospital", address: "Knowledge Park 3, Greater Noida, 201308, Uttar Pradesh", distance: "3-5 km"),
-        Hospital(name: "Green City Hospital", address: "Knowledge Park 1, Greater Noida, 201308, Uttar Pradesh", distance: "5-7 km"),
-        Hospital(name: "Sharda Hospital", address: "Knowledge Park 2, Greater Noida, 201308, Uttar Pradesh", distance: "7-10 km")
+        Hospital(babyId: UUID(), name: "Kailash Hospital", address: "Knowledge Park 3, Greater Noida, 201308, Uttar Pradesh", distance: 4.0),
+        Hospital(babyId: UUID(), name: "Green City Hospital", address: "Knowledge Park 1, Greater Noida, 201308, Uttar Pradesh", distance: 6.0),
+        Hospital(babyId: UUID(), name: "Sharda Hospital", address: "Knowledge Park 2, Greater Noida, 201308, Uttar Pradesh", distance: 8.5)
     ]
 }
 
@@ -221,7 +222,7 @@ class HospitalCell: UITableViewCell {
     func configure(with hospital: Hospital) {
         nameLabel.text = hospital.name
         addressLabel.text = hospital.address
-        distanceLabel.text = hospital.distance
+        distanceLabel.text = String(format: "%.1f km", hospital.distance)
     }
 }
 
