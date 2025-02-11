@@ -225,4 +225,3 @@ class HospitalCell: UITableViewCell {
         distanceLabel.text = String(format: "%.1f km", hospital.distance)
     }
 }
-

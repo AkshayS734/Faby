@@ -127,3 +127,6 @@ extension Notification.Name {
     static let milestonesAchievedUpdated = Notification.Name("milestonesAchievedUpdated")
 }
 
+// Function used for VacciAlert :
+
+
