@@ -162,7 +162,8 @@ struct CalendarContainerView: View {
                         onChevronTappedToNavigate: onChevronTappedToNavigate
                     )
 
-                    Text("Upcoming Vaccination")
+                    Text("Next Immunization")
+
                         .font(.title2)
                         .bold()
                         .padding(.horizontal)
