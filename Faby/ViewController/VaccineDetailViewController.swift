@@ -16,23 +16,23 @@ class VaccineDetailViewController: UIViewController {
     let aboutLabel = UILabel()
     let transmissionLabel = UILabel()
 
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        view.backgroundColor = UIColor(hex: "#f2f2f7")
-        if let vaccine = vaccine {
-            // Bind the vaccine data to the UI elements
-            vaccineNameLabel.text = vaccine.name
-            vaccineDescriptionLabel.text = vaccine.description
-            totalDosesLabel.text = vaccine.totalDoses
-            durationLabel.text = vaccine.duration
-            importanceLabel.text = vaccine.importance
-            aboutLabel.text = vaccine.about
-            transmissionLabel.text = vaccine.transmission
-        }
-        
-        setupScrollView()
-        setupUI()
-    }
+//    override func viewDidLoad() {
+//        super.viewDidLoad()
+//        view.backgroundColor = UIColor(hex: "#f2f2f7")
+//        if let vaccine = vaccine {
+//            // Bind the vaccine data to the UI elements
+//            vaccineNameLabel.text = vaccine.name
+//            vaccineDescriptionLabel.text = vaccine.description
+//            totalDosesLabel.text = vaccine.totalDoses
+//            durationLabel.text = vaccine.duration
+//            importanceLabel.text = vaccine.importance
+//            aboutLabel.text = vaccine.about
+//            transmissionLabel.text = vaccine.transmission
+//        }
+//        
+//        setupScrollView()
+//        setupUI()
+//    }
 
     func setupScrollView() {
         scrollView.translatesAutoresizingMaskIntoConstraints = false

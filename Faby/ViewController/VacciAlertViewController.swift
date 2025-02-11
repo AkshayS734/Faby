@@ -9,8 +9,6 @@ class VacciAlertViewController: UIViewController {
     // Publisher to send the selected date
     private let selectedDateSubject = PassthroughSubject<Date, Never>()
     
-    
-    
     override func viewDidLoad() {
         super.viewDidLoad()
         
