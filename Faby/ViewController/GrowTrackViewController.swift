@@ -5,13 +5,13 @@ class GrowTrackViewController: UIViewController, MilestonesOverviewDelegate{
     var baby: Baby! = BabyDataModel.shared.babyList[0]
     
     @IBOutlet weak var topSegmentedControl: UISegmentedControl!
-//    
-//    @IBAction func showMilestoneOverviewTapped(_ sender: UIBarButtonItem) {
-////        print("Button was tapped!")
-//        let milestonesVC = MilestonesOverviewViewController()
-//        milestonesVC.delegate = self
-//        navigationController?.pushViewController(milestonesVC, animated: true)
-//    }
+    
+    @IBAction func showMilestoneOverviewTapped(_ sender: UIBarButtonItem) {
+//        print("Button was tapped!")
+        let milestonesVC = MilestonesOverviewViewController()
+        milestonesVC.delegate = self
+        navigationController?.pushViewController(milestonesVC, animated: true)
+    }
     
     private var monthButtonCollectionView: ButtonsCollectionView!
     private var categoryButtonCollectionView: ButtonsCollectionView!
@@ -52,9 +52,9 @@ class GrowTrackViewController: UIViewController, MilestonesOverviewDelegate{
                 self?.bodyMeasurementCollectionView.reloadData()
             }
         }
-//        let button = UIBarButtonItem(image: UIImage(systemName: "clock.arrow.trianglehead.counterclockwise.rotate.90")?.withRenderingMode(.alwaysOriginal), style: .plain, target: self, action: #selector(showMilestoneOverviewTapped))
-//        self.navigationItem.rightBarButtonItem = button
-//        navigationItem.rightBarButtonItem = button
+        let button = UIBarButtonItem(image: UIImage(systemName: "clock.arrow.trianglehead.counterclockwise.rotate.90")?.withRenderingMode(.alwaysOriginal), style: .plain, target: self, action: #selector(showMilestoneOverviewTapped))
+        self.navigationItem.rightBarButtonItem = button
+        navigationItem.rightBarButtonItem = button
         
         view.addSubview(emptyLabel)
 
@@ -143,6 +143,7 @@ class GrowTrackViewController: UIViewController, MilestonesOverviewDelegate{
         milestonesCollectionView.register(MilestoneCardCell.self, forCellWithReuseIdentifier: MilestoneCardCell.identifier)
         milestonesCollectionView.dataSource = self
         milestonesCollectionView.delegate = self
+        milestonesCollectionView.showsVerticalScrollIndicator = false
         view.addSubview(milestonesCollectionView)
 
         milestonesCollectionView.translatesAutoresizingMaskIntoConstraints = false
@@ -186,7 +187,7 @@ class GrowTrackViewController: UIViewController, MilestonesOverviewDelegate{
         guard let selectedBaby = BabyDataModel.shared.babyList.first else { return }
         let monthNumber = Int(month.split(separator: " ")[0]) ?? 0
             
-        filteredMilestones = selectedBaby.milestoneLeft.filter { milestone in
+        filteredMilestones = selectedBaby.milestones.filter { milestone in
             let isMatchingMonth = milestone.milestoneMonth.rawValue == monthNumber
             let isMatchingCategory = milestone.category.rawValue == category.lowercased()
             return isMatchingMonth && isMatchingCategory
@@ -214,6 +215,11 @@ extension GrowTrackViewController: UICollectionViewDelegate {
         if collectionView == milestonesCollectionView {
             guard let selectedBaby = BabyDataModel.shared.babyList.first else { return }
             let selectedMilestone = filteredMilestones[indexPath.row]
+            
+            // Prevent navigation if milestone is already achieved
+            if selectedMilestone.isAchieved {
+                return
+            }
                     
             let modalVC = MilestoneModalViewController(
                 category: selectedMilestone.category.rawValue,

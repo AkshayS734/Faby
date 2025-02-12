@@ -2,10 +2,11 @@ import Foundation
 import UIKit
 
 class Baby {
+    var babyID : UUID
     var name: String
     var dateOfBirth: String
     var gender: Gender
-    var parent: Parent
+//    var parent: Parent
     var region: String?
     var milestonesAchieved: [GrowthMilestone : Date] = [:]
     var achievedMilestonesByCategory: [String: [GrowthMilestone]] = [
@@ -14,25 +15,25 @@ class Baby {
         "physical": [],
         "social": []
     ]
-    var milestoneLeft: [GrowthMilestone] = GrowthMilestonesDataModel().milestones
+    var milestones: [GrowthMilestone] = GrowthMilestonesDataModel().milestones
     var height: [Double: Date] = [:]
     var weight: [Double: Date] = [:]
     var headCircumference: [Double: Date] = [:]
-    
     var measurementUpdated: (() -> Void)?
     
-    init(name: String, dateOfBirth: String, gender: Gender, parent: Parent) {
+    init(name: String, dateOfBirth: String, gender: Gender) {
+        self.babyID = UUID()
         self.name = name
         self.dateOfBirth = dateOfBirth
         self.gender = gender
-        self.parent = parent
+//        self.parent = parent
     }
     
     func updateMilestonesAchieved(_ milestone: GrowthMilestone, date: Date, image: UIImage? = nil) {
-        if let index = milestoneLeft.firstIndex(where: { $0.id == milestone.id }) {
-            milestoneLeft.remove(at: index)
-        }
-        
+//        if let index = milestones.firstIndex(where: { $0.id == milestone.id }) {
+//            milestones.remove(at: index)
+//        }
+        milestone.isAchieved = true
         let categoryKey = milestone.category.rawValue
         if achievedMilestonesByCategory[categoryKey] == nil {
             achievedMilestonesByCategory[categoryKey] = []
@@ -117,10 +118,7 @@ class Baby {
         measurementUpdated?()
     }
 }
-enum Gender {
-    case male
-    case female
-}
+
 extension Notification.Name {
     static let milestonesAchievedUpdated = Notification.Name("milestonesAchievedUpdated")
 }

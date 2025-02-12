@@ -2,16 +2,19 @@ import Foundation
 class GrowthMilestone: Hashable {
     let id: UUID
     var title: String
+    var subtitle: String
     var query: String
     var image: String
     var userImagePath: String? 
     var milestoneMonth: MilestoneMonth
     var description: String
     var category: GrowthCategory
+    var isAchieved = false
     
-    init(title: String,query: String, image: String, milestoneMonth: MilestoneMonth, description: String, category: GrowthCategory) {
+    init(title: String,subtitle: String,query: String, image: String, milestoneMonth: MilestoneMonth, description: String, category: GrowthCategory) {
         self.id = UUID()
         self.title = title
+        self.subtitle = subtitle
         self.query = query
         self.image = image
         self.milestoneMonth = milestoneMonth
@@ -20,13 +23,7 @@ class GrowthMilestone: Hashable {
     }
     
     static func == (lhs: GrowthMilestone, rhs: GrowthMilestone) -> Bool {
-        return lhs.id == rhs.id &&
-                lhs.title == rhs.title &&
-                lhs.query == rhs.query &&
-                lhs.image == rhs.image &&
-                lhs.milestoneMonth == rhs.milestoneMonth &&
-                lhs.description == rhs.description &&
-                lhs.category == rhs.category
+        return lhs.id == rhs.id
     }
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
