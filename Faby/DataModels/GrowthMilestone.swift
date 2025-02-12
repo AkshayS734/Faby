@@ -5,7 +5,9 @@ class GrowthMilestone: Hashable {
     var subtitle: String
     var query: String
     var image: String
-    var userImagePath: String? 
+    var userImagePath: String?
+    var userVideoPath: String?
+    var caption : String?
     var milestoneMonth: MilestoneMonth
     var description: String
     var category: GrowthCategory

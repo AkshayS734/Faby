@@ -228,23 +228,26 @@ extension GrowTrackViewController: UICollectionViewDelegate {
                 milestone: selectedMilestone
             )
             modalVC.baby = baby
-            modalVC.onSave = { [weak self] date, image in
+            modalVC.onSave = { [weak self] date, image, videoURL, caption in
                 guard let self = self else { return }
                 
                 selectedBaby.updateMilestonesAchieved(selectedMilestone, date: date)
+                
                 if let milestonesVC = self.navigationController?.viewControllers.first(where: { $0 is MilestonesOverviewViewController }) as? MilestonesOverviewViewController {
-                        milestonesVC.reloadMilestones()
-                        milestonesVC.delegate?.milestonesOverviewDidUpdate()
-                    }
+                    milestonesVC.reloadMilestones()
+                    milestonesVC.delegate?.milestonesOverviewDidUpdate()
+                }
                 
                 self.filterMilestones(
                     month: self.monthButtonTitles[self.monthButtonCollectionView.selectedIndex ?? 0],
                     category: self.categoryButtonTitles[self.categoryButtonCollectionView.selectedIndex ?? 0]
                 )
-                if image != nil {
-                    selectedBaby.saveMilestoneUserImage(for: selectedMilestone, image: image!)
+                if let image = image {
+                    selectedBaby.saveMilestoneUserImage(for: selectedMilestone, image: image, caption: caption)
                 }
-                
+                if let videoURL = videoURL {
+                    selectedBaby.saveMilestoneUserVideo(for: selectedMilestone, videoURL: videoURL, caption: caption)
+                }
                 self.milestonesCollectionView.reloadData()
                 
                 modalVC.dismiss(animated: true) {
