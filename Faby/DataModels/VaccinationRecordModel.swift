@@ -8,7 +8,6 @@
 import Foundation
 
 
-
 struct VaccineSchedule {
     
     let type: String

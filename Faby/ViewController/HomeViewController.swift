@@ -1,11 +1,13 @@
 import UIKit
+import SwiftUI
 
-struct Vaccination {
-    let title: String
-    let date: String
-    let location: String
-    var isChecked: Bool
-}
+//struct Vaccination {
+//    let title: String
+//    let date: String
+//    let location: String
+//    var isChecked: Bool
+//}
+
 struct TodayBite {
     let title: String
     let time: String
@@ -14,7 +16,10 @@ struct TodayBite {
 
 class HomeViewController: UIViewController {
     
-    var vaccinationsData: [Vaccination] = []
+    // MARK: - Properties
+    var scheduledVaccines: [[String: String]] = []
+    var completedVaccines: [[String: String]] = []
+    var vaccineView: UIView?
     var baby = BabyDataModel.shared.babyList[0]
     
     private let scrollView: UIScrollView = {
@@ -22,13 +27,16 @@ class HomeViewController: UIViewController {
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.showsVerticalScrollIndicator = false
         scrollView.showsVerticalScrollIndicator = false
+        scrollView.backgroundColor = UIColor(hex: "#f2f2f7")
         return scrollView
     }()
+    
     private let contentView: UIView = {
         let view = UIView()
         view.translatesAutoresizingMaskIntoConstraints = false
         return view
     }()
+    
     private let nameLabel: UILabel = {
         let label = UILabel()
         label.text = "Name"
@@ -36,6 +44,7 @@ class HomeViewController: UIViewController {
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
     }()
+    
     private let dateLabel: UILabel = {
         let label = UILabel()
         label.text = "Date"
@@ -44,6 +53,7 @@ class HomeViewController: UIViewController {
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
     }()
+    
     private let specialMomentsLabel: UILabel = {
         let label = UILabel()
         label.text = "Special Moments"
@@ -51,11 +61,13 @@ class HomeViewController: UIViewController {
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
     }()
+    
     private let specialMomentsContainerView: UIView = {
         let view = UIView()
         view.translatesAutoresizingMaskIntoConstraints = false
         return view
     }()
+    
     private let todaysBitesLabel: UILabel = {
         let label = UILabel()
         label.text = "Today's Bites"
@@ -63,6 +75,7 @@ class HomeViewController: UIViewController {
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
     }()
+    
     private let todaysBitesCollectionView: UICollectionView = {
         let layout = UICollectionViewFlowLayout()
         layout.scrollDirection = .horizontal
@@ -74,21 +87,6 @@ class HomeViewController: UIViewController {
         collectionView.showsHorizontalScrollIndicator = false
         return collectionView
     }()
-    private let upcomingVaccinationLabel: UILabel = {
-        let label = UILabel()
-        label.text = "Upcoming Vaccination"
-        label.font = UIFont.boldSystemFont(ofSize: 20)
-        label.translatesAutoresizingMaskIntoConstraints = false
-        return label
-    }()
-    private let vaccinationsStackView: UIStackView = {
-        let stackView = UIStackView()
-        stackView.axis = .vertical
-        stackView.spacing = 10
-        stackView.translatesAutoresizingMaskIntoConstraints = false
-        return stackView
-    }()
-    
     
     var todaysBitesData: [TodayBite] = [
         TodayBite(title: "Early Bite", time: "7:30 AM - 8:00 AM", imageName: "Mashed Banana with Milk"),
@@ -98,10 +96,10 @@ class HomeViewController: UIViewController {
         TodayBite(title: "Night Bite", time: "7:30 PM - 8:00 PM", imageName: "Gobhi Aloo With Roti")
     ]
     
-    
+    // MARK: - Lifecycle Methods
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = .systemGray6
+        view.backgroundColor = UIColor(hex: "#f2f2f7")
         navigationController?.navigationBar.prefersLargeTitles = false
         navigationItem.rightBarButtonItem = UIBarButtonItem(
             image: UIImage(systemName: "gear"),
@@ -110,22 +108,34 @@ class HomeViewController: UIViewController {
             action: #selector(goToSettings)
         )
         NotificationCenter.default.addObserver(self, selector: #selector(updateSpecialMoments), name: .milestonesAchievedUpdated, object: nil)
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleNewVaccineScheduled),
+            name: NSNotification.Name("NewVaccineScheduled"),
+            object: nil
+        )
+        
         todaysBitesCollectionView.register(UINib(nibName: "TodayBiteCollectionViewCell", bundle: nil), forCellWithReuseIdentifier: "BitesCell")
         
         setupUI()
         setupDelegates()
-        loadVaccinationData()
+        loadVaccinations()
         updateNameLabel()
         updateDateLabel()
         embedSpecialMomentsViewController()
     }
-    @objc func goToSettings() {
-        let settingsVC = SettingsViewController()
-        navigationController?.pushViewController(settingsVC, animated: true)
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        loadVaccinations()
     }
-    @objc func updateSpecialMoments() {
-        embedSpecialMomentsViewController()
+    
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        NotificationCenter.default.removeObserver(self)
     }
+    
+    // MARK: - Setup Methods
     private func setupUI() {
         view.addSubview(scrollView)
         scrollView.addSubview(contentView)
@@ -136,8 +146,6 @@ class HomeViewController: UIViewController {
         contentView.addSubview(specialMomentsContainerView)
         contentView.addSubview(todaysBitesLabel)
         contentView.addSubview(todaysBitesCollectionView)
-        contentView.addSubview(upcomingVaccinationLabel)
-        contentView.addSubview(vaccinationsStackView)
         
         NSLayoutConstraint.activate([
             scrollView.topAnchor.constraint(equalTo: view.topAnchor),
@@ -171,16 +179,45 @@ class HomeViewController: UIViewController {
             todaysBitesCollectionView.topAnchor.constraint(equalTo: todaysBitesLabel.bottomAnchor, constant: 10),
             todaysBitesCollectionView.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
             todaysBitesCollectionView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-            todaysBitesCollectionView.heightAnchor.constraint(equalToConstant: 190),
-            
-            upcomingVaccinationLabel.topAnchor.constraint(equalTo: todaysBitesCollectionView.bottomAnchor, constant: 20),
-            upcomingVaccinationLabel.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
-            
-            vaccinationsStackView.topAnchor.constraint(equalTo: upcomingVaccinationLabel.bottomAnchor, constant: 10),
-            vaccinationsStackView.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
-            vaccinationsStackView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-            vaccinationsStackView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -20)
+            todaysBitesCollectionView.heightAnchor.constraint(equalToConstant: 190)
         ])
+    }
+    
+    private func setupVaccineView() {
+        vaccineView?.removeFromSuperview()
+        
+        let vaccineCardsView = UIHostingController(rootView:
+            VaccineCardsView(
+                vaccines: scheduledVaccines,
+                onVaccineCompleted: { [weak self] vaccine in
+                    if let index = self?.scheduledVaccines.firstIndex(where: { $0 == vaccine }) {
+                        self?.scheduledVaccines.remove(at: index)
+                        self?.completedVaccines.append(vaccine)
+                        
+                        UserDefaults.standard.set(self?.scheduledVaccines, forKey: "VaccinationSchedules")
+                        UserDefaults.standard.set(self?.completedVaccines, forKey: "CompletedVaccines")
+                        UserDefaults.standard.synchronize()
+                        
+                        self?.loadVaccinations()
+                    }
+                }
+            )
+        )
+        
+        addChild(vaccineCardsView)
+        vaccineCardsView.view.translatesAutoresizingMaskIntoConstraints = false
+        contentView.addSubview(vaccineCardsView.view)
+        vaccineCardsView.didMove(toParent: self)
+        
+        NSLayoutConstraint.activate([
+            vaccineCardsView.view.topAnchor.constraint(equalTo: todaysBitesCollectionView.bottomAnchor, constant: 20),
+            vaccineCardsView.view.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
+            vaccineCardsView.view.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
+            vaccineCardsView.view.heightAnchor.constraint(equalToConstant: 200),
+            vaccineCardsView.view.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -20)
+        ])
+        
+        vaccineView = vaccineCardsView.view
     }
     
     private func setupDelegates() {
@@ -198,61 +235,15 @@ class HomeViewController: UIViewController {
         dateLabel.text = formatter.string(from: Date())
     }
     
-    private func loadVaccinationData() {
-        if let savedData = UserDefaults.standard.array(forKey: "VaccinationSchedules") as? [[String: String]] {
-            vaccinationsData = savedData.compactMap { vaccination in
-                guard let title = vaccination["hospital"], let date = vaccination["date"], let location = vaccination["address"] else { return nil }
-                return Vaccination(title: title, date: date, location: location, isChecked: false)
-            }
-            updateVaccinationUI()
+    private func loadVaccinations() {
+        if let savedScheduled = UserDefaults.standard.array(forKey: "VaccinationSchedules") as? [[String: String]] {
+            scheduledVaccines = savedScheduled
+            setupVaccineView()
         }
-    }
-    
-    private func updateVaccinationUI() {
-        vaccinationsStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
-        for vaccination in vaccinationsData {
-            addVaccinationCard(vaccination: vaccination)
+        
+        if let savedCompleted = UserDefaults.standard.array(forKey: "CompletedVaccines") as? [[String: String]] {
+            completedVaccines = savedCompleted
         }
-    }
-    
-    private func addVaccinationCard(vaccination: Vaccination) {
-        let card = UIView()
-        card.backgroundColor = .white
-        card.layer.cornerRadius = 10
-        card.layer.shadowColor = UIColor.black.cgColor
-        card.layer.shadowOpacity = 0.1
-        card.layer.shadowOffset = CGSize(width: 0, height: 2)
-        card.translatesAutoresizingMaskIntoConstraints = false
-        
-        let titleLabel = UILabel()
-        titleLabel.text = vaccination.title
-        titleLabel.font = UIFont.boldSystemFont(ofSize: 16)
-        
-        let dateLabel = UILabel()
-        dateLabel.text = vaccination.date
-        dateLabel.font = UIFont.systemFont(ofSize: 14)
-        dateLabel.textColor = .gray
-        
-        let locationLabel = UILabel()
-        locationLabel.text = vaccination.location
-        locationLabel.font = UIFont.systemFont(ofSize: 14)
-        locationLabel.textColor = .gray
-        
-        let stackView = UIStackView(arrangedSubviews: [titleLabel, dateLabel, locationLabel])
-        stackView.axis = .vertical
-        stackView.spacing = 5
-        stackView.translatesAutoresizingMaskIntoConstraints = false
-        card.addSubview(stackView)
-        
-        vaccinationsStackView.addArrangedSubview(card)
-        
-        NSLayoutConstraint.activate([
-            card.heightAnchor.constraint(equalToConstant: 80),
-            stackView.topAnchor.constraint(equalTo: card.topAnchor, constant: 10),
-            stackView.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 10),
-            stackView.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -10),
-            stackView.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -10)
-        ])
     }
     
     private func embedSpecialMomentsViewController() {
@@ -261,6 +252,7 @@ class HomeViewController: UIViewController {
         specialMomentsVC.view.translatesAutoresizingMaskIntoConstraints = false
         specialMomentsContainerView.addSubview(specialMomentsVC.view)
         specialMomentsVC.populateMilestones()
+        
         NSLayoutConstraint.activate([
             specialMomentsVC.view.topAnchor.constraint(equalTo: specialMomentsContainerView.topAnchor),
             specialMomentsVC.view.leadingAnchor.constraint(equalTo: specialMomentsContainerView.leadingAnchor),
@@ -269,11 +261,24 @@ class HomeViewController: UIViewController {
         ])
         
         specialMomentsVC.didMove(toParent: self)
-        
     }
     
+    // MARK: - Action Methods
+    @objc func goToSettings() {
+        let settingsVC = SettingsViewController()
+        navigationController?.pushViewController(settingsVC, animated: true)
+    }
+    
+    @objc func updateSpecialMoments() {
+        embedSpecialMomentsViewController()
+    }
+    
+    @objc private func handleNewVaccineScheduled(_ notification: Notification) {
+        loadVaccinations()
+    }
 }
 
+// MARK: - CollectionView Extensions
 extension HomeViewController: UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         return todaysBitesData.count
@@ -288,7 +293,106 @@ extension HomeViewController: UICollectionViewDelegate, UICollectionViewDataSour
         cell.configure(with: bite)
         return cell
     }
+    
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
         return CGSize(width: 250, height: 190)
+    }
+}
+
+// MARK: - SwiftUI Views
+struct VaccineCardsView: View {
+    var vaccines: [[String: String]]
+    var onVaccineCompleted: ([String: String]) -> Void
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Vaccine Reminder")
+                .font(.system(size: 20, weight: .bold)) // Set font size to 20 and weight to bold
+                .padding(.horizontal)
+            
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    ForEach(vaccines, id: \.self) { vaccine in
+                        VaccineCard(
+                            vaccine: vaccine,
+                            onComplete: {
+                                onVaccineCompleted(vaccine)
+                            }
+                        )
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 4)
+            }
+        }
+        .background(Color(UIColor(hex: "#f2f2f7")))
+    }
+}
+
+struct VaccineCard: View {
+    var vaccine: [String: String]
+    var onComplete: () -> Void
+    @State private var isCompleted = false
+    @State private var opacity = 1.0
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Header with Type and Completion Button
+            HStack {
+                Text(vaccine["type"] ?? "Unknown Vaccine")
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                
+                Spacer()
+                
+                Button(action: {
+                    withAnimation(.easeOut(duration: 0.3)) {
+                        isCompleted = true
+                        opacity = 0
+                    }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        onComplete()
+                    }
+                }) {
+                    Image(systemName: isCompleted ? "checkmark.circle.fill" : "circle")
+                        .foregroundColor(isCompleted ? .green : Color(.systemGray3))
+                        .font(.system(size: 22))
+                }
+                .disabled(isCompleted)
+            }
+            
+            // Date and Hospital Info
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 6) {
+                    Image(systemName: "calendar")
+                        .foregroundColor(Color(.systemBlue))
+                        .font(.system(size: 14))
+                    Text(vaccine["date"] ?? "")
+                        .font(.subheadline)
+                        .foregroundColor(Color(.systemGray))
+                }
+                
+                HStack(spacing: 6) {
+                    Image(systemName: "building.2")
+                        .foregroundColor(Color(.systemBlue))
+                        .font(.system(size: 14))
+                    Text(vaccine["hospital"] ?? "Unknown Hospital")
+                        .font(.subheadline)
+                        .foregroundColor(Color(.systemGray))
+                }
+            }
+        }
+        .padding(16)
+        .frame(width: 260, height: 120)
+        .background(Color(.systemBackground))
+        .cornerRadius(12)
+        .shadow(color: Color(.systemGray4).opacity(0.5), radius: 4, x: 0, y: 2)
+        .opacity(opacity)
+    }
+}
+// Make Dictionary conform to Hashable
+extension Dictionary: Hashable where Value: Hashable {
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(self.description)
     }
 }
