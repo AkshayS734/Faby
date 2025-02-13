@@ -12,15 +12,13 @@ class VacciAlertViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        
         navigationItem.hidesBackButton = true
 
-           // Set the title
-           navigationItem.title = "VacciTime"
+        // Set the title
+        navigationItem.title = "VacciTime"
         view.backgroundColor = UIColor(hex: "#f2f2f7")
         
         // Initialize CalendarContainerView inside a UIHostingController
-        
         let calendarView = UIHostingController(rootView:
             CalendarContainerView(
                 selectedDate: selectedDateSubject.eraseToAnyPublisher(),
@@ -53,7 +51,6 @@ class VacciAlertViewController: UIViewController {
         let reminderVC = VaccineReminderViewController()
         show(reminderVC, sender: self)
     }
-    
     
     // Date changed event handler when user selects a date from the date picker
     @objc func dateChanged(_ datePicker: UIDatePicker) {
@@ -121,17 +118,15 @@ class VacciAlertViewController: UIViewController {
         if vaccine == "Hepatitis B" {
             detailVC.vaccineNameLabel.text = "Hepatitis B"
             detailVC.vaccineDescriptionLabel.text = "Hepatitis is an inflammation of the liver. The vaccine protects against severe complications."
-            
         }
-        if vaccine == "Influenza"{
+        if vaccine == "Influenza" {
             detailVC.vaccineNameLabel.text = "Influenza"
-            detailVC.vaccineDescriptionLabel.text="The flu is a contagious respiratory illness caused by influenza viruses. The vaccine protects against severe complications."
+            detailVC.vaccineDescriptionLabel.text = "The flu is a contagious respiratory illness caused by influenza viruses. The vaccine protects against severe complications."
         }
         
         detailVC.modalPresentationStyle = .pageSheet
         present(detailVC, animated: true, completion: nil)
     }
-    
     
     // Prepare for segue to pass data
     func showAddVaccinationModal() {
@@ -167,30 +162,8 @@ struct CalendarContainerView: View {
                         onChevronTappedToNavigate: onChevronTappedToNavigate
                     )
 
-                    Text("Latest Research")
-                        .font(.title2)
-                        .bold()
-                        .padding(.horizontal)
+                    Text("Next Immunization")
 
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 16) {
-                            VaccineCardView(
-                                title: "Hepatitis B",
-                                description: "The hepatitis B vaccine prevents liver disease and cancer.",
-                                imageName: "hepatitisB",
-                                onTap: { onCardTapped("Hepatitis B") }
-                            )
-                            VaccineCardView(
-                                title: "Influenza",
-                                description: "The influenza vaccine reduces the risk of flu infection.",
-                                imageName: "influenza",
-                                onTap: { onCardTapped("Influenza") }
-                            )
-                        }
-                        .padding(.horizontal)
-                    }
-
-                    Text("Upcoming Vaccination")
                         .font(.title2)
                         .bold()
                         .padding(.horizontal)
@@ -231,39 +204,7 @@ struct CalendarContainerView: View {
         return "\(formatter.string(from: startDate)) - \(formatter.string(from: endDate))"
     }
 }
-// SwiftUI View to display individual vaccine cards
-struct VaccineCardView: View {
-    let title: String
-    let description: String
-    let imageName: String
-    let onTap: () -> Void // Closure to handle tap action
 
-    var body: some View {
-        VStack(alignment: .leading) {
-            Image(imageName)
-                .resizable()
-                .scaledToFit()
-                .frame(height: 50)
-                .padding(.bottom, 8)
-            
-            Text(title)
-                .font(.headline)
-                .foregroundColor(.primary)
-            
-            Text(description)
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-        }
-        .padding()
-        .frame(width: 200)
-        .background(Color(UIColor.white))
-        .cornerRadius(16)
-        .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
-        .onTapGesture { // Handle tap on the card
-            onTap()
-        }
-    }
-}
 // SwiftUI View to display the calendar and month/year header
 struct CalendarView: View {
     var selectedDate: Date
@@ -300,7 +241,7 @@ struct CalendarView: View {
                                     .fontWeight(isSelected ? .semibold : .regular) // Bold if selected
                                     .foregroundColor(isSelected ? .white : .primary)
                                     .frame(width: 36, height: 36)
-                                    .background(isSelected ? Color(UIColor(hex: "#0076BA")) : Color.clear)// Blue background if selected
+                                    .background(isSelected ? Color(UIColor(hex: "#0076BA")) : Color.clear) // Blue background if selected
                                     .clipShape(Circle()) // Circle shape for the day number
                             }
                             .id(day) // Add an id to each day for scrolling

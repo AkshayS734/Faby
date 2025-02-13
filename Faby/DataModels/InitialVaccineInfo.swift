@@ -1,15 +1,16 @@
-//
-//  InitialVaccineInfo.swift
-//  Faby
-//
-//  Created by Adarsh Mishra on 06/02/25.
-//
-
 import Foundation
 
 struct VaccineStage {
+    let id: UUID
     let stageTitle: String
     let vaccines: [String]
+
+    // Add an initializer with a default value for `id`
+    init(id: UUID = UUID(), stageTitle: String, vaccines: [String]) {
+        self.id = id
+        self.stageTitle = stageTitle
+        self.vaccines = vaccines
+    }
 }
 
 class VaccineManager {
