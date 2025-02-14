@@ -12,9 +12,9 @@ struct Toddler: Codable, Identifiable {
     var name: String
     var dob: Date   // Date of birth
     var gender: String
-    var parentId: String  // Optional: Links to a parent user
+    var parentId: String
     
-    // Computed property for age calculation
+   
     var age: Int {
         let calendar = Calendar.current
         let components = calendar.dateComponents([.year], from: dob, to: Date())

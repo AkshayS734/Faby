@@ -20,6 +20,7 @@ class Baby {
     var headCircumference: [Double: Date] = [:]
     var measurementUpdated: (() -> Void)?
 
+
     init(name: String, dateOfBirth: String, gender: Gender) {
         self.babyID = UUID()
         self.name = name
@@ -150,3 +151,7 @@ class Baby {
 extension Notification.Name {
     static let milestonesAchievedUpdated = Notification.Name("milestonesAchievedUpdated")
 }
+
+// Function used for VacciAlert :
+
+
