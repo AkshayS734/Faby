@@ -9,29 +9,28 @@
 // CardData.swift
 import Foundation
 
-struct Topics {
+struct Card {
     let title: String
     let subtitle: String
-    let imageView: String
 }
 
-//class CardDataProvider {
-//    static let shared = CardDataProvider()
-//
-//    private init() {}
-//
-//    // Updated card data as an array of `Card` objects
-//    let cardData: [Topics] = [
-//        Topics(title: "Sleep Solutions", subtitle: "Bedtime Routine, Sleep Regressions, Night Waking, etc."),
-//        Topics(title: "Healthy Nutrition", subtitle: "Meal Planning, Picky Eaters, Food Introduction, Food Allergies, etc."),
-//        Topics(title: "Managing Tantrums", subtitle: "Emotional Understanding, Calming Techniques, Boundaries, etc."),
-//        Topics(title: "Speech Development", subtitle: "Early Communication, Speech Delays, Storytelling, Songs & Rhymes, etc."),
-//        Topics(title: "Learning Activities", subtitle: "Play-Based Learning, Motor Skills, Literacy Activities, Exploration, etc."),
-//        Topics(title: "Home Safety", subtitle: "Childproofing, Electrical Safety, Safe Spaces, First Aid, etc."),
-//        Topics(title: "Social Skills", subtitle: "Sharing & Turn-Taking, Empathy, Peer Interactions, Conflict Management, etc."),
-//        Topics(title: "Parental Guidance", subtitle: "Support Networks, Stress Management, Time Management, etc."),
-//        Topics(title: "Special Needs Support", subtitle: "Special Needs Programs, Individualized Support, etc."),
-//        Topics(title: "Social Skills", subtitle: "Sharing & Turn-Taking, Empathy, Peer Interactions, Conflict Management, etc. ")
-//        
-//    ]
-//}
+class CardDataProvider {
+    static let shared = CardDataProvider()
+
+    private init() {}
+
+    // Updated card data as an array of `Card` objects
+    let cardData: [Card] = [
+        Card(title: "Sleep Solutions", subtitle: "Bedtime Routine, Sleep Regressions, Night Waking, etc."),
+        Card(title: "Healthy Nutrition", subtitle: "Meal Planning, Picky Eaters, Food Introduction, Food Allergies, etc."),
+        Card(title: "Managing Tantrums", subtitle: "Emotional Understanding, Calming Techniques, Boundaries, etc."),
+        Card(title: "Speech Development", subtitle: "Early Communication, Speech Delays, Storytelling, Songs & Rhymes, etc."),
+        Card(title: "Learning Activities", subtitle: "Play-Based Learning, Motor Skills, Literacy Activities, Exploration, etc."),
+        Card(title: "Home Safety", subtitle: "Childproofing, Electrical Safety, Safe Spaces, First Aid, etc."),
+        Card(title: "Social Skills", subtitle: "Sharing & Turn-Taking, Empathy, Peer Interactions, Conflict Management, etc."),
+        Card(title: "Parental Guidance", subtitle: "Support Networks, Stress Management, Time Management, etc."),
+        Card(title: "Special Needs Support", subtitle: "Special Needs Programs, Individualized Support, etc."),
+        Card(title: "Social Skills", subtitle: "Sharing & Turn-Taking, Empathy, Peer Interactions, Conflict Management, etc. ")
+        
+    ]
+}
