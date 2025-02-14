@@ -8,7 +8,8 @@
 import UIKit
 
 class cardDetailsCollectionViewCell: UICollectionViewCell {
-
+    @IBOutlet weak var imageView: UIImageView!
+    
     @IBOutlet weak var stackView: UIStackView!
     @IBOutlet weak var subtitle: UILabel!
     @IBOutlet weak var title: UILabel!
@@ -18,5 +19,9 @@ class cardDetailsCollectionViewCell: UICollectionViewCell {
         stackView.layer.cornerRadius = 10
                 stackView.layer.masksToBounds = true
     }
-
+    func configure(with topic: Topics) {
+        title.text = topic.title
+        subtitle.text = topic.subtitle
+        imageView.image = UIImage(named: topic.imageView)  // Dynamically set image
+    }
 }
