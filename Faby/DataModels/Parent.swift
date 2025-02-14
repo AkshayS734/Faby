@@ -6,6 +6,7 @@ struct Parent{
     var phoneNumber : String?
     var gender : Gender
     var relation : Relation
+    
 }
 
 enum Relation : String, Codable{

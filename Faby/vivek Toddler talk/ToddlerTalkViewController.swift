@@ -5,8 +5,8 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
     @IBOutlet weak var searchBar: UISearchBar!
     @IBOutlet weak var collectionView: UICollectionView!
         // Fetching card data from the provider
-    let cardData = CardDataProvider.shared.cardData
-    var filteredCardData: [Card] = []
+    let cardData = TopicsDataManager.shared.cardData
+    var filteredCardData: [Topics] = []
     
     // Add a property to hold the comment data
     var comments: [Post] = []
@@ -18,7 +18,7 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
         filteredCardData = cardData
         
         // Set the comments data
-        comments = CommentDataManager.getDemoComments()
+        comments = PostDataManager.getDemoComments()
         
         // Create a custom compositional layout with 2 items per row
         let layout = createCompositionalLayout()
@@ -53,11 +53,11 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
         
         // Apply corner radius and shadow to the cell
         cell.layer.cornerRadius = 10
-        cell.layer.masksToBounds = true
-        cell.layer.shadowColor = UIColor.black.cgColor
-        cell.layer.shadowOffset = CGSize(width: 0, height: 2)
-        cell.layer.shadowRadius = 4
-        cell.layer.shadowOpacity = 0.1
+//        cell.layer.masksToBounds = true
+//        cell.layer.shadowColor = UIColor.black.cgColor
+//        cell.layer.shadowOffset = CGSize(width: 0, height: 2)
+//        cell.layer.shadowRadius = 4
+//        cell.layer.shadowOpacity = 0.1
         
         return cell
     }
