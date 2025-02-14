@@ -7,11 +7,15 @@ struct Parent  {
     var phoneNumber : String?
     var gender : Gender
     var relation : Relation
-    var babyIds: [String]
+    var baby : [Baby]?
 }
 
 enum Relation : String, Codable{
     case father
     case mother
     case guardian
+}
+enum Gender {
+    case male
+    case female
 }
