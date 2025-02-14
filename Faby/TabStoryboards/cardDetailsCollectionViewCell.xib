@@ -4,7 +4,6 @@
     <dependencies>
         <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="23506"/>
         <capability name="Safe area layout guides" minToolsVersion="9.0"/>
-        <capability name="System colors in document resources" minToolsVersion="11.0"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
     <objects>
@@ -36,7 +35,19 @@
                                 <nil key="highlightedColor"/>
                             </label>
                         </subviews>
-                        <color key="backgroundColor" systemColor="systemGray6Color"/>
+                        <color key="backgroundColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                        <constraints>
+                            <constraint firstAttribute="bottom" secondItem="uT6-u4-rQv" secondAttribute="bottom" id="L0f-gH-K1m"/>
+                            <constraint firstItem="08u-z1-O97" firstAttribute="leading" secondItem="hNC-qM-5uh" secondAttribute="leading" id="Q44-yf-h7L"/>
+                            <constraint firstItem="08u-z1-O97" firstAttribute="top" secondItem="hNC-qM-5uh" secondAttribute="top" id="QZq-Ob-r3j"/>
+                            <constraint firstAttribute="trailing" secondItem="uT6-u4-rQv" secondAttribute="trailing" id="XRm-RS-DXa"/>
+                            <constraint firstAttribute="trailing" secondItem="uT6-u4-rQv" secondAttribute="trailing" id="Xkc-x4-QLB"/>
+                            <constraint firstAttribute="trailing" secondItem="08u-z1-O97" secondAttribute="trailing" id="Zhf-kk-oVA"/>
+                            <constraint firstAttribute="trailing" secondItem="08u-z1-O97" secondAttribute="trailing" id="fiP-R7-p5L"/>
+                            <constraint firstItem="08u-z1-O97" firstAttribute="top" secondItem="hNC-qM-5uh" secondAttribute="top" id="gZW-ko-kbc"/>
+                            <constraint firstAttribute="bottom" secondItem="uT6-u4-rQv" secondAttribute="bottom" id="qsm-f5-0N2"/>
+                            <constraint firstItem="uT6-u4-rQv" firstAttribute="leading" secondItem="hNC-qM-5uh" secondAttribute="leading" id="vBv-X7-EoF"/>
+                        </constraints>
                     </stackView>
                 </subviews>
             </view>
@@ -61,9 +72,4 @@
             <point key="canvasLocation" x="477.86259541984731" y="85.91549295774648"/>
         </collectionViewCell>
     </objects>
-    <resources>
-        <systemColor name="systemGray6Color">
-            <color red="0.94901960780000005" green="0.94901960780000005" blue="0.96862745100000003" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
-        </systemColor>
-    </resources>
 </document>

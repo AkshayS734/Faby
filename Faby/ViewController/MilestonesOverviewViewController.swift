@@ -24,7 +24,7 @@ class MilestonesOverviewViewController: UIViewController, UITableViewDelegate, U
         let label = UILabel()
         label.text = "No milestone added yet"
         label.font = UIFont.systemFont(ofSize: 16, weight: .medium)
-        label.textColor = .gray
+        label.textColor = .darkGray
         label.textAlignment = .center
         label.isHidden = false
         return label
@@ -77,7 +77,6 @@ class MilestonesOverviewViewController: UIViewController, UITableViewDelegate, U
     }
     
     private func setupUI() {
-        view.backgroundColor = .white
         
         segmentedControl.selectedSegmentIndex = 0
         segmentedControl.addTarget(self, action: #selector(segmentChanged(_:)), for: .valueChanged)
@@ -87,7 +86,7 @@ class MilestonesOverviewViewController: UIViewController, UITableViewDelegate, U
         donutChartView.backgroundColor = .clear
         view.addSubview(donutChartView)
         donutChartView.translatesAutoresizingMaskIntoConstraints = false
-        
+        tableView.backgroundColor = .systemGray6
         tableView.delegate = self
         tableView.dataSource = self
         tableView.register(MilestoneTableViewCell.self, forCellReuseIdentifier: "MilestoneCell")
@@ -105,9 +104,9 @@ class MilestonesOverviewViewController: UIViewController, UITableViewDelegate, U
             donutChartView.topAnchor.constraint(equalTo: segmentedControl.bottomAnchor, constant: 20),
             donutChartView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             donutChartView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            donutChartView.heightAnchor.constraint(equalTo: donutChartView.widthAnchor),
+            donutChartView.heightAnchor.constraint(equalTo: donutChartView.widthAnchor, multiplier: 0.7),
             
-            tableView.topAnchor.constraint(equalTo: donutChartView.bottomAnchor, constant: 20),
+            tableView.topAnchor.constraint(equalTo: donutChartView.bottomAnchor),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
@@ -140,7 +139,7 @@ class MilestonesOverviewViewController: UIViewController, UITableViewDelegate, U
         achievedMilestones = milestones.count
         updateDonutChart()
         tableView.reloadData()
-//        emptyLabel.isHidden = !milestones.isEmpty
+        emptyLabel.isHidden = !milestones.isEmpty
     }
     
     private func updateDonutChart() {
@@ -150,8 +149,7 @@ class MilestonesOverviewViewController: UIViewController, UITableViewDelegate, U
     
     private func drawDonutChart(percentage: CGFloat) {
         donutChartView.layer.sublayers?.forEach { $0.removeFromSuperlayer() }
-        
-        let radius: CGFloat = donutChartView.frame.width / 3
+        let radius: CGFloat = donutChartView.frame.width / 4
         let lineWidth: CGFloat = 18.0
         
         let backgroundLayer = CAShapeLayer()
@@ -163,14 +161,6 @@ class MilestonesOverviewViewController: UIViewController, UITableViewDelegate, U
         backgroundLayer.lineWidth = lineWidth
         backgroundLayer.fillColor = UIColor.clear.cgColor
         donutChartView.layer.addSublayer(backgroundLayer)
-//        
-//        let remainingLayer = CAShapeLayer()
-//        remainingLayer.path = circularPath.cgPath
-//        remainingLayer.strokeColor = UIColor.gray.cgColor
-//        remainingLayer.lineWidth = lineWidth
-//        remainingLayer.fillColor = UIColor.clear.cgColor
-//        remainingLayer.strokeEnd = 1 - percentage
-//        donutChartView.layer.addSublayer(remainingLayer)
         
         let achievedLayer = CAShapeLayer()
         achievedLayer.path = circularPath.cgPath
@@ -180,21 +170,6 @@ class MilestonesOverviewViewController: UIViewController, UITableViewDelegate, U
         achievedLayer.strokeEnd = percentage
         donutChartView.layer.addSublayer(achievedLayer)
     
-        
-            
-            // Percentage Label
-//        let percentageLabel = UILabel()
-//        percentageLabel.text = "\(Int(percentage * 100))%"
-//        percentageLabel.textAlignment = .center
-//        percentageLabel.font = UIFont.boldSystemFont(ofSize: 24)
-//        percentageLabel.textColor = .black
-//        percentageLabel.translatesAutoresizingMaskIntoConstraints = false
-//        donutChartView.addSubview(percentageLabel)
-            
-//        NSLayoutConstraint.activate([
-//            percentageLabel.centerXAnchor.constraint(equalTo: donutChartView.centerXAnchor),
-//            percentageLabel.centerYAnchor.constraint(equalTo: donutChartView.centerYAnchor)
-//        ])
         let progressLabel = UILabel()
         progressLabel.text = "Progress"
         progressLabel.font = UIFont.boldSystemFont(ofSize: 24)
@@ -223,7 +198,7 @@ class MilestonesOverviewViewController: UIViewController, UITableViewDelegate, U
             $0.category == category
         }
         return milestonesInCategory.map { milestone in
-            var updatedMilestone = milestone
+            let updatedMilestone = milestone
             if let achievedDate = baby.milestonesAchieved[milestone] {
                 updatedMilestone.description += "\nAchieved on \(achievedDate.formatted())"
             }
@@ -240,7 +215,6 @@ class MilestonesOverviewViewController: UIViewController, UITableViewDelegate, U
     
     func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
         let headerView = UIView()
-        headerView.backgroundColor = .systemGray6
         let label = UILabel()
         label.text = "Recently Achieved Milestones"
         label.font = UIFont.boldSystemFont(ofSize: 18)
@@ -257,7 +231,18 @@ class MilestonesOverviewViewController: UIViewController, UITableViewDelegate, U
             
         return headerView
     }
-    
+    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
+        return 60
+    }
+    func tableView(_ tableView: UITableView, heightForFooterInSection section: Int) -> CGFloat {
+        return 10
+    }
+
+    func tableView(_ tableView: UITableView, viewForFooterInSection section: Int) -> UIView? {
+        let footerView = UIView()
+        footerView.backgroundColor = .clear
+        return footerView
+    }
     func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
         return 40
     }

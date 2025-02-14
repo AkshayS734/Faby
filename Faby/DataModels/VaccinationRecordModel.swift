@@ -7,18 +7,35 @@
 
 import Foundation
 
-struct VaccinationRecord: Codable, Identifiable {
-    var id: String
-    var toddlerId: String  // Reference to the Toddler model
-    var vaccineId: String  // Reference to the Vaccine model
-    var dateAdministered: Date?  // If already given
-    var dateScheduled: Date?  // If scheduled
-    var hospitalId: String?  // Reference to the Hospital model
-    var status: VaccinationStatus  // Enum to track vaccination state
+
+
+struct VaccineSchedule {
+    
+    let type: String
+    let hospital: String
+    let date: String
+    let location: String
 }
 
-enum VaccinationStatus: String, Codable {
-    case administered
-    case scheduled
-    case missed
+class VaccinationDataManager {
+    private let storageKey = "VaccinationSchedules"
+    
+    func saveVaccinations(_ vaccinations: [VaccineSchedule]) {
+        let data = vaccinations.map {
+            ["type": $0.type, "hospital": $0.hospital, "date": $0.date, "address": $0.location]
+        }
+        UserDefaults.standard.set(data, forKey: storageKey)
+    }
+    
+    func loadVaccinations() -> [VaccineSchedule] {
+        guard let savedData = UserDefaults.standard.array(forKey: storageKey) as? [[String: String]] else {
+            return []
+        }
+        return savedData.compactMap { dict in
+            guard let type = dict["type"], let hospital = dict["hospital"], let date = dict["date"], let location = dict["address"] else {
+                return nil
+            }
+            return VaccineSchedule(type: type, hospital: hospital, date: date, location: location)
+        }
+    }
 }
