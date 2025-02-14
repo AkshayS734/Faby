@@ -10,7 +10,7 @@ class commentDetailsViewController: UIViewController, UICollectionViewDelegate, 
     var passedSubtitle: String? = "This is a sample subtitle."
     
     // Add a property for the comments data
-    var comments: [Post] = []
+    var comments: [Comment] = []
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -113,7 +113,7 @@ class commentDetailsViewController: UIViewController, UICollectionViewDelegate, 
     }
 
     // MARK: - PostViewDelegate
-    func didPostComment(_ comment: Post) {
+    func didPostComment(_ comment: Comment) {
         comments.insert(comment, at: 0) // Add new comment to the top of the list
         commentCollection.reloadData()  // Reload the collection view to reflect changes
     }
