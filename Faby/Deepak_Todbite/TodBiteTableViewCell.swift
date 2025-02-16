@@ -70,7 +70,7 @@ class TodBiteTableViewCell: UITableViewCell {
         ])
     }
     
-    func configure(with item: Item) {
+    func configure(with item: FeedingMeal) {
         itemImageView.image = UIImage(named: item.image)
         nameLabel.text = item.name
         descriptionLabel.text = item.description

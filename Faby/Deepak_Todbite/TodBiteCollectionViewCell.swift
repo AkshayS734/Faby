@@ -2,22 +2,20 @@ import UIKit
 
 // Define the delegate protocol
 protocol TodBiteCollectionViewCellDelegate: AnyObject {
-    func didTapAddButton(for item: Item, in category: CategoryType)
+    func didTapAddButton(for item: FeedingMeal, in category: BiteType)
 }
 
 class TodBiteCollectionViewCell: UICollectionViewCell {
     // MARK: - UI Components
     @IBOutlet weak var foodNameLabel: UILabel!
-    
-    
     @IBOutlet weak var nutritionLabel: UILabel!
     @IBOutlet weak var myImageView: UIImageView!
     private let addButton = UIButton(type: .system)
 
     // MARK: - Properties
     weak var delegate: TodBiteCollectionViewCellDelegate?
-    private var currentItem: Item?
-    private var currentCategory: CategoryType?
+    private var currentItem: FeedingMeal?
+    private var currentCategory: BiteType?
 
     // MARK: - Lifecycle
     override func awakeFromNib() {
@@ -100,7 +98,7 @@ class TodBiteCollectionViewCell: UICollectionViewCell {
     }
 
     // MARK: - Configure Cell
-    func configure(with item: Item, category: CategoryType, isAdded: Bool) {
+    func configure(with item: FeedingMeal, category: BiteType, isAdded: Bool) {
         self.currentItem = item
         self.currentCategory = category
 

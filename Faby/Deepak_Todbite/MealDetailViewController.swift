@@ -12,8 +12,8 @@ class MealDetailViewController: UIViewController, UITableViewDataSource, UITable
     private let tableView = UITableView()
 
     // MARK: - Data
-    var selectedItem: Item!
-    var sectionItems: [Item] = []
+    var selectedItem: FeedingMeal!
+    var sectionItems: [FeedingMeal] = []
     private var isLiked = false // For like button
 
     // MARK: - Lifecycle Methods
@@ -169,9 +169,9 @@ class MealDetailViewController: UIViewController, UITableViewDataSource, UITable
 // MARK: - SectionItemTableViewCellDelegate
 
 extension MealDetailViewController: SectionItemTableViewCellDelegate {
-    func didTapAddButton(for item: Item) {
+    func didTapAddButton(for item: FeedingMeal) {
         print("Adding item: \(item.name)") // Debugging print statement
-        guard let category = Todbite.shared.categories.first(where: { $0.value.contains(where: { $0.name == item.name }) })?.key else {
+        guard let category = BiteSampleData.shared.categories.first(where: { $0.value.contains(where: { $0.name == item.name }) })?.key else {
             print("Category not found for item: \(item.name)")
             return
         }
@@ -181,7 +181,7 @@ extension MealDetailViewController: SectionItemTableViewCellDelegate {
                 todBiteVC.myBowlItemsDict[category] = []
             }
             todBiteVC.myBowlItemsDict[category]?.append(item)
-            todBiteVC.showToast(message: "\"\(item.name)\" added to MyBowl!")
+            todBiteVC.MealItemDetails(message: "\"\(item.name)\" added to MyBowl!")
             
             // Show pop-up alert
             showAlert(for: item.name)

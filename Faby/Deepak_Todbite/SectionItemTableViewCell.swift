@@ -1,7 +1,7 @@
 import UIKit
 
 protocol SectionItemTableViewCellDelegate: AnyObject {
-    func didTapAddButton(for item: Item)
+    func didTapAddButton(for item: FeedingMeal)
 }
 
 class SectionItemTableViewCell: UITableViewCell {
@@ -13,7 +13,7 @@ class SectionItemTableViewCell: UITableViewCell {
 
     // MARK: - Properties
     weak var delegate: SectionItemTableViewCellDelegate? // Delegate reference
-    private var currentItem: Item?
+    private var currentItem: FeedingMeal?
 
     // MARK: - Initializers
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
@@ -84,7 +84,7 @@ class SectionItemTableViewCell: UITableViewCell {
     }
 
     // MARK: - Configuration
-    func configure(with item: Item) {
+    func configure(with item: FeedingMeal) {
         currentItem = item
         itemImageView.image = UIImage(named: item.image)
         titleLabel.text = item.name
@@ -96,33 +96,14 @@ class SectionItemTableViewCell: UITableViewCell {
     @objc private func addButtonTapped() {
         guard let item = currentItem else { return }
         
-        // Check if item is already added
-        if addButton.currentImage == UIImage(systemName: "checkmark.circle.fill") {
-            showAlert(for: item.name) // Show pop-up message
-            return
-        }
-
-        // Change button image to indicate item is added
-        addButton.setImage(UIImage(systemName: "checkmark.circle.fill"), for: .normal)
-        addButton.tintColor = .green
-
-        // Notify delegate that the item is added
+        // Toggle button state
+        let isAdded = addButton.currentImage == UIImage(systemName: "plus.square.fill")
+        let newImageName = isAdded ? "checkmark.circle.fill" : "plus.square.fill"
+        
+        addButton.setImage(UIImage(systemName: newImageName), for: .normal)
+        addButton.tintColor = isAdded ? .green : .gray // Change color for better UX
+        
         delegate?.didTapAddButton(for: item)
     }
-
-    // Show Alert Message when already added
-    private func showAlert(for itemName: String) {
-        guard let viewController = self.window?.rootViewController else { return }
-        
-        let alert = UIAlertController(
-            title: "Already Added",
-            message: "\"\(itemName)\" is already added to MyBowl.",
-            preferredStyle: .alert
-        )
-        
-        alert.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
-        viewController.present(alert, animated: true, completion: nil)
-    }
-
 
 }

@@ -1,107 +1,95 @@
 import UIKit
 
 // MARK: - Enum Definitions
-enum CategoryType: String, CaseIterable {
-    case EarlyBite = "EarlyBite"
-    case NourishBite = "NourishBite"
-    case MidDayBite = "MidDayBite"
-    case SnackBite = "SnackBite"
-    case NightBite = "NightBite"
+
+/// Represents different meal categories for a toddler's daily nutrition.
+enum BiteType: Hashable {
+    case EarlyBite
+    case NourishBite
+    case MidDayBite
+    case SnackBite
+    case NightBite
+    case custom(String)
+
+    var rawValue: String {
+        switch self {
+        case .EarlyBite: return "EarlyBite"
+        case .NourishBite: return "NourishBite"
+        case .MidDayBite: return "MidDayBite"
+        case .SnackBite: return "SnackBite"
+        case .NightBite: return "NightBite"
+        case .custom(let name): return name  // ✅ Custom names allowed
+        }
+    }
+
+    // ✅ Static allCases for predefined values (no dynamic cases here)
+    static let predefinedCases: [BiteType] = [.EarlyBite, .NourishBite, .MidDayBite, .SnackBite, .NightBite]
 }
 
+
+
+
+/// Represents geographical regions, potentially useful for localized meal plans.
 enum RegionType: String, CaseIterable {
-    case East, West, North, South
+    case east = "East"
+    case west = "West"
+    case north = "North"
+    case south = "South"
 }
 
+
+/// Represents age groups in months for appropriate meal planning.
 enum AgeGroup: String, CaseIterable {
-    case months12to15 = "12-15 months"
-    case months15to18 = "15-18 months"
+    case months12to18 = "12-18 months"
     case months18to24 = "18-24 months"
-    case months24to27 = "24-27 months"
-    case months27to30 = "27-30 months"
-    case months30to33 = "30-33 months"
-    case months33to36 = "33-36 months"
+    case months24to30 = "24-30 months"
+    case months30to36 = "30-36 months"
 }
 
-// MARK: - Item (Meal) Model
-struct Item {
+
+// MARK: - FeedingItem Model
+
+struct FeedingMeal {
+//    let id: UUID
     let name: String
     let description: String
     let image: String
+    let category: BiteType  // Which BiteCategory this belongs to
 }
 
-// MARK: - Meal Schedule Model
-struct MealSchedule {
-    let startDate: Date
-    let endDate: Date
-    let meals: [Item]
+
+
+
+
+
+
+
+
+
+// MARK: - MealRecommendation Model
+
+/// Stores meal recommendations categorized by age group and region.
+struct MealRecommendation {
+    let ageGroup: AgeGroup
+    let region: RegionType
+    let meals: [BiteType: [FeedingMeal]] // Dictionary mapping BiteCategory to FeedingItems
 }
 
-//// MARK: - Todbite Singleton
-//class Todbite {
-//    static let shared = Todbite()
-//    private init() {}
-//
-//    // MARK: - Predefined Categories
-//    var categories: [CategoryType: [Item]] = [
-//        .EarlyBite: [
-//            Item(name: "Spinach Dal with Rice", description: "High in fiber, calcium, and protein.", image: "Spinach Dal with Rice"),
-//            Item(name: "Poha with Vegetables", description: "Light, iron-rich, and full of vitamins.", image: "Poha with Vegetables"),
-//            Item(name: "Mashed Banana with Milk", description: "Rich in potassium and calcium.", image: "Mashed Banana with Milk")
-//        ],
-//        .NourishBite: [
-//            Item(name: "Vegetable Pulao", description: "Rich in protein, iron, and healthy fats.", image: "Vegetable Pulao"),
-//            Item(name: "Moong Dal Khichdi with Vegetables", description: "Packed with protein, fiber", image: "Moong Dal Khichdi with Vegetables"),
-//            Item(name: "Vegetable Pulao", description: "Rich in protein, iron, and healthy fats.", image: "Vegetable Pulao"),
-//            Item(name: "Moong Dal Khichdi with Vegetables", description: "Packed with protein, fiber", image: "Moong Dal Khichdi with Vegetables")
-//        ],
-//        .MidDayBite: [
-//            Item(name: "Dal Chawal with Ghee", description: "Provides protein, fiber, and fats.", image: "Dal Chawal with Ghee"),
-//            Item(name: "Palak Paneer with Rice", description: "High in iron, calcium, and protein.", image: "Palak Paneer with Rice")
-//        ],
-//        .SnackBite: [
-//            Item(name: "Boiled Sweet Corn", description: "Rich in fiber, vitamins, and natural energy.", image: "Boiled Sweet Corn"),
-//            Item(name: "Dhokla (Steamed)", description: "High in protein and easy to digest.", image: "Dhokla (Steamed)"),Item(name: "Dhokla (Steamed)", description: "High in protein and easy to digest.", image: "Dhokla (Steamed)")
-//        ],
-//        .NightBite: [
-//            Item(name: "Moong Dal Khichdi with Vegetables", description: "Rich in protein, fiber, and essential nutrients", image: "Moong Dal Khichdi with Vegetables"),
-//            Item(name: "Spinach Dal with Rice", description: "Loaded with iron, calcium, and vitamins.", image: "Spinach Dal with Rice")
-//        ]
-//    ]
-//
-//    // MARK: - User-Defined Data
-//    var userAddedMeals: [Item] = []  // Stores user-added meals
-//    var myBowl: [Item] = []         // Stores user-selected meals
-//    var mealPlans: [MealSchedule] = [] // Stores meal plans
-//
-//    // MARK: - Get Meals by Category, Region, and Age Group
-//    func getItems(for category: CategoryType, in region: RegionType, for ageGroup: AgeGroup) -> [Item] {
-//        let items = categories[category] ?? []
-//        return items // Future scope: Implement filtering by region & age
-//    }
-//
-//    // MARK: - Add Meal to "My Bowl"
-//    func addToMyBowl(_ item: Item) {
-//        if !myBowl.contains(where: { $0.name == item.name }) {
-//            myBowl.append(item)
-//        }
-//    }
-//
-//    // MARK: - Remove Meal from "My Bowl"
-//    func removeFromMyBowl(_ item: Item) {
-//        myBowl.removeAll { $0.name == item.name }
-//    }
-//
-//    // MARK: - Add User-Created Meals
-//    func addUserMeal(name: String, description: String, image: String) {
-//        let newItem = Item(name: name, description: description, image: image)
-//        userAddedMeals.append(newItem)
-//    }
-//
-//    // MARK: - Plan Scheduling for Meals
-//    func schedulePlan(for items: [Item], startDate: Date, endDate: Date) {
-//        let mealSchedule = MealSchedule(startDate: startDate, endDate: endDate, meals: items)
-//        mealPlans.append(mealSchedule)
-//        print("Plan scheduled from \(startDate) to \(endDate) with meals: \(items.map { $0.name })")
-//    }
-//}
+// MARK: - MyBowl Model
+
+/// Stores parent-selected meals before finalizing the Feeding Plan.
+struct MyBowl {
+    let childId: String
+    var selectedMeals: [BiteType: FeedingMeal] // Selected meals for each BiteCategory
+}
+
+// MARK: - FeedingPlan Model
+
+/// Represents the final feeding plan for a child, structured by BiteCategory.
+struct FeedingPlan {
+    let childId: String
+    let schedule: [BiteType: FeedingMeal] // Parent's finalized meal selection per BiteCategory
+}
+
+
+
