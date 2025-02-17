@@ -5,9 +5,8 @@ struct VaccineStage {
     let stageTitle: String
     let vaccines: [String]
 
-    // Add an initializer with a default value for `id`
-    init(id: UUID = UUID(), stageTitle: String, vaccines: [String]) {
-        self.id = id
+    init(stageTitle: String, vaccines: [String]) {
+        self.id = UUID()
         self.stageTitle = stageTitle
         self.vaccines = vaccines
     }
@@ -16,9 +15,8 @@ struct VaccineStage {
 class VaccineManager {
     static let shared = VaccineManager() // Singleton for managing vaccine data
 
-    private let vaccineKey = "SavedVaccines"
-
-    var selectedVaccines: [String] = []
+    // Temporary storage instead of UserDefaults
+    private var selectedVaccineDict: [String: Bool] = [:]
 
     let vaccineData: [VaccineStage] = [
         VaccineStage(stageTitle: "Birth", vaccines: ["Hepatitis B (Dose 1)"]),
@@ -30,15 +28,18 @@ class VaccineManager {
         VaccineStage(stageTitle: "12 months", vaccines: ["Hepatitis A (Dose 1)", "Varicella (Dose 1)"])
     ]
 
-    func saveSelectedVaccines() {
-        var existingData = UserDefaults.standard.array(forKey: vaccineKey) as? [String] ?? []
-        existingData.append(contentsOf: selectedVaccines)
-        existingData = Array(Set(existingData)) // Remove duplicates
-        UserDefaults.standard.set(existingData, forKey: vaccineKey)
-        UserDefaults.standard.synchronize()
+    // Mark vaccine as selected
+    func selectVaccine(_ vaccine: String) {
+        selectedVaccineDict[vaccine] = true
     }
 
-    func loadSelectedVaccines() {
-        selectedVaccines = UserDefaults.standard.array(forKey: vaccineKey) as? [String] ?? []
+    // Unselect a vaccine
+    func unselectVaccine(_ vaccine: String) {
+        selectedVaccineDict[vaccine] = false
+    }
+
+    // Get all selected vaccines
+    func getSelectedVaccines() -> [String] {
+        return selectedVaccineDict.filter { $0.value }.map { $0.key }
     }
 }

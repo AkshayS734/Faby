@@ -6,8 +6,6 @@
 //
 
 import Foundation
-
-
 struct VaccineSchedule {
     
     let type: String
@@ -15,7 +13,6 @@ struct VaccineSchedule {
     let date: String
     let location: String
 }
-
 class VaccinationDataManager {
     private let storageKey = "VaccinationSchedules"
     
