@@ -9,6 +9,24 @@ class HomeViewController: UIViewController {
         let location: String
         var isChecked: Bool
     }
+    private func getTimeInterval(for category: BiteType) -> String {
+        switch category {
+        case .EarlyBite: return "7:30 AM - 8:00 AM"
+        case .NourishBite: return "10:00 AM - 10:30 AM"
+        case .MidDayBite: return "12:30 PM - 1:00 PM"
+        case .SnackBite: return "4:00 PM - 4:30 PM"
+        case .NightBite: return "8:00 PM - 8:30 PM"
+        case .custom(_): return "**No Time Set**"
+        }
+    }
+    
+    struct TodayBite {
+        let title: String
+        let time: String
+        let imageName: String
+    }
+
+
     
     var vaccinationsData: [Vaccination] = []  // Holds vaccination data
 
@@ -42,6 +60,31 @@ class HomeViewController: UIViewController {
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
     }()
+//    private func fetchDailyPlanMeals() {
+//        let dailyPlanMeals = BiteSampleData.shared.getDailyPlanMeals()
+//
+//        // 🔹 Debugging: Print fetched meals
+//        print("📌 Daily Plan Meals Fetched: \(dailyPlanMeals)")
+//
+//        // ✅ Convert `FeedingMeal` into `TodayBite`
+//        todaysBitesData = dailyPlanMeals.map { meal in
+//            return TodayBite(
+//                title: meal.category.rawValue,
+//                time: getTimeInterval(for: meal.category),
+//                imageName: meal.image
+//            )
+//        }
+//
+//        // 🔹 Debugging: Print converted TodayBite data
+//        print("📌 TodayBitesData after mapping: \(todaysBitesData)")
+//
+//        // ✅ Refresh UI
+//        DispatchQueue.main.async {
+//            self.todaysBitesCollectionView.reloadData()
+//        }
+//    }
+
+
 
     private let specialMomentsLabel: UILabel = {
         let label = UILabel()
@@ -99,7 +142,8 @@ class HomeViewController: UIViewController {
 
     // MARK: - Data
     var specialMomentsData: [String] = [] // Add actual data source for special moments
-    var todaysBitesData: [String] = [] // Add actual data source for today's bites
+    var todaysBitesData: [TodayBite] = [] // ✅ Correct type
+// Add actual data source for today's bites
 
     // MARK: - Lifecycle
 
@@ -112,6 +156,9 @@ class HomeViewController: UIViewController {
         loadVaccinationData()
         updateNameLabel()
         updateDateLabel()
+        todaysBitesCollectionView.register(TodayBiteCollectionViewCell.self, forCellWithReuseIdentifier: "TodaysBiteCell")
+
+          /* fetchDailyPlanMeals()*/ // ✅ Fetch daily plan meals on Home Load
     }
     private func updateNameLabel() {
         nameLabel.text = baby.name

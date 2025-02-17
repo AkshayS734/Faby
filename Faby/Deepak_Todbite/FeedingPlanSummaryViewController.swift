@@ -7,7 +7,9 @@ class FeedingPlanSummaryViewController: UIViewController {
     
     private let tableView = UITableView(frame: .zero, style: .grouped)
 
-    // ✅ Add Date Label
+    // ✅ Predefined Order
+    private let fixedBiteOrder: [BiteType] = [.EarlyBite, .NourishBite, .MidDayBite, .SnackBite, .NightBite]
+
     private let dateLabel: UILabel = {
         let label = UILabel()
         label.textAlignment = .center
@@ -23,13 +25,12 @@ class FeedingPlanSummaryViewController: UIViewController {
 
         setupDateLabel()
         setupTableView()
-        setupNavigationBar()  // ✅ Added Share Button
+        setupNavigationBar()
 
         dateLabel.text = "Saved Plan for \(selectedDay)"
     }
 
     private func setupNavigationBar() {
-        // ✅ Add Share Button in the Navigation Bar
         navigationItem.rightBarButtonItem = UIBarButtonItem(
             title: "Share",
             style: .plain,
@@ -75,37 +76,58 @@ class FeedingPlanSummaryViewController: UIViewController {
     private func generateShareableText() -> String {
         var text = "📅 Feeding Plan for \(selectedDay)\n\n"
         
-        for (category, meals) in savedPlan {
-            text += "🍽 \(category.rawValue.uppercased())\n"
-            for meal in meals {
-                text += "✅ \(meal.name)\n"
+        for category in getOrderedBiteTypes() {
+            if let meals = savedPlan[category], !meals.isEmpty {
+                text += "🍽 \(category.rawValue.uppercased())\n"
+                for meal in meals {
+                    text += "✅ \(meal.name)\n"
+                }
+                text += "\n"
             }
-            text += "\n"
         }
         return text
+    }
+
+    // ✅ Function to Get Ordered Bite Types (Predefined first, then custom)
+    private func getOrderedBiteTypes() -> [BiteType] {
+        var orderedBites: [BiteType] = []
+
+        // ✅ Add predefined bites in fixed order
+        for bite in fixedBiteOrder {
+            if savedPlan[bite] != nil {
+                orderedBites.append(bite)
+            }
+        }
+
+        // ✅ Add custom bites (which are not in fixed order)
+        let customBites = savedPlan.keys.filter { !fixedBiteOrder.contains($0) }
+        orderedBites.append(contentsOf: customBites)
+
+        return orderedBites
     }
 }
 
 // ✅ Table View Data Source
 extension FeedingPlanSummaryViewController: UITableViewDelegate, UITableViewDataSource {
     func numberOfSections(in tableView: UITableView) -> Int {
-        return savedPlan.keys.count
+        return getOrderedBiteTypes().count
     }
 
     func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
-        let categories = Array(savedPlan.keys)
+        let categories = getOrderedBiteTypes()
         return categories[section].rawValue // ✅ BiteType name (EarlyBite, etc.)
     }
 
+
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        let categories = Array(savedPlan.keys)
+        let categories = getOrderedBiteTypes()
         let category = categories[section]
         return savedPlan[category]?.count ?? 0
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "FeedingPlanCell", for: indexPath)
-        let categories = Array(savedPlan.keys)
+        let categories = getOrderedBiteTypes()
         let category = categories[indexPath.section]
         let meals = savedPlan[category] ?? []
         cell.textLabel?.text = meals[indexPath.row].name
