@@ -17,7 +17,7 @@
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
                             <segmentedControl opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="left" contentVerticalAlignment="top" segmentControlStyle="plain" selectedSegmentIndex="0" translatesAutoresizingMaskIntoConstraints="NO" id="7ld-g7-PtP">
-                                <rect key="frame" x="16" y="171" width="361" height="32"/>
+                                <rect key="frame" x="16" y="155" width="361" height="32"/>
                                 <segments>
                                     <segment title="Recommended Meal"/>
                                     <segment title="My Bowl"/>
@@ -32,7 +32,7 @@
                         <constraints>
                             <constraint firstItem="vDu-zF-Fre" firstAttribute="trailing" secondItem="7ld-g7-PtP" secondAttribute="trailing" constant="16" id="1ay-VU-1Me"/>
                             <constraint firstItem="7ld-g7-PtP" firstAttribute="leading" secondItem="vDu-zF-Fre" secondAttribute="leading" constant="16" id="3WO-SU-jl3"/>
-                            <constraint firstItem="7ld-g7-PtP" firstAttribute="top" secondItem="vDu-zF-Fre" secondAttribute="top" constant="16" id="fuQ-ay-zkQ"/>
+                            <constraint firstItem="7ld-g7-PtP" firstAttribute="top" secondItem="vDu-zF-Fre" secondAttribute="top" id="fuQ-ay-zkQ"/>
                         </constraints>
                     </view>
                     <navigationItem key="navigationItem" title="TodBite" id="nZC-Va-gvq"/>
