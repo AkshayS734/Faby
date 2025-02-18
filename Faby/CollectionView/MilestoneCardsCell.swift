@@ -86,6 +86,11 @@ class MilestoneCardCell: UICollectionViewCell {
         
         contentView.layer.cornerRadius = 10
         contentView.clipsToBounds = true
+        layer.shadowColor = UIColor.black.cgColor
+        layer.shadowOpacity = 0.1
+        layer.shadowOffset = CGSize(width: 0, height: 2)
+        layer.shadowRadius = 4
+        layer.masksToBounds = false
     }
     
     required init?(coder: NSCoder) {
