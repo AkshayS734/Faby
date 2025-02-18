@@ -27,7 +27,14 @@ class PostViewController: UIViewController, UITextViewDelegate {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        userName.text = "VIVEK CHAUDHARY"
+        
+        // Dynamically set the username label from ParentDataModel
+        if let currentParent = ParentDataModel.shared.currentParent {
+            userName.text = currentParent.name
+        } else {
+            userName.text = "Unknown User" // Fallback text
+        }
+        
         stackView.layer.cornerRadius = 12
         configurePlaceholder()
         commentTextView.delegate = self
@@ -49,9 +56,9 @@ class PostViewController: UIViewController, UITextViewDelegate {
 
         print("✅ Post added successfully, navigating back!")
 
-        // ✅ Create a new `Post` instance with `parentPhoneNumber`
+        // ✅ Create a new `Post` instance with `parentId`
         let newComment = Post(
-            parentPhoneNumber: currentParent.phoneNumber ?? "Unknown",
+       
             username: currentParent.name,
             title: title,
             text: text,
