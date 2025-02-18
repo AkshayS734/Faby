@@ -39,16 +39,9 @@ struct MeasurementDetailsView: View {
         VStack {
             if currentGrowthData.isEmpty {
                 Text("No data available")
-                    .foregroundColor(.gray)
+                    .foregroundColor(Color(UIColor.darkGray))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-//                if let latestMeasurement = currentGrowthData.last {
-//                    Text("\(String(format: "%.2f", latestMeasurement)) \(unitLabel())")
-//                        .font(.title2)
-//                        .padding(.top)
-//                        .frame(maxWidth: .infinity, alignment: .leading)
-//                }
-
                 Chart {
                     ForEach(0..<currentGrowthData.count, id: \.self) { index in
                         LineMark(
