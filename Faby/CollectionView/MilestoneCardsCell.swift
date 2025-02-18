@@ -6,7 +6,7 @@ class MilestoneCardCell: UICollectionViewCell {
         let imageView = UIImageView()
         imageView.contentMode = .scaleToFill
         imageView.clipsToBounds = true
-        imageView.layer.cornerRadius = 8
+        imageView.layer.cornerRadius = 10
         return imageView
     }()
     override func layoutSubviews() {
@@ -63,15 +63,21 @@ class MilestoneCardCell: UICollectionViewCell {
         chevronButton.translatesAutoresizingMaskIntoConstraints = false
         
         NSLayoutConstraint.activate([
-            milestoneImageView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 0),
-            milestoneImageView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 0),
-            milestoneImageView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: 0),
-            milestoneImageView.widthAnchor.constraint(equalToConstant: 100),
+            milestoneImageView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 10),
+            milestoneImageView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 10),
+            milestoneImageView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -10),
+            milestoneImageView.widthAnchor.constraint(equalToConstant: 80),
             
             queryLabel.leadingAnchor.constraint(equalTo: milestoneImageView.trailingAnchor, constant: 16),
-            queryLabel.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
-            queryLabel.trailingAnchor.constraint(equalTo: chevronButton.leadingAnchor, constant: -8),
-                
+            queryLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 4),
+            queryLabel.trailingAnchor.constraint(lessThanOrEqualTo: milestoneAchievedMark.leadingAnchor, constant: -15),
+            queryLabel.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -12),
+            
+            milestoneAchievedMark.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -8),
+            milestoneAchievedMark.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
+            milestoneAchievedMark.widthAnchor.constraint(equalToConstant: 25),
+            milestoneAchievedMark.heightAnchor.constraint(equalToConstant: 25),
+            
             chevronButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -8),
             chevronButton.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
             chevronButton.widthAnchor.constraint(equalToConstant: 20),
@@ -79,13 +85,15 @@ class MilestoneCardCell: UICollectionViewCell {
         ])
         
         contentView.layer.cornerRadius = 10
-        contentView.layer.borderWidth = 1
-        contentView.layer.borderColor = UIColor.systemGray4.cgColor
         contentView.clipsToBounds = true
     }
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+    
+    override func layoutSubviews() {
+        super.layoutSubviews()
     }
     
     func configure(with milestone: GrowthMilestone) {
