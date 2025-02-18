@@ -7,6 +7,7 @@ class MilestoneCardCell: UICollectionViewCell {
         let imageView = UIImageView()
         imageView.contentMode = .scaleToFill
         imageView.clipsToBounds = true
+        imageView.layer.cornerRadius = 10
         return imageView
     }()
     
@@ -61,10 +62,10 @@ class MilestoneCardCell: UICollectionViewCell {
         milestoneAchievedMark.translatesAutoresizingMaskIntoConstraints = false
         
         NSLayoutConstraint.activate([
-            milestoneImageView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 0),
-            milestoneImageView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 0),
-            milestoneImageView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: 0),
-            milestoneImageView.widthAnchor.constraint(equalToConstant: 100),
+            milestoneImageView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 10),
+            milestoneImageView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 10),
+            milestoneImageView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -10),
+            milestoneImageView.widthAnchor.constraint(equalToConstant: 80),
             
             titleLabel.leadingAnchor.constraint(equalTo: milestoneImageView.trailingAnchor, constant: 16),
             titleLabel.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 12),
@@ -72,7 +73,7 @@ class MilestoneCardCell: UICollectionViewCell {
             
             queryLabel.leadingAnchor.constraint(equalTo: milestoneImageView.trailingAnchor, constant: 16),
             queryLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 4),
-            queryLabel.trailingAnchor.constraint(lessThanOrEqualTo: milestoneAchievedMark.leadingAnchor, constant: -8),
+            queryLabel.trailingAnchor.constraint(lessThanOrEqualTo: milestoneAchievedMark.leadingAnchor, constant: -15),
             queryLabel.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -12),
             
             milestoneAchievedMark.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -8),
@@ -87,8 +88,6 @@ class MilestoneCardCell: UICollectionViewCell {
         ])
         
         contentView.layer.cornerRadius = 10
-        contentView.layer.borderWidth = 1
-        contentView.layer.borderColor = UIColor.systemGray4.cgColor
         contentView.clipsToBounds = true
     }
     
@@ -98,26 +97,6 @@ class MilestoneCardCell: UICollectionViewCell {
     
     override func layoutSubviews() {
         super.layoutSubviews()
-        if milestoneImageView.bounds.width > 0 && milestoneImageView.bounds.height > 0 {
-            applyLeftSideCornerRadius()
-        }
-    }
-    
-    private func applyLeftSideCornerRadius() {
-        let cornerRadius: CGFloat = 8
-        let path = UIBezierPath()
-        path.move(to: CGPoint(x: 0, y: 0))
-        path.addLine(to: CGPoint(x: milestoneImageView.bounds.width, y: 0))
-        path.addLine(to: CGPoint(x: milestoneImageView.bounds.width, y: milestoneImageView.bounds.height))
-        path.addLine(to: CGPoint(x: 0, y: milestoneImageView.bounds.height))
-        path.addLine(to: CGPoint(x: 0, y: cornerRadius))
-        path.addArc(withCenter: CGPoint(x: cornerRadius, y: cornerRadius), radius: cornerRadius, startAngle: CGFloat.pi, endAngle: -CGFloat.pi / 2, clockwise: true)
-        path.close()
-        
-        let shapeLayer = CAShapeLayer()
-        shapeLayer.path = path.cgPath
-        milestoneImageView.layer.mask = shapeLayer
-        milestoneImageView.clipsToBounds = false
     }
     
     func configure(with milestone: GrowthMilestone) {
