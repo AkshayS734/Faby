@@ -34,7 +34,6 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
         
         // Set the search bar delegate
         searchBar.delegate = self
-        searchBar.placeholder = "Search Topics ...."
     }
     
     // MARK: - UICollectionView DataSource Methods
@@ -50,14 +49,10 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
         // Configure the cell with the filtered card data
         let card = filteredCardData[indexPath.row]
         cell.title.text = card.title
-        cell.imageView.image = UIImage(named: card.imageView)
-       // cell.imageView.alpha = 0.7
-      //  cell.subtitle.text = card.subtitle
+        cell.subtitle.text = card.subtitle
         
         // Apply corner radius and shadow to the cell
         cell.layer.cornerRadius = 10
-        applyAppleMusicEffect(to: cell.imageView)
-
 //        cell.layer.masksToBounds = true
 //        cell.layer.shadowColor = UIColor.black.cgColor
 //        cell.layer.shadowOffset = CGSize(width: 0, height: 2)
@@ -134,53 +129,5 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
         let section = NSCollectionLayoutSection(group: group)
         section.orthogonalScrollingBehavior = .none
         return UICollectionViewCompositionalLayout(section: section)
-    }
-}
-func applyAppleMusicEffect(to imageView: UIImageView) {
-    guard let image = imageView.image else { return }
-
-    // 1. Add Subtle Blur Effect
-    let blurEffect = UIBlurEffect(style: .regular) // Use .regular for a lighter blur
-    let blurView = UIVisualEffectView(effect: blurEffect)
-    blurView.frame = imageView.bounds
-    blurView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-    blurView.alpha = 0.01 // Adjust blur intensity (lower alpha for less blur)
-    imageView.addSubview(blurView)
-
-    // 2. Extract Dominant Color
-    if let dominantColor = image.dominantColor() {
-        let colorOverlay = UIView(frame: imageView.bounds)
-        colorOverlay.backgroundColor = dominantColor.withAlphaComponent(0.05) // Lower alpha to keep the image visible
-        colorOverlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        imageView.addSubview(colorOverlay)
-    }
-}
-
-
-extension UIImage {
-    func dominantColor() -> UIColor? {
-        guard let cgImage = self.cgImage else { return nil }
-
-        let width = 1
-        let height = 1
-        let bitmapInfo = CGImageAlphaInfo.premultipliedLast.rawValue
-        let colorSpace = CGColorSpaceCreateDeviceRGB()
-        var pixelData: [UInt8] = [0, 0, 0, 0]
-
-        guard let context = CGContext(data: &pixelData,
-                                      width: width,
-                                      height: height,
-                                      bitsPerComponent: 8,
-                                      bytesPerRow: width * 4,
-                                      space: colorSpace,
-                                      bitmapInfo: bitmapInfo) else { return nil }
-
-        context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
-
-        let red = CGFloat(pixelData[0]) / 255.0
-        let green = CGFloat(pixelData[1]) / 255.0
-        let blue = CGFloat(pixelData[2]) / 255.0
-
-        return UIColor(red: red, green: green, blue: blue, alpha: 1.0)
     }
 }
