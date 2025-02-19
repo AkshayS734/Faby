@@ -30,8 +30,13 @@ class PostViewController: UIViewController, UITextViewDelegate {
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        // Set up the user interface
-        userName.text = "VIVEK CHAUDHARY"
+        // Dynamically set the username label from ParentDataModel
+        if let currentParent = ParentDataModel.shared.currentParent {
+            userName.text = currentParent.name
+        } else {
+            userName.text = "Unknown User" // Fallback text
+        }
+        
         stackView.layer.cornerRadius = 12
         
         // Configure placeholder for UITextView
@@ -48,10 +53,27 @@ class PostViewController: UIViewController, UITextViewDelegate {
             showAlert(message: "Please enter both a title and a comment.")
             return
         }
-        
-        // Create a new Comment object
-        let newComment = Comment(username: "VIVEK CHAUDHARY", title: title, text: text, likes: 0, replies: [])
-        
+
+        guard let currentParent = ParentDataModel.shared.currentParent else {
+            showAlert(message: "Error: No parent found!")
+            return
+        }
+
+        // ✅ Call `addPost` without passing `username`
+        PostDataManager.shared.addPost(title: title, text: text)
+
+        print("✅ Post added successfully, navigating back!")
+
+        // ✅ Create a new `Post` instance with `parentId`
+        let newComment = Post(
+       
+            username: currentParent.name,
+            title: title,
+            text: text,
+            likes: 0,
+            replies: []
+        )
+
         // Call the delegate method
         delegate?.didPostComment(newComment)
         
