@@ -314,7 +314,6 @@ class MeasurementDetailsViewController: UIViewController, UITableViewDelegate, U
         embedSwiftUIView()
         updateLatestMeasurementLabel()
         tableView.reloadData()
-        //           chartView.updateChart(data: currentGrowthData)
     }
     
     private func convertMeasurement(value: Double, to unit: String, isWeight: Bool) -> Double {
