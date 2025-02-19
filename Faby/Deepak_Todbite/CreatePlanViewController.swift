@@ -1,7 +1,6 @@
 import UIKit
 
-class CreatePlanViewController: UIViewController, UITableViewDelegate, UITableViewDataSource, SectionExpandableDelegate {
-
+class CreatePlanViewController: UIViewController {
     // MARK: - UI Components
     private let fromDateButton: UIButton = {
         let button = UIButton(type: .system)
@@ -36,23 +35,21 @@ class CreatePlanViewController: UIViewController, UITableViewDelegate, UITableVi
         button.backgroundColor = .systemBlue
         button.setTitleColor(.white, for: .normal)
         button.layer.cornerRadius = 10
+        button.translatesAutoresizingMaskIntoConstraints = false
         return button
     }()
     
     // MARK: - Properties
-    var selectedItemsDict: [CategoryType: [Item]] = [:]  // Stores MyBowl selected items
+    var intervals = ["EarlyBite", "NourishBite", "MidDayBite", "SnackBite", "NightBite"]
+    var selectedItems: [String] = []
     var selectedFromDate: Date?
     var selectedToDate: Date?
-    private var expandedSections: Set<CategoryType> = [] // Tracks expanded sections
-
-    weak var delegate: HomeViewController? // 🔥 Add delegate for data passing
 
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .white
         setupUI()
-        print("✅ MyBowl Items Received: \(selectedItemsDict)") // Debugging
     }
 
     // MARK: - Setup UI
@@ -71,9 +68,13 @@ class CreatePlanViewController: UIViewController, UITableViewDelegate, UITableVi
         NSLayoutConstraint.activate([
             fromDateButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
             fromDateButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            fromDateButton.widthAnchor.constraint(equalToConstant: 150),
+            fromDateButton.heightAnchor.constraint(equalToConstant: 40),
 
             toDateButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
             toDateButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+            toDateButton.widthAnchor.constraint(equalToConstant: 150),
+            toDateButton.heightAnchor.constraint(equalToConstant: 40),
 
             intervalsLabel.topAnchor.constraint(equalTo: fromDateButton.bottomAnchor, constant: 20),
             intervalsLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
@@ -85,58 +86,113 @@ class CreatePlanViewController: UIViewController, UITableViewDelegate, UITableVi
 
             submitButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
             submitButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            submitButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20)
+            submitButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+            submitButton.heightAnchor.constraint(equalToConstant: 50)
         ])
 
-//        submitButton.addTarget(self, action: #selector(submitPlan), for: .touchUpInside)
+        // Add actions
+        fromDateButton.addTarget(self, action: #selector(selectFromDate), for: .touchUpInside)
+        toDateButton.addTarget(self, action: #selector(selectToDate), for: .touchUpInside)
+        submitButton.addTarget(self, action: #selector(submitPlan), for: .touchUpInside)
     }
-    
-    // MARK: - Submit Plan
-//    @objc private func submitPlan() {
-//        delegate?.myBowlItemsDict = selectedItemsDict
-//        delegate?.updateTodaysBitesData()
-//        navigationController?.popViewController(animated: true)
-//    }
 
-    // MARK: - SectionExpandableDelegate
-    func didTapExpandCollapse(for section: Int) {
-        let category = Array(selectedItemsDict.keys)[section]
-        
-        if expandedSections.contains(category) {
-            expandedSections.remove(category)
-        } else {
-            expandedSections.insert(category)
+    // MARK: - Actions
+    @objc private func selectFromDate() {
+        showDatePicker { selectedDate in
+            self.selectedFromDate = selectedDate
+            self.fromDateButton.setTitle(self.formatDate(selectedDate), for: .normal)
+        }
+    }
+
+    @objc private func selectToDate() {
+        showDatePicker { selectedDate in
+            self.selectedToDate = selectedDate
+            self.toDateButton.setTitle(self.formatDate(selectedDate), for: .normal)
+        }
+    }
+
+    @objc private func submitPlan() {
+        guard let fromDate = selectedFromDate, let toDate = selectedToDate else {
+            showAlert(title: "Error", message: "Please select both start and end dates.")
+            return
         }
 
-        tableView.reloadSections(IndexSet(integer: section), with: .automatic)
-    }
-    
-    // MARK: - TableView DataSource
-    func numberOfSections(in tableView: UITableView) -> Int {
-        return selectedItemsDict.keys.count
+        if selectedItems.isEmpty {
+            showAlert(title: "Error", message: "Please select at least one interval.")
+            return
+        }
+
+        // Combine selected intervals into a single string
+        let intervalList = selectedItems.joined(separator: ", ")
+        let message = """
+        Your plan is set from \(formatDate(fromDate)) to \(formatDate(toDate)) for intervals: \(intervalList).
+        """
+        showAlert(title: "Plan Created", message: message)
     }
 
+    private func showDatePicker(completion: @escaping (Date) -> Void) {
+        let datePicker = UIDatePicker()
+        datePicker.datePickerMode = .date
+        datePicker.preferredDatePickerStyle = .wheels
+
+        let alert = UIAlertController(title: "Select Date", message: nil, preferredStyle: .actionSheet)
+        alert.view.addSubview(datePicker)
+
+        datePicker.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            datePicker.leadingAnchor.constraint(equalTo: alert.view.leadingAnchor, constant: 8),
+            datePicker.trailingAnchor.constraint(equalTo: alert.view.trailingAnchor, constant: -8),
+            datePicker.topAnchor.constraint(equalTo: alert.view.topAnchor, constant: 50),
+            datePicker.bottomAnchor.constraint(equalTo: alert.view.bottomAnchor, constant: -120)
+        ])
+
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        alert.addAction(UIAlertAction(title: "Confirm", style: .default, handler: { _ in
+            completion(datePicker.date)
+        }))
+
+        present(alert, animated: true)
+    }
+
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        return formatter.string(from: date)
+    }
+
+    private func showAlert(title: String, message: String) {
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
+    }
+}
+
+// MARK: - TableView Delegate & DataSource
+extension CreatePlanViewController: UITableViewDelegate, UITableViewDataSource {
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        let category = Array(selectedItemsDict.keys)[section]
-        let itemCount = selectedItemsDict[category]?.count ?? 0
-        return expandedSections.contains(category) ? 1 + itemCount : 1
+        return intervals.count
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let category = Array(selectedItemsDict.keys)[indexPath.section]
-
-        if indexPath.row == 0 {
-            guard let cell = tableView.dequeueReusableCell(withIdentifier: "IntervalCell", for: indexPath) as? IntervalTableViewCell else {
-                return UITableViewCell()
-            }
-            cell.configure(with: category.rawValue, isExpanded: expandedSections.contains(category), section: indexPath.section)
-            cell.delegate = self
-            return cell
-        } else {
-            let cell = UITableViewCell()
-            let foodItem = selectedItemsDict[category]?[indexPath.row - 1] ?? Item(name: "Unknown", description: "", image: "")
-            cell.textLabel?.text = foodItem.name
-            return cell
+        guard let cell = tableView.dequeueReusableCell(withIdentifier: "IntervalCell", for: indexPath) as? IntervalTableViewCell else {
+            return UITableViewCell()
         }
+        let interval = intervals[indexPath.row]
+        let isSelected = selectedItems.contains(interval)
+        cell.configure(with: interval, isSelected: isSelected)
+        cell.delegate = self
+        return cell
+    }
+}
+
+// MARK: - IntervalCell Delegate
+extension CreatePlanViewController: IntervalTableViewCellDelegate {
+    func didTapAddButton(for interval: String, isSelected: Bool) {
+        if isSelected {
+            selectedItems.append(interval)
+        } else {
+            selectedItems.removeAll { $0 == interval }
+        }
+        print("Selected items: \(selectedItems)")
     }
 }

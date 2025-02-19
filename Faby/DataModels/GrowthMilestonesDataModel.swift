@@ -6,6 +6,7 @@ class GrowthMilestonesDataModel {
         //Social
         GrowthMilestone(
             title: "Plays Interactive Games",
+            subtitle: "Tiny Steps in Play",
             query: "Does your child play games like pat-a-cake with you?",
             image: "pat_a_cake_image",
             milestoneMonth: .month12,
@@ -16,6 +17,7 @@ class GrowthMilestonesDataModel {
         //Language
         GrowthMilestone(
             title: "Waves Bye-Bye",
+            subtitle: "Waving Fun",
             query: "Does your child wave 'bye-bye'?",
             image: "waves_bye_image",
             milestoneMonth: .month12,
@@ -24,6 +26,7 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Calls Parent by Name",
+            subtitle: "Calling Parent",
             query: "Does your child call a parent 'mama' or 'dada' or another special name?",
             image: "calls_parent_image",
             milestoneMonth: .month12,
@@ -32,6 +35,7 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Understands 'No'",
+            subtitle: "No Awareness",
             query: "Does your child pause or stop briefly when you say 'no'?",
             image: "understands_no_image",
             milestoneMonth: .month12,
@@ -42,6 +46,7 @@ class GrowthMilestonesDataModel {
         //Cognitive
         GrowthMilestone(
             title: "Puts Objects in Containers",
+            subtitle: "Object Sorting",
             query: "Does your child put something in a container, like a block in a cup?",
             image: "puts_in_container_image",
             milestoneMonth: .month12,
@@ -50,6 +55,7 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Searches for Hidden Items",
+            subtitle: "Hidden Finds",
             query: "Does your child look for things you hide, like a toy under a blanket?",
             image: "searches_hidden_items_image",
             milestoneMonth: .month12,
@@ -60,6 +66,7 @@ class GrowthMilestonesDataModel {
         //Physical
         GrowthMilestone(
             title: "Pulls to Stand",
+            subtitle: "Up and About",
             query: "Does your child pull up to stand?",
             image: "pulls_to_stand_image",
             milestoneMonth: .month12,
@@ -68,6 +75,7 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Cruises Along Furniture",
+            subtitle: "Furniture Adventures",
             query: "Does your child walk while holding on to furniture?",
             image: "cruises_along_furniture_image",
             milestoneMonth: .month12,
@@ -76,6 +84,7 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Drinks from Cup You Hold",
+            subtitle: "Sip Success",
             query: "Does your child drink from a cup without a lid, as you hold it?",
             image: "drinks_from_cup_image",
             milestoneMonth: .month12,
@@ -84,6 +93,7 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Picks Up Small Objects",
+            subtitle: "Mini Picker",
             query: "Does your child pick up small objects between their thumb and pointer finger?",
             image: "picks_up_small_objects_image",
             milestoneMonth: .month12,
@@ -94,7 +104,8 @@ class GrowthMilestonesDataModel {
         // MARK: - 15 months
         //Social
         GrowthMilestone(
-        title: "Imitates Play",
+            title: "Imitates Play",
+            subtitle: "Mimicking Actions",
             query: "Does your child copy others during play?",
             image: "imitates_play_image",
             milestoneMonth: .month15,
@@ -103,6 +114,7 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Shows Objects",
+            subtitle: "Sharing Interests",
             query: "Does your child show you objects they like?",
             image: "shows_objects_image",
             milestoneMonth: .month15,
@@ -111,6 +123,7 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Claps When Excited",
+            subtitle: "Excitement Expression",
             query: "Does your child clap when excited?",
             image: "clapping_image",
             milestoneMonth: .month15,
@@ -119,6 +132,7 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Hugs a Toy",
+            subtitle: "Affection Expression",
             query: "Does your child hug stuffed toys or dolls?",
             image: "hugs_toy_image",
             milestoneMonth: .month15,
@@ -127,16 +141,18 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Shows Affection",
+            subtitle: "Love in Action",
             query: "Does your child show affection, like hugging or cuddling?",
             image: "shows_affection_image",
             milestoneMonth: .month15,
-            description: "Displaying affection through hugs or cuddles is an important milestone in emotional development, showing your child is forming secure bondswith caregivers.",
+            description: "Displaying affection through hugs or cuddles is an important milestone in emotional development, showing your child is forming secure bonds with caregivers.",
             category: .social
         ),
 
-        //Language
+        // Language
         GrowthMilestone(
             title: "Tries New Words",
+            subtitle: "Early Words",
             query: "Does your child try to say one or two words besides 'mama' or 'dada'?",
             image: "tries_words_image",
             milestoneMonth: .month15,
@@ -145,6 +161,7 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Recognizes Named Objects",
+            subtitle: "Object Recognition",
             query: "Does your child look at familiar objects when named?",
             image: "recognizes_objects_image",
             milestoneMonth: .month15,
@@ -153,6 +170,7 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Follows Directions with Gestures",
+            subtitle: "Gestures and Words",
             query: "Does your child follow directions that involve gestures and words?",
             image: "follows_gestures_image",
             milestoneMonth: .month15,
@@ -161,16 +179,18 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Points for Help",
+            subtitle: "Seeking Help",
             query: "Does your child point to ask for something or to get help?",
             image: "points_for_help_image",
             milestoneMonth: .month15,
             description: "Pointing to ask for help demonstrates problem-solving and the ability to seek assistance, essential skills for effective communication and independence.",
             category: .language
         ),
-        
-        //Cognitive
+
+        // Cognitive
         GrowthMilestone(
             title: "Uses Objects Correctly",
+            subtitle: "Object Understanding",
             query: "Does your child try to use things the right way, like a phone, cup, or book?",
             image: "uses_objects_image",
             milestoneMonth: .month15,
@@ -179,16 +199,18 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Stacks Objects",
+            subtitle: "Building Blocks",
             query: "Does your child stack at least two small objects, like blocks?",
             image: "stacks_objects_image",
             milestoneMonth: .month15,
             description: "Stacking objects shows developing hand-eye coordination, fine motor skills, and the ability to solve simple problems through experimentation.",
             category: .cognitive
         ),
-        
-        //Physical
+
+        // Physical
         GrowthMilestone(
             title: "Takes Steps Independently",
+            subtitle: "First Steps",
             query: "Does your child take a few steps on their own?",
             image: "takes_steps_image",
             milestoneMonth: .month15,
@@ -197,6 +219,7 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Feeds with Fingers",
+            subtitle: "Self-Feeding",
             query: "Does your child use their fingers to feed themselves some food?",
             image: "feeds_with_fingers_image",
             milestoneMonth: .month15,
@@ -208,6 +231,7 @@ class GrowthMilestonesDataModel {
         //Social
         GrowthMilestone(
             title: "Explores but Checks for You",
+            subtitle: "Exploration with Security",
             query: "Does your child move away from you but look back to make sure you’re close by?",
             image: "explores_checks_image",
             milestoneMonth: .month18,
@@ -216,6 +240,7 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Points to Show Interest",
+            subtitle: "Pointing for Sharing",
             query: "Does your child point to show you something interesting?",
             image: "points_interest_image",
             milestoneMonth: .month18,
@@ -224,6 +249,7 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Wants Hands Washed",
+            subtitle: "Learning Hygiene",
             query: "Does your child put their hands out for you to wash them?",
             image: "hands_washed_image",
             milestoneMonth: .month18,
@@ -232,6 +258,7 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Looks at Book Pages",
+            subtitle: "Exploring Books",
             query: "Does your child look at a few pages in a book with you?",
             image: "looks_book_image",
             milestoneMonth: .month18,
@@ -240,16 +267,18 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Helps with Dressing",
+            subtitle: "Learning Independence",
             query: "Does your child help you dress them by pushing an arm through a sleeve or lifting a foot?",
             image: "helps_dressing_image",
             milestoneMonth: .month18,
             description: "Helping with dressing shows your child is developing coordination, awareness of routines, and a sense of independence.",
             category: .social
         ),
-        
-        //Language
+
+        // Language
         GrowthMilestone(
             title: "Says Three or More Words",
+            subtitle: "Expanding Vocabulary",
             query: "Does your child try to say three or more words besides 'mama' or 'dada'?",
             image: "three_words_image",
             milestoneMonth: .month18,
@@ -258,16 +287,18 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Follows One-Step Directions",
+            subtitle: "Understanding Instructions",
             query: "Does your child follow one-step directions without gestures, like 'Give it to me'?",
             image: "one_step_directions_image",
             milestoneMonth: .month18,
             description: "Following simple directions shows your child is developing comprehension and the ability to process verbal instructions.",
             category: .language
         ),
-        
-        //Cognitive
+
+        // Cognitive
         GrowthMilestone(
             title: "Copies Chores",
+            subtitle: "Learning Through Imitation",
             query: "Does your child copy you doing chores, like sweeping with a broom?",
             image: "copies_chores_image",
             milestoneMonth: .month18,
@@ -276,16 +307,18 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Plays Simply with Toys",
+            subtitle: "Simple Play Exploration",
             query: "Does your child play with toys in a simple way, like pushing a toy car?",
             image: "simple_toy_play_image",
             milestoneMonth: .month18,
             description: "Playing with toys in simple ways shows your child is learning cause-and-effect and developing early problem-solving skills.",
             category: .cognitive
         ),
-        
-        //Physical
+
+        // Physical
         GrowthMilestone(
             title: "Walks Without Help",
+            subtitle: "Independence in Walking",
             query: "Does your child walk without holding on to anyone or anything?",
             image: "walks_without_help_image",
             milestoneMonth: .month18,
@@ -294,6 +327,7 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Scribbles",
+            subtitle: "Exploring Writing",
             query: "Does your child scribble?",
             image: "scribbles_image",
             milestoneMonth: .month18,
@@ -302,6 +336,7 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Drinks from a Cup Without Lid",
+            subtitle: "Building Self-Feeding Skills",
             query: "Does your child drink from a cup without a lid, even if they sometimes spill?",
             image: "drinks_without_lid_image",
             milestoneMonth: .month18,
@@ -310,6 +345,7 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Feeds Self with Fingers",
+            subtitle: "Developing Self-Feeding",
             query: "Does your child feed themselves with their fingers?",
             image: "feeds_self_fingers_image",
             milestoneMonth: .month18,
@@ -318,6 +354,7 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Tries to Use a Spoon",
+            subtitle: "Learning to Eat Independently",
             query: "Does your child try to use a spoon?",
             image: "uses_spoon_image",
             milestoneMonth: .month18,
@@ -326,17 +363,19 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Climbs on and Off Furniture",
+            subtitle: "Climbing Skills",
             query: "Does your child climb on and off a couch or chair without help?",
             image: "climbs_furniture_image",
             milestoneMonth: .month18,
             description: "Climbing furniture independently shows improved motor planning, strength, and balance.",
             category: .physical
         ),
-        
-        // MARK: - 24 months
-        //Social
+
+        // 24 months
+        // Social
         GrowthMilestone(
             title: "Notices When Others Are Upset",
+            subtitle: "Developing Empathy",
             query: "Does your child pause or look sad when someone is crying?",
             image: "notices_upset_image",
             milestoneMonth: .month24,
@@ -345,16 +384,18 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Looks to Your Face for Reactions",
+            subtitle: "Social Guidance",
             query: "Does your child look at your face to see how to react in a new situation?",
             image: "looks_for_reaction_image",
             milestoneMonth: .month24,
             description: "Looking at your face for guidance reflects growing social awareness and trust in your reactions to unfamiliar events.",
             category: .social
         ),
-        
-        //Language
+
+        // Language
         GrowthMilestone(
             title: "Points to Items in a Book",
+            subtitle: "Learning Through Books",
             query: "Does your child point to things in a book when you ask, like 'Where is the bear?'?",
             image: "points_in_book_image",
             milestoneMonth: .month24,
@@ -363,6 +404,7 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Says Two Words Together",
+            subtitle: "Building Sentences",
             query: "Does your child say at least two words together, like 'More milk'?",
             image: "two_words_image",
             milestoneMonth: .month24,
@@ -371,6 +413,7 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Points to Body Parts",
+            subtitle: "Body Awareness",
             query: "Does your child point to at least two body parts when you ask them to show you?",
             image: "points_body_parts_image",
             milestoneMonth: .month24,
@@ -379,16 +422,18 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Uses More Gestures",
+            subtitle: "Nonverbal Communication",
             query: "Does your child use more gestures, like blowing a kiss or nodding yes, besides waving and pointing?",
             image: "uses_gestures_image",
             milestoneMonth: .month24,
             description: "Using gestures like blowing kisses or nodding reflects growing communication skills and nonverbal understanding.",
             category: .language
         ),
-        
-        //Cognitive
+
+        // Cognitive
         GrowthMilestone(
             title: "Uses Both Hands",
+            subtitle: "Improved Coordination",
             query: "Does your child hold something in one hand while using the other hand, like holding a container and taking the lid off?",
             image: "uses_both_hands_image",
             milestoneMonth: .month24,
@@ -397,6 +442,7 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Tries Switches, Knobs, and Buttons",
+            subtitle: "Cause-and-Effect Exploration",
             query: "Does your child try to use switches, knobs, or buttons on a toy?",
             image: "tries_switches_image",
             milestoneMonth: .month24,
@@ -405,16 +451,18 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Plays with Multiple Toys Together",
+            subtitle: "Expanding Imagination",
             query: "Does your child play with more than one toy at the same time, like putting toy food on a toy plate?",
             image: "plays_with_multiple_toys_image",
             milestoneMonth: .month24,
             description: "Playing with multiple toys together reflects growing imagination and the ability to combine actions in play.",
             category: .cognitive
         ),
-        
-        //Physical
+
+        // Physical
         GrowthMilestone(
             title: "Kicks a Ball",
+            subtitle: "Gross Motor Development",
             query: "Does your child kick a ball?",
             image: "kicks_ball_image",
             milestoneMonth: .month24,
@@ -423,6 +471,7 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Runs",
+            subtitle: "Physical Confidence",
             query: "Does your child run?",
             image: "runs_image",
             milestoneMonth: .month24,
@@ -431,6 +480,7 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Walks Up Stairs",
+            subtitle: "Motor Planning",
             query: "Does your child walk (not climb) up a few stairs with or without help?",
             image: "walks_up_stairs_image",
             milestoneMonth: .month24,
@@ -439,6 +489,7 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Eats with a Spoon",
+            subtitle: "Self-Feeding Skills",
             query: "Does your child eat with a spoon?",
             image: "eats_with_spoon_image",
             milestoneMonth: .month24,
@@ -450,6 +501,7 @@ class GrowthMilestonesDataModel {
         //Social
         GrowthMilestone(
             title: "Plays Next to or With Other Children",
+            subtitle: "Social Interaction",
             query: "Does your child play next to other children and sometimes join them?",
             image: "plays_with_others_image",
             milestoneMonth: .month30,
@@ -458,6 +510,7 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Shows What She Can Do",
+            subtitle: "Confidence and Self-Awareness",
             query: "Does your child show you what she can do by saying, 'Look at me!'?",
             image: "shows_what_can_do_image",
             milestoneMonth: .month30,
@@ -466,16 +519,18 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Follows Simple Routines",
+            subtitle: "Understanding Instructions",
             query: "Does your child follow simple routines like helping to pick up toys when you say, 'It’s clean-up time'?",
             image: "follows_routines_image",
             milestoneMonth: .month30,
             description: "Following routines demonstrates understanding of instructions and participation in structured activities.",
             category: .social
         ),
-        
-        //Language
+
+        // Language
         GrowthMilestone(
             title: "Says About 50 Words",
+            subtitle: "Vocabulary Development",
             query: "Does your child say around 50 words?",
             image: "says_50_words_image",
             milestoneMonth: .month30,
@@ -484,6 +539,7 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Uses Two or More Words With an Action Word",
+            subtitle: "Sentence Formation",
             query: "Does your child say two or more words with an action word, like 'Doggie run'?",
             image: "action_words_image",
             milestoneMonth: .month30,
@@ -492,6 +548,7 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Names Things in a Book",
+            subtitle: "Language Comprehension",
             query: "Does your child name things in a book when you point and ask, 'What is this?'?",
             image: "names_things_book_image",
             milestoneMonth: .month30,
@@ -500,16 +557,18 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Uses Words Like 'I,' 'Me,' or 'We'",
+            subtitle: "Self-Awareness in Language",
             query: "Does your child use words like 'I,' 'me,' or 'we'?",
             image: "uses_pronouns_image",
             milestoneMonth: .month30,
             description: "Using pronouns demonstrates growing self-awareness and mastery of more complex aspects of language.",
             category: .language
         ),
-        
-        //Cognitive
+
+        // Cognitive
         GrowthMilestone(
             title: "Pretends With Toys",
+            subtitle: "Imaginative Play",
             query: "Does your child pretend, like feeding a block to a doll as if it were food?",
             image: "pretends_with_toys_image",
             milestoneMonth: .month30,
@@ -518,6 +577,7 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Shows Problem-Solving Skills",
+            subtitle: "Critical Thinking",
             query: "Does your child solve simple problems, like standing on a stool to reach something?",
             image: "problem_solving_image",
             milestoneMonth: .month30,
@@ -526,6 +586,7 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Follows Two-Step Instructions",
+            subtitle: "Task Processing",
             query: "Does your child follow two-step instructions like, 'Put the toy down and close the door'?",
             image: "two_step_instructions_image",
             milestoneMonth: .month30,
@@ -534,17 +595,18 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Identifies Colors",
+            subtitle: "Color Recognition",
             query: "Does your child point to a color, like red, when you ask, 'Which one is red?'?",
             image: "identifies_colors_image",
             milestoneMonth: .month30,
             description: "Recognizing colors reflects cognitive development, memory, and the ability to classify objects.",
             category: .cognitive
         ),
-        
-        
-        //Physical
+
+        // Physical
         GrowthMilestone(
             title: "Twists Doorknobs or Unscrews Lids",
+            subtitle: "Fine Motor Skills",
             query: "Does your child twist things like doorknobs or unscrew lids?",
             image: "twists_doorknobs_image",
             milestoneMonth: .month30,
@@ -553,6 +615,7 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Takes Off Some Clothes",
+            subtitle: "Self-Help Skills",
             query: "Does your child take off some clothes by himself, like loose pants or an open jacket?",
             image: "takes_off_clothes_image",
             milestoneMonth: .month30,
@@ -561,6 +624,7 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Jumps Off the Ground With Both Feet",
+            subtitle: "Coordination and Strength",
             query: "Does your child jump off the ground with both feet?",
             image: "jumps_with_both_feet_image",
             milestoneMonth: .month30,
@@ -569,17 +633,19 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Turns Book Pages One at a Time",
+            subtitle: "Hand-Eye Coordination",
             query: "Does your child turn book pages one at a time when you read to her?",
             image: "turns_book_pages_image",
             milestoneMonth: .month30,
             description: "Turning book pages demonstrates fine motor skills, hand-eye coordination, and interest in reading activities.",
             category: .physical
         ),
-        
+
         // MARK: - 36 months
-        //Social
+        // Social
         GrowthMilestone(
             title: "Calms Down After Separation",
+            subtitle: "Emotional Regulation",
             query: "Does your child calm down within 10 minutes after you leave her, like at a childcare drop-off?",
             image: "calms_down_image",
             milestoneMonth: .month36,
@@ -588,17 +654,18 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Joins Other Children to Play",
+            subtitle: "Growing Social Skills",
             query: "Does your child notice other children and join them to play?",
             image: "joins_children_to_play_image",
             milestoneMonth: .month36,
             description: "Playing with others reflects growing social skills, cooperation, and understanding of group dynamics.",
             category: .social
         ),
-        
-        //Language
-        
+
+        // Language
         GrowthMilestone(
             title: "Engages in Conversation",
+            subtitle: "Advanced Communication Skills",
             query: "Does your child talk with you in conversation using at least two back-and-forth exchanges?",
             image: "engages_in_conversation_image",
             milestoneMonth: .month36,
@@ -607,6 +674,7 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Asks 'Who,' 'What,' 'Where,' or 'Why' Questions",
+            subtitle: "Curiosity and Cognitive Growth",
             query: "Does your child ask questions like 'Who,' 'What,' 'Where,' or 'Why,' such as 'Where is mommy/daddy?'?",
             image: "asks_questions_image",
             milestoneMonth: .month36,
@@ -615,6 +683,7 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Describes Actions in Pictures",
+            subtitle: "Verbal Connection with Visuals",
             query: "Does your child say what action is happening in a picture or book when asked, like 'running,' 'eating,' or 'playing'?",
             image: "describes_actions_image",
             milestoneMonth: .month36,
@@ -623,6 +692,7 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Says First Name",
+            subtitle: "Self-Identity",
             query: "Does your child say her first name when asked?",
             image: "says_first_name_image",
             milestoneMonth: .month36,
@@ -631,16 +701,18 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Speaks Clearly Most of the Time",
+            subtitle: "Clear Articulation",
             query: "Does your child talk well enough for others to understand, most of the time?",
             image: "speaks_clearly_image",
             milestoneMonth: .month36,
             description: "Speaking clearly demonstrates advanced articulation and confidence in communication.",
             category: .language
         ),
-        
+
         // Cognitive Milestones
         GrowthMilestone(
             title: "Draws a Circle",
+            subtitle: "Fine Motor and Visual Skills",
             query: "Does your child draw a circle when you show him how?",
             image: "draws_circle_image",
             milestoneMonth: .month36,
@@ -649,16 +721,18 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Avoids Touching Hot Objects",
+            subtitle: "Safety Awareness",
             query: "Does your child avoid touching hot objects, like a stove, when you warn her?",
             image: "avoids_hot_objects_image",
             milestoneMonth: .month36,
             description: "Avoiding hot objects indicates understanding of danger and the ability to follow safety instructions.",
             category: .cognitive
         ),
-        
-        //Movement/Physical Development Milestones
+
+        // Movement/Physical Development Milestones
         GrowthMilestone(
             title: "Strings Items Together",
+            subtitle: "Hand-Eye Coordination",
             query: "Does your child string items together, like large beads or macaroni?",
             image: "strings_items_image",
             milestoneMonth: .month36,
@@ -667,6 +741,7 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Puts On Some Clothes",
+            subtitle: "Self-Help and Coordination",
             query: "Does your child put on some clothes by himself, like loose pants or a jacket?",
             image: "puts_on_clothes_image",
             milestoneMonth: .month36,
@@ -675,6 +750,7 @@ class GrowthMilestonesDataModel {
         ),
         GrowthMilestone(
             title: "Uses a Fork",
+            subtitle: "Fine Motor Skills and Self-Feeding",
             query: "Does your child use a fork to eat?",
             image: "uses_fork_image",
             milestoneMonth: .month36,
