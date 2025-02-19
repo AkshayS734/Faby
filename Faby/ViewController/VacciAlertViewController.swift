@@ -2,14 +2,6 @@ import UIKit
 import SwiftUI
 import Combine
 
-// MARK: - Models
-struct VaccineData {
-    let name: String
-    let startDate: Date
-    let endDate: Date
-    var isScheduled: Bool
-}
-
 // MARK: - Calendar View
 struct CalendarView: View {
     var selectedDate: Date
@@ -58,7 +50,6 @@ struct CalendarView: View {
         }
         .padding(.top)
     }
-    
     private func isDaySelected(_ day: Int) -> Bool {
         let calendar = Calendar.current
         let components = calendar.dateComponents([.day], from: selectedDate)
