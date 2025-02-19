@@ -4,7 +4,6 @@ import MapKit
 // MARK: - HospitalViewController
 class HospitalViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
     
-    // Add this property to store the vaccine name
     var vaccineName: String = "Vaccination"
     
     // UI Elements
@@ -38,10 +37,7 @@ class HospitalViewController: UIViewController, UITableViewDataSource, UITableVi
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
-        
-        // Update the title dynamically based on the passed vaccine name
         navigationItem.title = "\(vaccineName) Vaccination"
-        
         tableView.dataSource = self
         tableView.delegate = self
         setMapRegion()
@@ -50,12 +46,10 @@ class HospitalViewController: UIViewController, UITableViewDataSource, UITableVi
     private func setupUI() {
         view.backgroundColor = .white
         
-        // Add subviews
         view.addSubview(searchBar)
         view.addSubview(mapView)
         view.addSubview(tableView)
         
-        // Set up constraints
         NSLayoutConstraint.activate([
             searchBar.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             searchBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
@@ -127,23 +121,16 @@ class HospitalViewController: UIViewController, UITableViewDataSource, UITableVi
     }
     
     private func saveVaccinationData(hospital: Hospital, date: String) {
-        // Use the actual vaccine name instead of extracting from title
-        var vaccineType = vaccineName
-        if vaccineType.isEmpty {
-            // Fallback if vaccineName is empty
-            vaccineType = navigationItem.title?.replacingOccurrences(of: " Vaccination", with: "") ?? "Unknown"
-        }
+        let schedule = VaccinationSchedule(
+            id: UUID(),
+            type: vaccineName,
+            hospitalName: hospital.name,
+            hospitalAddress: hospital.address,
+            scheduledDate: date,
+            babyId: hospital.babyId
+        )
         
-        let vaccinationData = [
-            "type": vaccineType,
-            "hospital": hospital.name,
-            "address": hospital.address,
-            "date": date
-        ]
-        
-        var savedData = UserDefaults.standard.array(forKey: "VaccinationSchedules") as? [[String: String]] ?? []
-        savedData.append(vaccinationData)
-        UserDefaults.standard.set(savedData, forKey: "VaccinationSchedules")
+        VaccinationStorageManager.shared.saveSchedule(schedule)
     }
     
     private func showConfirmationMessage() {
@@ -164,7 +151,6 @@ class HospitalViewController: UIViewController, UITableViewDataSource, UITableVi
     private func navigateToVacciAlert() {
         let vacciAlertVC = VacciAlertViewController()
         
-        // If presented modally, dismiss first then navigate
         if let presentingVC = presentingViewController {
             dismiss(animated: true) {
                 if let navigationController = presentingVC as? UINavigationController {
@@ -174,7 +160,6 @@ class HospitalViewController: UIViewController, UITableViewDataSource, UITableVi
                 }
             }
         } else {
-            // If pushed, just navigate
             navigationController?.pushViewController(vacciAlertVC, animated: true)
         }
     }

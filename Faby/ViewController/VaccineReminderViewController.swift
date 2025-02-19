@@ -1,5 +1,6 @@
 import UIKit
 
+
 class VaccineReminderViewController: UIViewController, UISearchBarDelegate {
     
     // MARK: - Properties
@@ -9,7 +10,8 @@ class VaccineReminderViewController: UIViewController, UISearchBarDelegate {
     let scheduledVaccinationsLabel = UILabel()
     let vaccinationsStackView = UIStackView()
     
-    let dataManager = VaccinationDataManager()
+    // Use the shared storage manager to access vaccination data
+    let storageManager = VaccinationStorageManager.shared
     var vaccinations: [VaccineSchedule] = []
     
     override func viewDidLoad() {
@@ -23,12 +25,34 @@ class VaccineReminderViewController: UIViewController, UISearchBarDelegate {
         setupScheduledVaccinations()
         
         // Load vaccination data
-        vaccinations = dataManager.loadVaccinations()
+        loadVaccinations()
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        // Reload data when view appears
+        loadVaccinations()
+    }
+    
+    // MARK: - Data Loading
+    private func loadVaccinations() {
+        // Convert the dictionary storage data into VaccineSchedule array
+        let storedSchedules = storageManager.getAllSchedules()
+        
+        vaccinations = storedSchedules.map { schedule in
+            return VaccineSchedule(
+//                id: schedule.id,
+                type: schedule.type,
+                hospital: schedule.hospitalName,
+                date: schedule.scheduledDate,
+                location: schedule.hospitalAddress
+            )
+        }
+        
         displayVaccinations()
     }
     
     // MARK: - Setup Methods
-    
     private func setupScrollView() {
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         contentView.translatesAutoresizingMaskIntoConstraints = false
@@ -49,7 +73,7 @@ class VaccineReminderViewController: UIViewController, UISearchBarDelegate {
         ])
     }
     
-     func setupCalendarView() {
+    func setupCalendarView() {
         calendarView.translatesAutoresizingMaskIntoConstraints = false
         calendarView.backgroundColor = .systemGroupedBackground
         contentView.addSubview(calendarView)
@@ -78,7 +102,14 @@ class VaccineReminderViewController: UIViewController, UISearchBarDelegate {
         let selectedDate = sender.date
         let dateFormatter = DateFormatter()
         dateFormatter.dateStyle = .medium
-        print("Selected Date: \(dateFormatter.string(from: selectedDate))")
+        
+        // Filter vaccinations for selected date
+        filterVaccinationsForDate(dateFormatter.string(from: selectedDate))
+    }
+    
+    private func filterVaccinationsForDate(_ selectedDate: String) {
+        let filteredVaccinations = vaccinations.filter { $0.date == selectedDate }
+        displayVaccinations(filteredVaccinations)
     }
     
     private func setupScheduledVaccinations() {
@@ -104,11 +135,16 @@ class VaccineReminderViewController: UIViewController, UISearchBarDelegate {
         ])
     }
     
-    private func displayVaccinations() {
+    private func displayVaccinations(_ vaccinationsToDisplay: [VaccineSchedule]? = nil) {
         vaccinationsStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
         
-        for vaccine in vaccinations {
-            addVaccinationCard(vaccineType: vaccine.type, hospital: vaccine.hospital, date: vaccine.date, location: vaccine.location)
+        let vaccinationsToShow = vaccinationsToDisplay ?? vaccinations
+        
+        for vaccine in vaccinationsToShow {
+            addVaccinationCard(vaccineType: vaccine.type,
+                             hospital: vaccine.hospital,
+                             date: vaccine.date,
+                             location: vaccine.location)
         }
     }
     
@@ -158,11 +194,28 @@ class VaccineReminderViewController: UIViewController, UISearchBarDelegate {
             stackView.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -10)
         ])
     }
-
-    // MARK: - Actions
     
+    // MARK: - Actions
     @objc private func didTapSearch() {
-        print("Search tapped")
-        // Implement search functionality
+        let searchController = UISearchController(searchResultsController: nil)
+        searchController.searchBar.delegate = self
+        navigationItem.searchController = searchController
+        searchController.isActive = true
+    }
+    
+    // MARK: - Search Bar Delegate
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        if searchText.isEmpty {
+            displayVaccinations()
+        } else {
+            let filteredVaccinations = vaccinations.filter {
+                $0.type.lowercased().contains(searchText.lowercased()) ||
+                $0.hospital.lowercased().contains(searchText.lowercased()) ||
+                $0.location.lowercased().contains(searchText.lowercased())
+            }
+            displayVaccinations(filteredVaccinations)
+        }
     }
 }
+
+// MARK: - UIColor Extension

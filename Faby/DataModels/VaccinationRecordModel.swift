@@ -1,38 +1,43 @@
-//
-//  VaccinationRecordModel.swift
-//  Faby
-//
-//  Created by Adarsh Mishra on 24/01/25.
-//
-
 import Foundation
+
 struct VaccineSchedule {
-    
     let type: String
     let hospital: String
     let date: String
     let location: String
-    
 }
-class VaccinationDataManager {
-    private let storageKey = "VaccinationSchedules"
+
+struct VaccinationSchedule {
+    let id: UUID
+    let type: String
+    let hospitalName: String
+    let hospitalAddress: String
+    let scheduledDate: String
+    let babyId: UUID
+}
+
+// MARK: - Storage Manager
+class VaccinationStorageManager {
+    static let shared = VaccinationStorageManager()
     
-    func saveVaccinations(_ vaccinations: [VaccineSchedule]) {
-        let data = vaccinations.map {
-            ["type": $0.type, "hospital": $0.hospital, "date": $0.date, "address": $0.location]
-        }
-        UserDefaults.standard.set(data, forKey: storageKey)
+    // Dictionary to store schedules with UUID as key and VaccinationSchedule as value
+    private var schedules: [UUID: VaccinationSchedule] = [:]
+    
+    private init() {}
+    
+    func saveSchedule(_ schedule: VaccinationSchedule) {
+        schedules[schedule.id] = schedule
     }
     
-    func loadVaccinations() -> [VaccineSchedule] {
-        guard let savedData = UserDefaults.standard.array(forKey: storageKey) as? [[String: String]] else {
-            return []
-        }
-        return savedData.compactMap { dict in
-            guard let type = dict["type"], let hospital = dict["hospital"], let date = dict["date"], let location = dict["address"] else {
-                return nil
-            }
-            return VaccineSchedule(type: type, hospital: hospital, date: date, location: location)
-        }
+    func getAllSchedules() -> [VaccinationSchedule] {
+        return Array(schedules.values)
+    }
+    
+    func getSchedulesForBaby(babyId: UUID) -> [VaccinationSchedule] {
+        return schedules.values.filter { $0.babyId == babyId }
+    }
+    
+    func deleteSchedule(id: UUID) {
+        schedules.removeValue(forKey: id)
     }
 }
