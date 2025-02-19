@@ -117,7 +117,6 @@ class VaccineInputViewController: UIViewController, UITableViewDataSource, UITab
     // MARK: - Continue Button
 
     @objc private func continueButtonTapped() {
-        // Refresh our local cache of selected vaccines
         selectedVaccines = vaccineManager.getSelectedVaccines()
         
         if selectedVaccines.isEmpty {
@@ -137,13 +136,12 @@ class VaccineInputViewController: UIViewController, UITableViewDataSource, UITab
             preferredStyle: .alert
         )
 
-        // Add "Cancel" button
-        confirmationAlert.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
-
-        // Add "OK" button
-        confirmationAlert.addAction(UIAlertAction(title: "OK", style: .default) { _ in
+        confirmationAlert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        
+        confirmationAlert.addAction(UIAlertAction(title: "OK", style: .default) { [weak self] _ in
+            guard let self = self else { return }
             let vacciAlertVC = VacciAlertViewController()
-            vacciAlertVC.selectedVaccines = self.selectedVaccines
+            vacciAlertVC.selectedVaccines = self.selectedVaccines // This will now work
             self.navigationController?.pushViewController(vacciAlertVC, animated: true)
         })
 

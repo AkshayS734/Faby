@@ -1,16 +1,11 @@
 import UIKit
 import MapKit
 
-// MARK: - Hospital Model
-//struct Hospital {
-//    let babyId: UUID
-//    let name: String
-//    let address: String
-//    let distance: Double
-//}
-
 // MARK: - HospitalViewController
 class HospitalViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
+    
+    // Add this property to store the vaccine name
+    var vaccineName: String = "Vaccination"
     
     // UI Elements
     let mapView: MKMapView = {
@@ -43,6 +38,10 @@ class HospitalViewController: UIViewController, UITableViewDataSource, UITableVi
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
+        
+        // Update the title dynamically based on the passed vaccine name
+        navigationItem.title = "\(vaccineName) Vaccination"
+        
         tableView.dataSource = self
         tableView.delegate = self
         setMapRegion()
@@ -50,7 +49,6 @@ class HospitalViewController: UIViewController, UITableViewDataSource, UITableVi
     
     private func setupUI() {
         view.backgroundColor = .white
-        navigationItem.title = "Hepatitis Vaccination"
         
         // Add subviews
         view.addSubview(searchBar)
@@ -129,7 +127,13 @@ class HospitalViewController: UIViewController, UITableViewDataSource, UITableVi
     }
     
     private func saveVaccinationData(hospital: Hospital, date: String) {
-        let vaccineType = navigationItem.title?.replacingOccurrences(of: " Vaccination", with: "") ?? "Unknown"
+        // Use the actual vaccine name instead of extracting from title
+        var vaccineType = vaccineName
+        if vaccineType.isEmpty {
+            // Fallback if vaccineName is empty
+            vaccineType = navigationItem.title?.replacingOccurrences(of: " Vaccination", with: "") ?? "Unknown"
+        }
+        
         let vaccinationData = [
             "type": vaccineType,
             "hospital": hospital.name,

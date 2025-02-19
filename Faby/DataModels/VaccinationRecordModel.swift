@@ -12,6 +12,7 @@ struct VaccineSchedule {
     let hospital: String
     let date: String
     let location: String
+    
 }
 class VaccinationDataManager {
     private let storageKey = "VaccinationSchedules"

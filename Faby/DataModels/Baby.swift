@@ -22,8 +22,8 @@ class Baby {
     
     var measurementUpdated: (() -> Void)?
     
-    init(id: UUID = UUID(),name: String, dateOfBirth: String, gender: Gender, parent: Parent) {
-        self.id = id
+    init(name: String, dateOfBirth: String, gender: Gender, parent: Parent) {
+        self.id = UUID()
         self.name = name
         self.dateOfBirth = dateOfBirth
         self.gender = gender

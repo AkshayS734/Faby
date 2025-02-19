@@ -49,7 +49,7 @@ class VaccineReminderViewController: UIViewController, UISearchBarDelegate {
         ])
     }
     
-    private func setupCalendarView() {
+     func setupCalendarView() {
         calendarView.translatesAutoresizingMaskIntoConstraints = false
         calendarView.backgroundColor = .systemGroupedBackground
         contentView.addSubview(calendarView)
