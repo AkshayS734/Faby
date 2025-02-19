@@ -263,8 +263,32 @@ class FeedingPlanViewController: UIViewController {
         summaryVC.selectedDay = selectedDay
         summaryVC.savedPlan = selectedPlanType == .daily ? myBowlItemsDict : weeklyPlan[selectedDay] ?? [:]
 
+        // ✅ Convert feeding plan into an array of dictionaries
+        var savedMeals: [[String: String]] = []
+
+        for (category, meals) in summaryVC.savedPlan {
+            for meal in meals {
+                let mealData: [String: String] = [
+                    "category": category.rawValue,  // Bite type (EarlyBite, NourishBite, etc.)
+                    "name": meal.name,              // Meal name
+                    "image": meal.image,            // Image file name
+                    "time": getTimeInterval(for: category) // Time interval
+                ]
+                savedMeals.append(mealData)
+            }
+        }
+
+        // ✅ Store the selected day's meals in UserDefaults
+        UserDefaults.standard.set(savedMeals, forKey: "todaysBites")
+        UserDefaults.standard.set(selectedDay, forKey: "selectedDay") // Store selected date
+
+        // ✅ Notify HomeViewController that a new Feeding Plan was saved
+        NotificationCenter.default.post(name: NSNotification.Name("FeedingPlanUpdated"), object: nil)
+
+        // ✅ Push to Summary View
         navigationController?.pushViewController(summaryVC, animated: true)
     }
+
 
     
     private func getTimeInterval(for category: BiteType) -> String {
