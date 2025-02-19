@@ -125,7 +125,7 @@ struct CalendarContainerView: View {
 struct VaccineCardView: View {
     let vaccine: VaccineData
     let onTap: () -> Void
-    
+
     var body: some View {
         Button(action: onTap) {
             HStack {
@@ -133,9 +133,10 @@ struct VaccineCardView: View {
                     Text(vaccine.name)
                         .font(.body)
                         .foregroundColor(.black)
+                    
                     Text(formatDateRange(vaccine.startDate, vaccine.endDate))
                         .font(.subheadline)
-                        .foregroundColor(.black)
+                        .foregroundColor(.gray) // Change subtitle color to system gray
                 }
                 Spacer()
                 Image(systemName: "plus.circle")
@@ -146,19 +147,19 @@ struct VaccineCardView: View {
             .cornerRadius(8)
         }
     }
-    
+
     private func formatDateRange(_ startDate: Date, _ endDate: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
-        
+
         if startDate < Date() && endDate < Date() {
             return "Overdue since \(formatter.string(from: endDate))"
         }
-        
+
         if startDate < Date() && endDate >= Date() {
             return "Due now until \(formatter.string(from: endDate))"
         }
-        
+
         return "Due \(formatter.string(from: startDate)) - \(formatter.string(from: endDate))"
     }
 }
@@ -232,57 +233,64 @@ class VacciAlertViewController: UIViewController {
     // MARK: - Data Management
     private func setupVaccineData() {
         let calendar = Calendar.current
-        
-        // Calculate baby's current age in months (fixed at 12 months)
-        let babyAgeInMonths = 12 // Fixed at 1 year
-        
+        let babyAgeInMonths = 12 // Fixed at 1 year for now
+
         vaccineDataDict.removeAll()
-        
-        // Define all vaccine schedules based on months from birth
+
+        // Updated vaccine schedule
         let timelines: [(name: String, startMonth: Int, endMonth: Int)] = [
-            ("BCG", 0, 1),
+            // Newborn vaccines
             ("Hepatitis B (Dose 1)", 0, 1),
-            ("Hepatitis B (Dose 2)", 1, 2),
+            ("RSV Antibody", 0, 1),
+
+            // 2-month vaccines
+            ("Hepatitis B (Dose 2)", 2, 3),
+            ("Rotavirus (Dose 1)", 2, 3),
             ("DTaP (Dose 1)", 2, 3),
-            ("IPV (Dose 1)", 2, 3),
             ("Hib (Dose 1)", 2, 3),
             ("PCV (Dose 1)", 2, 3),
-            ("Rotavirus (Dose 1)", 2, 3),
+            ("IPV (Dose 1)", 2, 3),
+
+            // 4-month vaccines
+            ("Rotavirus (Dose 2)", 4, 5),
             ("DTaP (Dose 2)", 4, 5),
-            ("IPV (Dose 2)", 4, 5),
             ("Hib (Dose 2)", 4, 5),
             ("PCV (Dose 2)", 4, 5),
-            ("Rotavirus (Dose 2)", 4, 5),
-            ("DTaP (Dose 3)", 6, 7),
-            ("IPV (Dose 3)", 6, 7),
-            ("Hib (Dose 3)", 6, 7),
-            ("PCV (Dose 3)", 6, 7),
-            ("Rotavirus (Dose 3)", 6, 7),
+            ("IPV (Dose 2)", 4, 5),
+
+            // 6-month vaccines
             ("Hepatitis B (Dose 3)", 6, 7),
+            ("Rotavirus (Dose 3)", 6, 7), // Only if doing the three-dose series
+            ("DTaP (Dose 3)", 6, 7),
+            ("Hib (Dose 3)", 6, 7), // Only if doing the four-dose series
+            ("PCV (Dose 3)", 6, 7),
+            ("IPV (Dose 3)", 6, 7),
+            ("Flu Vaccine", 6, 7),
+            ("COVID-19 Vaccine", 6, 7),
+
+            // 12-month vaccines
             ("MMR (Dose 1)", 12, 15),
-            ("Varicella (Dose 1)", 12, 15),
+            ("Hepatitis A (Dose 1)", 12, 15),
+            ("PCV (Dose 4)", 12, 15),
+
+            // 15-month vaccines
+            ("Varicella (Dose 1)", 15, 18),
             ("DTaP (Dose 4)", 15, 18),
-            ("Hib (Dose 4)", 15, 18),
-            ("PCV (Dose 4)", 15, 18),
-            ("Hepatitis A (Dose 1)", 12, 18),
-            ("Hepatitis A (Dose 2)", 18, 24),
-            ("DTaP (Dose 5)", 48, 72),
-            ("IPV (Dose 4)", 48, 72),
-            ("MMR (Dose 2)", 48, 72),
-            ("Varicella (Dose 2)", 48, 72)
+            ("Hib (Final Dose)", 15, 18), // Dose 3 or 4 depending on the series
+
+            // 18-month vaccines
+            ("Hepatitis A (Dose 2)", 18, 24)
         ]
-        
-        // Filter and add vaccines that fall within our 3-month window
+
+        // Populate the vaccineDataDict
         for timeline in timelines {
-            // Only include vaccines that are due between now and 3 months from now
             if timeline.startMonth >= babyAgeInMonths &&
-               timeline.startMonth <= babyAgeInMonths + 3 && // Changed from 6 to 3 months
+               timeline.startMonth <= babyAgeInMonths + 3 && // Adjust window as needed
                !selectedVaccines.contains(timeline.name) {
-                
-                // Calculate the actual dates for this vaccine
+
                 let vaccineStartDate = calendar.date(byAdding: .month, value: timeline.startMonth, to: babyBirthDate) ?? Date()
                 let vaccineEndDate = calendar.date(byAdding: .month, value: timeline.endMonth, to: babyBirthDate) ?? Date()
-                
+
                 vaccineDataDict[timeline.name] = VaccineData(
                     name: timeline.name,
                     startDate: vaccineStartDate,
@@ -291,10 +299,9 @@ class VacciAlertViewController: UIViewController {
                 )
             }
         }
-        
+
         updateUIState()
     }
-    
     private func updateUIState() {
         let sortedVaccines = vaccineDataDict.values.sorted { $0.startDate < $1.startDate }
         let calendarContainer = children.first as? UIHostingController<CalendarContainerView>
