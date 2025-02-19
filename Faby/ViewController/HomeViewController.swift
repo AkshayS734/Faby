@@ -1,6 +1,19 @@
 import UIKit
 import SwiftUI
 
+//struct Vaccination {
+//    let title: String
+//    let date: String
+//    let location: String
+//    var isChecked: Bool
+//}
+
+struct TodayBite {
+    let title: String
+    let time: String
+    let imageName: String
+}
+
 class HomeViewController: UIViewController {
     
     // MARK: - Properties
@@ -13,6 +26,7 @@ class HomeViewController: UIViewController {
         let scrollView = UIScrollView()
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.showsVerticalScrollIndicator = false
+        scrollView.showsVerticalScrollIndicator = false
         scrollView.backgroundColor = UIColor(hex: "#f2f2f7")
         return scrollView
     }()
@@ -20,7 +34,6 @@ class HomeViewController: UIViewController {
     private let contentView: UIView = {
         let view = UIView()
         view.translatesAutoresizingMaskIntoConstraints = false
-        view.backgroundColor = UIColor(hex: "#f2f2f7")
         return view
     }()
     
@@ -52,7 +65,6 @@ class HomeViewController: UIViewController {
     private let specialMomentsContainerView: UIView = {
         let view = UIView()
         view.translatesAutoresizingMaskIntoConstraints = false
-        view.backgroundColor = UIColor(hex: "#f2f2f7")
         return view
     }()
     
@@ -71,7 +83,7 @@ class HomeViewController: UIViewController {
         layout.minimumLineSpacing = 10
         let collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
         collectionView.translatesAutoresizingMaskIntoConstraints = false
-        collectionView.backgroundColor = UIColor(hex: "#f2f2f7")
+        collectionView.backgroundColor = .systemGray6
         collectionView.showsHorizontalScrollIndicator = false
         return collectionView
     }()
@@ -95,7 +107,6 @@ class HomeViewController: UIViewController {
             target: self,
             action: #selector(goToSettings)
         )
-        
         NotificationCenter.default.addObserver(self, selector: #selector(updateSpecialMoments), name: .milestonesAchievedUpdated, object: nil)
         NotificationCenter.default.addObserver(
             self,
@@ -162,7 +173,7 @@ class HomeViewController: UIViewController {
             specialMomentsContainerView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
             specialMomentsContainerView.heightAnchor.constraint(equalToConstant: 220),
             
-            todaysBitesLabel.topAnchor.constraint(equalTo: specialMomentsContainerView.bottomAnchor, constant: 20),
+            todaysBitesLabel.topAnchor.constraint(equalTo: specialMomentsContainerView.bottomAnchor),
             todaysBitesLabel.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
             
             todaysBitesCollectionView.topAnchor.constraint(equalTo: todaysBitesLabel.bottomAnchor, constant: 10),
@@ -173,15 +184,7 @@ class HomeViewController: UIViewController {
     }
     
     private func setupVaccineView() {
-        // First, remove any existing vaccine view
         vaccineView?.removeFromSuperview()
-        
-        // Remove the existing child view controller if it exists
-        if let oldVaccineViewController = children.first(where: { $0 is UIHostingController<VaccineCardsView> }) {
-            oldVaccineViewController.willMove(toParent: nil)
-            oldVaccineViewController.view.removeFromSuperview()
-            oldVaccineViewController.removeFromParent()
-        }
         
         let vaccineCardsView = UIHostingController(rootView:
             VaccineCardsView(
@@ -203,33 +206,20 @@ class HomeViewController: UIViewController {
         
         addChild(vaccineCardsView)
         vaccineCardsView.view.translatesAutoresizingMaskIntoConstraints = false
-        vaccineCardsView.view.backgroundColor = UIColor(hex: "#f2f2f7")
-        
-        // Add it after the today's bites collection view
-        if let index = contentView.subviews.firstIndex(of: todaysBitesCollectionView) {
-            contentView.insertSubview(vaccineCardsView.view, at: index + 1)
-        } else {
-            contentView.addSubview(vaccineCardsView.view)
-        }
-        
+        contentView.addSubview(vaccineCardsView.view)
         vaccineCardsView.didMove(toParent: self)
         
         NSLayoutConstraint.activate([
             vaccineCardsView.view.topAnchor.constraint(equalTo: todaysBitesCollectionView.bottomAnchor, constant: 20),
             vaccineCardsView.view.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
             vaccineCardsView.view.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
-            vaccineCardsView.view.heightAnchor.constraint(equalToConstant: 200)
+            vaccineCardsView.view.heightAnchor.constraint(equalToConstant: 200),
+            vaccineCardsView.view.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -20)
         ])
-        
-        // Update the content view's bottom constraint
-        if let lastConstraint = contentView.constraints.first(where: { $0.firstAttribute == .bottom }) {
-            lastConstraint.isActive = false
-        }
-        
-        contentView.bottomAnchor.constraint(equalTo: vaccineCardsView.view.bottomAnchor, constant: 20).isActive = true
         
         vaccineView = vaccineCardsView.view
     }
+    
     private func setupDelegates() {
         todaysBitesCollectionView.delegate = self
         todaysBitesCollectionView.dataSource = self
@@ -288,7 +278,6 @@ class HomeViewController: UIViewController {
     }
 }
 
-
 // MARK: - CollectionView Extensions
 extension HomeViewController: UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
@@ -310,79 +299,35 @@ extension HomeViewController: UICollectionViewDelegate, UICollectionViewDataSour
     }
 }
 
-// Required supporting structures
-struct TodayBite {
-    let title: String
-    let time: String
-    let imageName: String
-}
-
+// MARK: - SwiftUI Views
 struct VaccineCardsView: View {
     var vaccines: [[String: String]]
     var onVaccineCompleted: ([String: String]) -> Void
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            // Using UIViewRepresentable to get exact UILabel styling match
-            UILabelRepresentable(text: "Vaccine Reminder", font: UIFont.boldSystemFont(ofSize: 20))
-                .frame(height: 24)  // Approximate height for the label
-                .padding(.horizontal, 16)
+            Text("Vaccine Reminder")
+                .font(.system(size: 20, weight: .bold)) // Set font size to 20 and weight to bold
+                .padding(.horizontal)
             
-            if vaccines.isEmpty {
-                // Empty state with centered message
-                GeometryReader { geometry in
-                    VStack {
-                        Spacer()
-                        Text("No vaccines added yet")
-                            .font(.system(size: 16))
-                            .foregroundColor(Color(.systemGray))
-                            .frame(width: geometry.size.width, alignment: .center)
-                        Spacer()
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    ForEach(vaccines, id: \.self) { vaccine in
+                        VaccineCard(
+                            vaccine: vaccine,
+                            onComplete: {
+                                onVaccineCompleted(vaccine)
+                            }
+                        )
                     }
                 }
-                .frame(height: 120)
-                .background(Color(UIColor(hex: "#f2f2f7")))
-            } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
-                        ForEach(vaccines, id: \.self) { vaccine in
-                            VaccineCard(
-                                vaccine: vaccine,
-                                onComplete: {
-                                    onVaccineCompleted(vaccine)
-                                }
-                            )
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 4)
-                }
-                .frame(height: 120)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 4)
             }
         }
-        .frame(height: 200)
         .background(Color(UIColor(hex: "#f2f2f7")))
     }
 }
-
-// UIViewRepresentable to ensure exact match with UIKit's UIFont.boldSystemFont
-struct UILabelRepresentable: UIViewRepresentable {
-    var text: String
-    var font: UIFont
-    
-    func makeUIView(context: Context) -> UILabel {
-        let label = UILabel()
-        label.text = text
-        label.font = font
-        return label
-    }
-    
-    func updateUIView(_ uiView: UILabel, context: Context) {
-        uiView.text = text
-        uiView.font = font
-    }
-}
-
 
 struct VaccineCard: View {
     var vaccine: [String: String]
@@ -439,7 +384,7 @@ struct VaccineCard: View {
         }
         .padding(16)
         .frame(width: 260, height: 120)
-        .background(Color(.systemBackground)) // This keeps the cards white
+        .background(Color(.systemBackground))
         .cornerRadius(12)
         .shadow(color: Color(.systemGray4).opacity(0.5), radius: 4, x: 0, y: 2)
         .opacity(opacity)
