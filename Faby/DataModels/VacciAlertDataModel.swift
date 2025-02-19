@@ -1,6 +1,7 @@
 import Foundation
 
-struct VaccineData {
+struct VaccineData : Identifiable {
+    let id = UUID()
     let name: String
     let startDate: Date
     let endDate: Date
