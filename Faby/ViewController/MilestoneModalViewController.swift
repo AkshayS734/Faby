@@ -1,7 +1,7 @@
 import UIKit
 
 protocol MilestoneModalViewControllerDelegate: AnyObject {
-    func milestoneDidReach(_ milestone: GrowthMilestone)
+    func milestoneDidReach(_ milestone: GrowthMilestone, image: UIImage?, videoURL: URL?)
 }
 
 class MilestoneModalViewController: UIViewController {
@@ -204,10 +204,30 @@ class MilestoneModalViewController: UIViewController {
     
     @objc private func saveTapped() {
         guard let milestone = milestone else { return }
-        if let image = imageView.image {
-            onSave?(datePicker.date, image)
+
+        let selectedImage = imageView.image
+        let selectedVideoURL = videoURL
+        let caption = captionTextField.text?.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if (selectedImage != nil || selectedVideoURL != nil) && (caption?.isEmpty ?? true) {
+            let confirmAlert = UIAlertController(
+                title: "Add Caption?",
+                message: "You haven't added a caption. Do you want to save without a caption?",
+                preferredStyle: .alert
+            )
+
+            confirmAlert.addAction(UIAlertAction(title: "Save Anyway", style: .default) { _ in
+                self.onSave?(self.datePicker.date, selectedImage, selectedVideoURL, nil)
+                self.delegate?.milestoneDidReach(milestone, image: selectedImage, videoURL: selectedVideoURL)  // Notify home screen
+                self.dismiss(animated: true, completion: nil)
+            })
+
+            confirmAlert.addAction(UIAlertAction(title: "Add Caption", style: .cancel, handler: nil))
+            present(confirmAlert, animated: true, completion: nil)
         } else {
-            onSave?(datePicker.date, nil)
+            onSave?(datePicker.date, selectedImage, selectedVideoURL, caption)
+            delegate?.milestoneDidReach(milestone, image: selectedImage, videoURL: selectedVideoURL)  // Notify home screen
+            dismiss(animated: true, completion: nil)
         }
 
         delegate?.milestoneDidReach(milestone)
