@@ -73,17 +73,6 @@ class TodBiteViewController: UIViewController, UITableViewDelegate {
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
     }
-    @objc private func createPlanButtonTapped() {
-        let createPlanVC = CreatePlanViewController()
-        
-        // ✅ Directly pass myBowlItemsDict instead of converting to Strings
-        createPlanVC.selectedItemsDict = myBowlItemsDict
-        print("✅ MyBowl Data Before Passing:", myBowlItemsDict)
-
-        navigationController?.pushViewController(createPlanVC, animated: true)
-    }
-
-
 
     private func setupCreatePlanButton() {
         createPlanButton = UIButton(type: .system)
@@ -138,13 +127,12 @@ class TodBiteViewController: UIViewController, UITableViewDelegate {
         }
     }
 
-//    @objc private func createPlanButtonTapped() {
-//        let createPlanVC = CreatePlanViewController()
-//        // Map items to their names
-//        createPlanVC.selectedItems = myBowlItemsDict.flatMap { $0.value }.map { $0.name }
-//        navigationController?.pushViewController(createPlanVC, animated: true)
-//    }
-    
+    @objc private func createPlanButtonTapped() {
+        let createPlanVC = CreatePlanViewController()
+        // Map items to their names
+        createPlanVC.selectedItems = myBowlItemsDict.flatMap { $0.value }.map { $0.name }
+        navigationController?.pushViewController(createPlanVC, animated: true)
+    }
 
     private func updatePlaceholderVisibility() {
         let isMyBowlEmpty = myBowlItemsDict.isEmpty
@@ -159,34 +147,33 @@ class TodBiteViewController: UIViewController, UITableViewDelegate {
             heightDimension: .fractionalHeight(1.0)
         )
         let item = NSCollectionLayoutItem(layoutSize: itemSize)
-           item.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 8, bottom: 0, trailing: 0)
+        item.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 8, bottom: 0, trailing: 0)
 
-           let groupSize = NSCollectionLayoutSize(
-               widthDimension: .fractionalWidth(0.9),
-               heightDimension: .absolute(215)
-           )
-           let group = NSCollectionLayoutGroup.horizontal(layoutSize: groupSize, subitems: [item])
-           group.interItemSpacing = .fixed(0)
+        let groupSize = NSCollectionLayoutSize(
+            widthDimension: .fractionalWidth(0.9),
+            heightDimension: .absolute(215)
+        )
+        let group = NSCollectionLayoutGroup.horizontal(layoutSize: groupSize, subitems: [item])
+        group.interItemSpacing = .fixed(0)
 
-           let section = NSCollectionLayoutSection(group: group)
-           section.orthogonalScrollingBehavior = .continuous
+        let section = NSCollectionLayoutSection(group: group)
+        section.orthogonalScrollingBehavior = .continuous
 
-           let headerSize = NSCollectionLayoutSize(
-               widthDimension: .fractionalWidth(1.0),
-               heightDimension: .absolute(50)
-           )
-           let header = NSCollectionLayoutBoundarySupplementaryItem(
-               layoutSize: headerSize,
-               elementKind: UICollectionView.elementKindSectionHeader,
-               alignment: .top
-           )
-           section.boundarySupplementaryItems = [header]
+        let headerSize = NSCollectionLayoutSize(
+            widthDimension: .fractionalWidth(1.0),
+            heightDimension: .absolute(50)
+        )
+        let header = NSCollectionLayoutBoundarySupplementaryItem(
+            layoutSize: headerSize,
+            elementKind: UICollectionView.elementKindSectionHeader,
+            alignment: .top
+        )
+        section.boundarySupplementaryItems = [header]
 
-           return UICollectionViewCompositionalLayout { (sectionIndex, layoutEnvironment) -> NSCollectionLayoutSection? in
-               return section
-           }
-       }
-
+        return UICollectionViewCompositionalLayout { (sectionIndex, layoutEnvironment) -> NSCollectionLayoutSection? in
+            return section
+        }
+    }
     internal func showToast(message: String) {
         let toastLabel = UILabel()
         toastLabel.text = message
