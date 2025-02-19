@@ -311,6 +311,9 @@ class MeasurementDetailsViewController: UIViewController, UITableViewDelegate, U
     }
     private func reloadChartView() {
         setupDataForTimeSpan()
+        embedSwiftUIView()
+        updateLatestMeasurementLabel()
+        tableView.reloadData()
         //           chartView.updateChart(data: currentGrowthData)
     }
     
