@@ -16,6 +16,7 @@ class VaccineDetailViewController: UIViewController {
     let aboutLabel = UILabel()
     let transmissionLabel = UILabel()
 
+    
 //    override func viewDidLoad() {
 //        super.viewDidLoad()
 //        view.backgroundColor = UIColor(hex: "#f2f2f7")
@@ -29,7 +30,7 @@ class VaccineDetailViewController: UIViewController {
 //            aboutLabel.text = vaccine.about
 //            transmissionLabel.text = vaccine.transmission
 //        }
-//        
+//
 //        setupScrollView()
 //        setupUI()
 //    }
@@ -54,6 +55,7 @@ class VaccineDetailViewController: UIViewController {
             contentView.widthAnchor.constraint(equalTo: scrollView.widthAnchor)
         ])
     }
+    
     
     func setupUI() {
         // Configure vaccineNameLabel
