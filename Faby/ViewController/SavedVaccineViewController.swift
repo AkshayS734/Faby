@@ -8,15 +8,19 @@ class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITab
     private let vaccineManager = VaccineManager.shared
     private var groupedVaccines: [String: [String]] = [:]
     private var stages: [String] = []
-    private var vaccineDates: [String: Date] = [:]
+    private var vaccineDates: [String: Date] = [:] // This will now be in-memory only
     
     // MARK: - Lifecycle Methods
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
         configureTableView()
-        loadAndGroupVaccines()
-        loadVaccineDates()
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        loadSavedData()
+        tableView.reloadData()
     }
     
     // MARK: - UI Setup
@@ -47,34 +51,31 @@ class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITab
     }
     
     // MARK: - Data Management
-    private func loadAndGroupVaccines() {
-        stages = ["Birth", "2 Months", "4 Months", "6 Months", "12 Months", "15 Months", "18 Months"]
+    private func loadSavedData() {
+        // Create grouped vaccines from VaccineManager data
+        groupedVaccines = [:]
+        stages = vaccineManager.vaccineData.map { $0.stageTitle }
         
-        groupedVaccines = [
-            "Birth": ["BCG", "Hepatitis B (Dose 1)"],
-            "2 Months": ["DTaP (Dose 1)", "IPV (Dose 1)", "Hib (Dose 1)", "PCV13 (Dose 1)", "Rotavirus (Dose 1)"],
-            "4 Months": ["DTaP (Dose 2)", "IPV (Dose 2)", "Hib (Dose 2)", "PCV13 (Dose 2)", "Rotavirus (Dose 2)"],
-            "6 Months": ["DTaP (Dose 3)", "IPV (Dose 3)", "Hib (Dose 3)", "PCV13 (Dose 3)", "Hepatitis B (Dose 3)"],
-            "12 Months": ["MMR (Dose 1)", "Varicella (Dose 1)", "Hepatitis A (Dose 1)"],
-            "15 Months": ["DTaP (Dose 4)", "Hib (Dose 4)"],
-            "18 Months": ["Hepatitis A (Dose 2)"]
-        ]
-    }
-    
-    private func loadVaccineDates() {
-        if let savedDates = UserDefaults.standard.dictionary(forKey: "VaccineDates") as? [String: Double] {
-            vaccineDates = savedDates.mapValues { Date(timeIntervalSince1970: $0) }
+        // Get selected vaccines from VaccineManager
+        let selectedVaccines = vaccineManager.getSelectedVaccines()
+        
+        // Filter selected vaccines and group them by stage
+        for stage in vaccineManager.vaccineData {
+            let selectedVaccinesForStage = stage.vaccines.filter {
+                selectedVaccines.contains($0)
+            }
+            if !selectedVaccinesForStage.isEmpty {
+                groupedVaccines[stage.stageTitle] = selectedVaccinesForStage
+            }
         }
     }
     
     private func saveVaccineDate(_ date: Date, for vaccine: String) {
         vaccineDates[vaccine] = date
-        let datesToSave = vaccineDates.mapValues { $0.timeIntervalSince1970 }
-        UserDefaults.standard.set(datesToSave, forKey: "VaccineDates")
         tableView.reloadData()
     }
     
-    // MARK: - UITableViewDataSource and Delegate Methods
+    // MARK: - UITableViewDataSource Methods
     func numberOfSections(in tableView: UITableView) -> Int {
         return stages.count
     }
@@ -85,7 +86,8 @@ class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITab
     }
     
     func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
-        return stages[section]
+        let stage = stages[section]
+        return groupedVaccines[stage]?.isEmpty == false ? stage : nil
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
@@ -113,7 +115,7 @@ class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITab
         return cell
     }
     
-    // Add support for swipe to delete
+    // MARK: - Table View Editing
     func tableView(_ tableView: UITableView, canEditRowAt indexPath: IndexPath) -> Bool {
         return true
     }
@@ -126,24 +128,37 @@ class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITab
             
             let vaccineToDelete = vaccines[indexPath.row]
             
-            // Remove from vaccineDates
-            vaccineDates.removeValue(forKey: vaccineToDelete)
+            let alert = UIAlertController(
+                title: "Delete Vaccine",
+                message: "Are you sure you want to remove \(vaccineToDelete) from your vaccination record?",
+                preferredStyle: .alert
+            )
             
-            // Save updated dates to UserDefaults
-            let datesToSave = vaccineDates.mapValues { $0.timeIntervalSince1970 }
-            UserDefaults.standard.set(datesToSave, forKey: "VaccineDates")
+            alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+            alert.addAction(UIAlertAction(title: "Delete", style: .destructive) { [weak self] _ in
+                guard let self = self else { return }
+                
+                // Remove from VaccineManager's selected vaccines
+                self.vaccineManager.unselectVaccine(vaccineToDelete)
+                
+                // Remove from grouped vaccines
+                vaccines.remove(at: indexPath.row)
+                self.groupedVaccines[stage] = vaccines
+                
+                // Remove associated date
+                self.vaccineDates.removeValue(forKey: vaccineToDelete)
+                
+                // Update UI
+                if vaccines.isEmpty {
+                    self.loadSavedData() // Reload all data to clean up empty sections
+                    self.tableView.reloadData()
+                } else {
+                    self.tableView.deleteRows(at: [indexPath], with: .fade)
+                }
+            })
             
-            // Remove from grouped vaccines
-            vaccines.remove(at: indexPath.row)
-            groupedVaccines[stage] = vaccines
-            
-            // Delete row with animation
-            tableView.deleteRows(at: [indexPath], with: .fade)
+            present(alert, animated: true)
         }
-    }
-    
-    func tableView(_ tableView: UITableView, titleForDeleteConfirmationButtonForRowAt indexPath: IndexPath) -> String? {
-        return "Remove"
     }
     
     // MARK: - Date Picker
@@ -265,16 +280,16 @@ class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITab
             var yPosition: CGFloat = titleRect.maxY + 60
             
             for stage in stages {
-                let stageAttributes = [
-                    NSAttributedString.Key.font: UIFont.boldSystemFont(ofSize: 16)
-                ]
-                stage.draw(
-                    at: CGPoint(x: 50, y: yPosition),
-                    withAttributes: stageAttributes
-                )
-                yPosition += 25
-                
-                if let vaccines = groupedVaccines[stage] {
+                if let vaccines = groupedVaccines[stage], !vaccines.isEmpty {
+                    let stageAttributes = [
+                        NSAttributedString.Key.font: UIFont.boldSystemFont(ofSize: 16)
+                    ]
+                    stage.draw(
+                        at: CGPoint(x: 50, y: yPosition),
+                        withAttributes: stageAttributes
+                    )
+                    yPosition += 25
+                    
                     for vaccine in vaccines {
                         let vaccineAttributes = [
                             NSAttributedString.Key.font: UIFont.systemFont(ofSize: 14)
@@ -320,7 +335,9 @@ class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITab
         present(alert, animated: true)
     }
 }
+
 // MARK: - VaccineTableViewCell
+
 class VaccineTableViewCell: UITableViewCell {
     private let vaccineLabel = UILabel()
     private let dateLabel = UILabel()
