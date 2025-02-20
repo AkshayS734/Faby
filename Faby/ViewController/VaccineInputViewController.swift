@@ -4,6 +4,7 @@ class VaccineInputViewController: UIViewController, UITableViewDataSource, UITab
 
     private let tableView = UITableView()
     private let vaccineManager = VaccineManager.shared
+    private var selectedVaccines: [String] = [] // Local cache of selected vaccines
 
     private let instructionsLabel: UILabel = {
         let label = UILabel()
@@ -21,8 +22,9 @@ class VaccineInputViewController: UIViewController, UITableViewDataSource, UITab
         view.backgroundColor = UIColor(hex: "#f2f2f7")
         self.title = "VacciTime"
         view.backgroundColor = .white
-
-        vaccineManager.loadSelectedVaccines()
+        
+        // Load selected vaccines from manager
+        selectedVaccines = vaccineManager.getSelectedVaccines()
         
         view.addSubview(instructionsLabel)
         configureTableView()
@@ -79,9 +81,13 @@ class VaccineInputViewController: UIViewController, UITableViewDataSource, UITab
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "vaccineCell", for: indexPath)
-        cell.textLabel?.text = vaccineManager.vaccineData[indexPath.section].vaccines[indexPath.row]
+        
         let vaccine = vaccineManager.vaccineData[indexPath.section].vaccines[indexPath.row]
-        cell.accessoryType = vaccineManager.selectedVaccines.contains(vaccine) ? .checkmark : .none
+        cell.textLabel?.text = vaccine
+        
+        // Check if vaccine is in our local cache of selected vaccines
+        cell.accessoryType = selectedVaccines.contains(vaccine) ? .checkmark : .none
+        
         return cell
     }
 
@@ -91,11 +97,19 @@ class VaccineInputViewController: UIViewController, UITableViewDataSource, UITab
 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         let selectedVaccine = vaccineManager.vaccineData[indexPath.section].vaccines[indexPath.row]
-        if let index = vaccineManager.selectedVaccines.firstIndex(of: selectedVaccine) {
-            vaccineManager.selectedVaccines.remove(at: index)
+        
+        if selectedVaccines.contains(selectedVaccine) {
+            // Unselect the vaccine
+            if let index = selectedVaccines.firstIndex(of: selectedVaccine) {
+                selectedVaccines.remove(at: index)
+            }
+            vaccineManager.unselectVaccine(selectedVaccine)
         } else {
-            vaccineManager.selectedVaccines.append(selectedVaccine)
+            // Select the vaccine
+            selectedVaccines.append(selectedVaccine)
+            vaccineManager.selectVaccine(selectedVaccine)
         }
+        
         tableView.reloadRows(at: [indexPath], with: .automatic)
         tableView.deselectRow(at: indexPath, animated: true)
     }
@@ -103,7 +117,9 @@ class VaccineInputViewController: UIViewController, UITableViewDataSource, UITab
     // MARK: - Continue Button
 
     @objc private func continueButtonTapped() {
-        if vaccineManager.selectedVaccines.isEmpty {
+        selectedVaccines = vaccineManager.getSelectedVaccines()
+        
+        if selectedVaccines.isEmpty {
             let noSelectionAlert = UIAlertController(
                 title: "No Vaccines Selected",
                 message: "Please select at least one vaccine to continue.",
@@ -114,21 +130,18 @@ class VaccineInputViewController: UIViewController, UITableViewDataSource, UITab
             return
         }
 
-        vaccineManager.saveSelectedVaccines()
-
         let confirmationAlert = UIAlertController(
             title: "Vaccines Selected",
-            message: "You have selected the following vaccines:\n\n\(vaccineManager.selectedVaccines.joined(separator: "\n"))",
+            message: "You have selected the following vaccines:\n\n\(selectedVaccines.joined(separator: "\n"))",
             preferredStyle: .alert
         )
 
-        // Add "Cancel" button
-        confirmationAlert.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
-
-        // Add "OK" button
-        confirmationAlert.addAction(UIAlertAction(title: "OK", style: .default) { _ in
+        confirmationAlert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        
+        confirmationAlert.addAction(UIAlertAction(title: "OK", style: .default) { [weak self] _ in
+            guard let self = self else { return }
             let vacciAlertVC = VacciAlertViewController()
-            vacciAlertVC.selectedVaccines = self.vaccineManager.selectedVaccines
+            vacciAlertVC.selectedVaccines = self.selectedVaccines // This will now work
             self.navigationController?.pushViewController(vacciAlertVC, animated: true)
         })
 
