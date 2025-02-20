@@ -1,7 +1,7 @@
 import UIKit
 
 protocol SectionItemTableViewCellDelegate: AnyObject {
-    func didTapAddButton(for item: Item)
+    func didTapAddButton(for item: FeedingMeal)
 }
 
 class SectionItemTableViewCell: UITableViewCell {
@@ -13,7 +13,7 @@ class SectionItemTableViewCell: UITableViewCell {
 
     // MARK: - Properties
     weak var delegate: SectionItemTableViewCellDelegate? // Delegate reference
-    private var currentItem: Item?
+    private var currentItem: FeedingMeal?
 
     // MARK: - Initializers
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
@@ -84,7 +84,7 @@ class SectionItemTableViewCell: UITableViewCell {
     }
 
     // MARK: - Configuration
-    func configure(with item: Item) {
+    func configure(with item: FeedingMeal) {
         currentItem = item
         itemImageView.image = UIImage(named: item.image)
         titleLabel.text = item.name
@@ -92,8 +92,18 @@ class SectionItemTableViewCell: UITableViewCell {
     }
 
     // MARK: - Actions
+    // MARK: - Actions
     @objc private func addButtonTapped() {
         guard let item = currentItem else { return }
+        
+        // Toggle button state
+        let isAdded = addButton.currentImage == UIImage(systemName: "plus.square.fill")
+        let newImageName = isAdded ? "checkmark.circle.fill" : "plus.square.fill"
+        
+        addButton.setImage(UIImage(systemName: newImageName), for: .normal)
+        addButton.tintColor = isAdded ? .green : .gray // Change color for better UX
+        
         delegate?.didTapAddButton(for: item)
     }
+
 }
