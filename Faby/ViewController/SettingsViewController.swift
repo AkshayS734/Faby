@@ -311,4 +311,3 @@ class TableViewCellWithArrow: UITableViewCell {
 
 // MARK: - Saved Vaccine View Controller
 
-
