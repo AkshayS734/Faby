@@ -92,4 +92,11 @@ struct FeedingPlan {
 }
 
 
+struct TodayBite {
+    let title: String
+    let time: String
+    let imageName: String
+}
+
+
 
