@@ -4,31 +4,49 @@ import Charts
 struct MeasurementDetailsView: View {
     var measurementType: String
     var baby: Baby?
-    @State private var currentGrowthData: [Double] = []
-    @State private var currentTimeLabels: [String] = []
-
+    
     @EnvironmentObject var unitSettings: UnitSettingsViewModel
+
+    var currentGrowthData: [Double] {
+        guard let baby = baby else { return [] }
+        switch measurementType {
+        case "Height":
+            return baby.height.keys.sorted().map { convertValue($0) }
+        case "Weight":
+            return baby.weight.keys.sorted().map { convertValue($0) }
+        case "Head Circumference":
+            return baby.headCircumference.keys.sorted().map { convertValue($0) }
+        default:
+            return []
+        }
+    }
+
+    var currentTimeLabels: [String] {
+        guard let baby = baby else { return [] }
+        switch measurementType {
+        case "Height":
+            return baby.height.values.sorted().map { $0.formattedDate() }
+        case "Weight":
+            return baby.weight.values.sorted().map { $0.formattedDate() }
+        case "Head Circumference":
+            return baby.headCircumference.values.sorted().map { $0.formattedDate() }
+        default:
+            return []
+        }
+    }
 
     var body: some View {
         VStack {
             if currentGrowthData.isEmpty {
                 Text("No data available")
-                    .foregroundColor(.gray)
-                    .padding()
-                    .frame(maxHeight: .infinity, alignment: .center)
+                    .foregroundColor(Color(UIColor.darkGray))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                if let latestMeasurement = currentGrowthData.last {
-                    Text("\(convertValue(latestMeasurement), specifier: "%.2f") \(unitLabel())")
-                        .font(.title2)
-                        .padding(.top)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-
                 Chart {
                     ForEach(0..<currentGrowthData.count, id: \.self) { index in
                         LineMark(
                             x: .value("Time", currentTimeLabels[index]),
-                            y: .value("Measurement", convertValue(currentGrowthData[index]))
+                            y: .value("Measurement", currentGrowthData[index])
                         )
                         .foregroundStyle(Color.blue)
                         .symbol(Circle())
@@ -38,59 +56,11 @@ struct MeasurementDetailsView: View {
                 .padding(.top, 20)
                 .background(Color.white)
             }
-
+            
             Spacer()
-
-            ZStack {
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(Color.white)
-                    .shadow(color: .gray.opacity(0.3), radius: 4, x: 0, y: 2)
-
-                List {
-                    NavigationLink(
-                        destination: AllDataView(
-                            baby: baby,
-                            measurementType: measurementType,
-                            onDataChanged: updateGrowthData
-                        )
-                    ) {
-                        Text("Show All Data")
-                            .foregroundColor(.black)
-                    }
-
-                    NavigationLink(destination: UnitSettingsView()) {
-                        Text("Change Units")
-                            .foregroundColor(.black)
-                    }
-                }
-                .listStyle(PlainListStyle())
-                .cornerRadius(10)
-            }
-            .frame(maxWidth: .infinity, maxHeight: 88)
-            .padding(.bottom, 80)
         }
         .background(Color(UIColor.systemGray6))
         .navigationBarTitle("\(measurementType)", displayMode: .inline)
-        .onAppear {
-            updateGrowthData()
-        }
-    }
-
-    private func updateGrowthData() {
-        guard let baby = baby else { return }
-        switch measurementType {
-        case "Height":
-            currentGrowthData = baby.height.sorted(by: { $0.value < $1.value }).map { $0.key }
-            currentTimeLabels = baby.height.sorted(by: { $0.value < $1.value }).map { $0.value.formattedDate() }
-        case "Weight":
-            currentGrowthData = baby.weight.sorted(by: { $0.value < $1.value }).map { $0.key }
-            currentTimeLabels = baby.weight.sorted(by: { $0.value < $1.value }).map { $0.value.formattedDate() }
-        case "Head Circumference":
-            currentGrowthData = baby.headCircumference.sorted(by: { $0.value < $1.value }).map { $0.key }
-            currentTimeLabels = baby.headCircumference.sorted(by: { $0.value < $1.value }).map { $0.value.formattedDate() }
-        default:
-            break
-        }
     }
 
     private func unitLabel() -> String {
@@ -115,6 +85,7 @@ struct MeasurementDetailsView: View {
         }
     }
 }
+
 extension Date {
     func formattedDate() -> String {
         let formatter = DateFormatter()
