@@ -3,7 +3,6 @@ import UIKit
 class SpecialMomentsViewController: UIViewController {
     var milestones: [(GrowthMilestone, Date)] = []
     var baby = BabyDataModel.shared.babyList[0]
-    
     private lazy var collectionView: UICollectionView = {
         let layout = UICollectionViewFlowLayout()
         layout.scrollDirection = .horizontal
@@ -53,7 +52,8 @@ class SpecialMomentsViewController: UIViewController {
 
     func populateMilestones() {
         milestones = baby.milestonesAchieved.filter { (milestone, _) in
-            return !(milestone.userImagePath?.isEmpty ?? true) || !(milestone.userVideoPath?.isEmpty ?? true)
+            guard let imagePath = milestone.userImagePath else { return false }
+            return !imagePath.isEmpty
         }
         if milestones.isEmpty {
             emptyLabel.isHidden = false
