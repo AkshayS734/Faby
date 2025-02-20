@@ -17,15 +17,15 @@
                         <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <searchBar contentMode="redraw" placeholder="Search Topics ..." translatesAutoresizingMaskIntoConstraints="NO" id="lgC-uj-QqZ">
-                                <rect key="frame" x="0.0" y="155" width="393" height="56"/>
+                            <searchBar contentMode="redraw" translatesAutoresizingMaskIntoConstraints="NO" id="lgC-uj-QqZ">
+                                <rect key="frame" x="0.0" y="103" width="393" height="56"/>
                                 <textInputTraits key="textInputTraits"/>
                                 <connections>
                                     <outlet property="delegate" destination="Y6W-OH-hqX" id="VLC-wE-3db"/>
                                 </connections>
                             </searchBar>
                             <collectionView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" dataMode="prototypes" translatesAutoresizingMaskIntoConstraints="NO" id="jyS-LG-X9f">
-                                <rect key="frame" x="0.0" y="211" width="393" height="641"/>
+                                <rect key="frame" x="0.0" y="159" width="393" height="693"/>
                                 <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                                 <collectionViewFlowLayout key="collectionViewLayout" automaticEstimatedItemSize="YES" minimumLineSpacing="10" minimumInteritemSpacing="10" id="umx-9x-kkK">
                                     <size key="itemSize" width="128" height="128"/>
@@ -50,7 +50,7 @@
                             </collectionView>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="vDu-zF-Fre"/>
-                        <color key="backgroundColor" systemColor="systemGray6Color"/>
+                        <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                         <constraints>
                             <constraint firstAttribute="bottom" secondItem="jyS-LG-X9f" secondAttribute="bottom" id="7Xy-95-HXT"/>
                             <constraint firstItem="jyS-LG-X9f" firstAttribute="leading" secondItem="vDu-zF-Fre" secondAttribute="leading" id="LKK-8d-IXc"/>
@@ -89,7 +89,7 @@
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
                             <collectionView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" dataMode="prototypes" translatesAutoresizingMaskIntoConstraints="NO" id="OCf-12-rJU">
-                                <rect key="frame" x="0.0" y="155" width="393" height="614"/>
+                                <rect key="frame" x="0.0" y="103" width="393" height="666"/>
                                 <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                                 <collectionViewFlowLayout key="collectionViewLayout" automaticEstimatedItemSize="YES" minimumLineSpacing="10" minimumInteritemSpacing="10" id="0mF-UC-jeP">
                                     <size key="itemSize" width="381" height="180"/>
@@ -115,7 +115,7 @@
                             </collectionView>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="yT0-kx-1Q9"/>
-                        <color key="backgroundColor" systemColor="systemGray6Color"/>
+                        <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                         <constraints>
                             <constraint firstItem="OCf-12-rJU" firstAttribute="leading" secondItem="yT0-kx-1Q9" secondAttribute="leading" id="StC-2t-hNP"/>
                             <constraint firstItem="yT0-kx-1Q9" firstAttribute="trailing" secondItem="OCf-12-rJU" secondAttribute="trailing" id="Vz8-dc-I75"/>
@@ -280,8 +280,8 @@
                 <navigationController automaticallyAdjustsScrollViewInsets="NO" id="Ht2-PE-9P2" sceneMemberID="viewController">
                     <tabBarItem key="tabBarItem" title="ToddlerTalk" image="person.3" catalog="system" selectedImage="person.3.fill" id="aUZ-Ex-zin"/>
                     <toolbarItems/>
-                    <navigationBar key="navigationBar" contentMode="scaleToFill" largeTitles="YES" id="b8d-kl-ZRY">
-                        <rect key="frame" x="0.0" y="59" width="393" height="96"/>
+                    <navigationBar key="navigationBar" contentMode="scaleToFill" id="b8d-kl-ZRY">
+                        <rect key="frame" x="0.0" y="59" width="393" height="44"/>
                         <autoresizingMask key="autoresizingMask"/>
                     </navigationBar>
                     <nil name="viewControllers"/>
