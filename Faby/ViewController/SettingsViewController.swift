@@ -9,14 +9,14 @@ class SettingsViewController: UIViewController, UICollectionViewDelegate, UIColl
     let tableSections = ["PARENT PROFILE", "VACCITIME", "GROWTRACK", "TODBITE", "HELP & SUPPORT"]
     var filteredTableItems: [[String]] = [
         ["Parents Info"],
-        ["Vaccine record", "View full Schedule"],
+        ["Vaccine History", "Administered Vaccines"],
         ["Milestone track"],
         ["Today's meal", "Your plan"],
         ["Contact support", "FAQs", "Submit feedback"]
     ]
     let tableItems = [
         ["Parents Info"],
-        ["Vaccine record", "View full Schedule"],
+        ["Vaccine History", "Administered Vaccines"],
         ["Milestone track"],
         ["Today's meal", "Your plan"],
         ["Contact support", "FAQs", "Submit feedback"]
@@ -167,9 +167,13 @@ class SettingsViewController: UIViewController, UICollectionViewDelegate, UIColl
         let selectedItem = filteredTableItems[indexPath.section][indexPath.row]
         
         switch (selectedSection, selectedItem) {
-        case ("VACCITIME", "Vaccine record"):
+        case ("VACCITIME", "Vaccine History"):
             let savedVaccineVC = SavedVaccineViewController()
             navigationController?.pushViewController(savedVaccineVC, animated: true)
+            
+        case ("VACCITIME", "Administered Vaccines"):
+            let newlyScheduledVC = NewlyScheduledVaccineViewController()
+            navigationController?.pushViewController(newlyScheduledVC, animated: true)
             
         case ("GROWTRACK", "Milestone track"):
             let milestoneOverviewVC = MilestonesOverviewViewController()
@@ -308,7 +312,3 @@ class TableViewCellWithArrow: UITableViewCell {
         titleLabel.text = text
     }
 }
-
-// MARK: - Saved Vaccine View Controller
-
-
