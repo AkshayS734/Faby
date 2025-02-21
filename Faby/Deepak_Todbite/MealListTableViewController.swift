@@ -1,7 +1,6 @@
 import UIKit
 
 class MealListViewController: UITableViewController {
-    
     let meals: [FeedingMeal] = [
         FeedingMeal(name: "Dalia", description: "High in fiber, calcium, and protein.", image: "Dalia", category: .EarlyBite),
         FeedingMeal(name: "Poha with Vegetables", description: "Light, iron-rich, and full of vitamins.", image: "Poha with Vegetables", category: .EarlyBite),

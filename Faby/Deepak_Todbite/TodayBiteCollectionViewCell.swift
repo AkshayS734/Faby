@@ -4,9 +4,9 @@ class TodayBiteCollectionViewCell: UICollectionViewCell {
     
     private let imageView: UIImageView = {
         let imageView = UIImageView()
-        imageView.contentMode = .scaleAspectFill
+        imageView.contentMode = .scaleToFill
         imageView.clipsToBounds = true
-        imageView.layer.cornerRadius = 15
+        imageView.layer.cornerRadius = 10
         imageView.layer.masksToBounds = true
         imageView.translatesAutoresizingMaskIntoConstraints = false
         return imageView
@@ -14,7 +14,7 @@ class TodayBiteCollectionViewCell: UICollectionViewCell {
 
     private let titleLabel: UILabel = {
         let label = UILabel()
-        label.font = UIFont.boldSystemFont(ofSize: 16)
+        label.font = UIFont.systemFont(ofSize: 16)
         label.textColor = .black
         label.textAlignment = .left
         label.numberOfLines = 1
@@ -24,7 +24,7 @@ class TodayBiteCollectionViewCell: UICollectionViewCell {
 
     private let timeLabel: UILabel = {
         let label = UILabel()
-        label.font = UIFont.systemFont(ofSize: 14, weight: .semibold) // ✅ Medium weight for better readability
+        label.font = UIFont.systemFont(ofSize: 14, weight: .regular) // ✅ Medium weight for better readability
         label.textColor = UIColor.systemGray // ✅ Changed from gray to black for better visibility
         label.textAlignment = .left
         label.numberOfLines = 1
@@ -57,14 +57,14 @@ class TodayBiteCollectionViewCell: UICollectionViewCell {
             imageView.heightAnchor.constraint(equalToConstant: 150), // ✅ Adjusted for better spacing
 
             // ✅ Title Label (left-aligned below image)
-            titleLabel.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 4),
-            titleLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 10),
-            titleLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -10),
+            titleLabel.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 5),
+            titleLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
+//            titleLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -10),
 
             // ✅ Time Label (left-aligned below title)
-            timeLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 0),
-            timeLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 10),
-            timeLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -10),
+            timeLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 3),
+            timeLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
+//            timeLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -10),
             timeLabel.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -5)
         ])
     }
