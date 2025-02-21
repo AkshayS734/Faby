@@ -14,7 +14,7 @@ class FeedingPlanSummaryViewController: UIViewController {
         let label = UILabel()
         label.textAlignment = .center
         label.font = UIFont.systemFont(ofSize: 18, weight: .bold)
-        label.textColor = .darkGray
+        label.textColor = .black
         return label
     }()
 
