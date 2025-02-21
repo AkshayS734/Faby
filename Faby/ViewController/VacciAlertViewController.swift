@@ -265,9 +265,9 @@ class VacciAlertViewController: UIViewController {
             ("PCV (Dose 4)", 12, 15),
 
             // 15-month vaccines
-            ("Varicella (Dose 1)", 15, 18),
-            ("DTaP (Dose 4)", 15, 18),
-            ("Hib (Final Dose)", 15, 18), // Dose 3 or 4 depending on the series
+            ("Varicella (Dose 1)", 16, 18),
+            ("DTaP (Dose 4)", 16, 18),
+            ("Hib (Final Dose)", 16, 18), // Dose 3 or 4 depending on the series
 
             // 18-month vaccines
             ("Hepatitis A (Dose 2)", 18, 24)
