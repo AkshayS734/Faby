@@ -24,7 +24,7 @@ class PostViewController: UIViewController, UITextViewDelegate {
     let placeholderLabel = UILabel()
 
     weak var delegate: PostViewDelegate?
-    var selectedCategory: String?
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -51,13 +51,14 @@ class PostViewController: UIViewController, UITextViewDelegate {
             return
         }
 
-        guard let category = selectedCategory else {
-            showAlert(message: "Error: No category selected!")
-            return
-        }
+        // ✅ Call `addPost` without passing `username`
+        PostDataManager.shared.addPost(title: title, text: text)
 
-        // ✅ Create a new `Post` instance
-        let newPost = Post(
+        print("✅ Post added successfully, navigating back!")
+
+        // ✅ Create a new `Post` instance with `parentId`
+        let newComment = Post(
+       
             username: currentParent.name,
             title: title,
             text: text,
@@ -65,13 +66,10 @@ class PostViewController: UIViewController, UITextViewDelegate {
             replies: []
         )
 
-        // ✅ Store in PostDataManager
-        PostDataManager.shared.addPost(category: category, title: title, text: text, username: currentParent.name)
+        // Call the delegate method
+        delegate?.didPostComment(newComment)
 
-        // ✅ Notify delegate
-        delegate?.didPostComment(newPost)
-
-        // ✅ Navigate back
+        // Navigate back to the previous screen
         navigationController?.popViewController(animated: true)
     }
 

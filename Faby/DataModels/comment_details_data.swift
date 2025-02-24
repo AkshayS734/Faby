@@ -7,21 +7,23 @@
 
 import Foundation
 
-struct Post : Codable {
+struct Post {
+   // var id: String
+   // var parentPhoneNumber: String // Link to Parent
+  
     var username: String
     var title: String
     var text: String
     var likes: Int
-    var replies: [Post] // ✅ Must be an array of `Post`
-    var timeStamp: Date
+    var replies: [String]
     
-    init(username: String, title: String, text: String, likes: Int = 0, replies: [Post] = []) {
+    init(username: String, title: String, text: String, likes: Int = 0, replies: [String] = []) {
+    
+      
         self.username = username
         self.title = title
         self.text = text
         self.likes = likes
-        self.replies = replies // ✅ Ensure replies are Post objects
-        self.timeStamp = Date()
+        self.replies = replies
     }
 }
-
