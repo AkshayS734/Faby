@@ -4,9 +4,9 @@ class UserPostListViewController: UIViewController, UITableViewDelegate, UITable
 
     var commentDataManager: PostDataManager = PostDataManager.shared
     @IBOutlet weak var tableView: UITableView!
-    var posts: [Post] = []
+    var postsByCategory: [String: [Post]] = [:]
+    var categoryList: [String] = []
 
-    // Placeholder Label
     let placeholderLabel: UILabel = {
         let label = UILabel()
         label.text = "History is empty right now."
@@ -35,43 +35,53 @@ class UserPostListViewController: UIViewController, UITableViewDelegate, UITable
     }
 
     func fetchPosts() {
-        posts = commentDataManager.getUserPosts()
+        postsByCategory = commentDataManager.getPostsByCategory()
+        categoryList = Array(postsByCategory.keys).sorted()
         
-        // Show the placeholder if no posts, otherwise hide it
-        if posts.isEmpty {
-            placeholderLabel.isHidden = false
-        } else {
-            placeholderLabel.isHidden = true
-        }
-
+        let allPosts = postsByCategory.flatMap { $0.value }
+        placeholderLabel.isHidden = !allPosts.isEmpty
+        
         DispatchQueue.main.async {
             self.tableView.reloadData()
         }
     }
 
     // MARK: - TableView Data Source
+    func numberOfSections(in tableView: UITableView) -> Int {
+        return categoryList.count
+    }
+
+    func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+        return categoryList[section]
+    }
+
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return posts.count
+        let category = categoryList[section]
+        return postsByCategory[category]?.count ?? 0
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "PostCell") ?? UITableViewCell(style: .subtitle, reuseIdentifier: "PostCell")
         
-        let post = posts[indexPath.row]
-        cell.textLabel?.text = post.title
-        cell.detailTextLabel?.text = "\(post.username): \(post.text)"
+        let category = categoryList[indexPath.section]
+        if let post = postsByCategory[category]?[indexPath.row] {
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateFormat = "MMM d, h:mm a"
+            let formattedDate = dateFormatter.string(from: post.timeStamp)
+
+            cell.textLabel?.text = post.title
+            cell.detailTextLabel?.text = "\(post.username): \(post.text) \nPosted on \(formattedDate)"
+            cell.detailTextLabel?.numberOfLines = 0
+        }
+        
         return cell
     }
 
-    // MARK: - Delegate Method (Updating UI When a New Post is Added)
+    // MARK: - Delegate Method
     func didPostComment(_ comment: Post) {
-        posts.insert(comment, at: 0)
-        DispatchQueue.main.async {
-            self.tableView.reloadData()
-        }
+        fetchPosts()
     }
 
-    // MARK: - Prepare for Post Creation
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         if let postVC = segue.destination as? PostViewController {
             postVC.delegate = self
