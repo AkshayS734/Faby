@@ -6,9 +6,9 @@ class DateCell: UICollectionViewCell {
     let dateLabel: UILabel = {
         let label = UILabel()
         label.textAlignment = .center
-        label.font = UIFont.systemFont(ofSize: 14, weight: .medium) // ✅ Adjusted font
-        label.numberOfLines = 1 // ✅ Prevent overlapping
-        label.minimumScaleFactor = 0.7 // ✅ Allows text to shrink if needed
+        label.font = UIFont.systemFont(ofSize: 14, weight: .medium)
+        label.numberOfLines = 1
+        label.minimumScaleFactor = 0.7
         label.adjustsFontSizeToFitWidth = true
         return label
     }()
@@ -16,7 +16,7 @@ class DateCell: UICollectionViewCell {
     override init(frame: CGRect) {
         super.init(frame: frame)
         contentView.addSubview(dateLabel)
-        contentView.backgroundColor = UIColor.systemGray5 // ✅ Better UI
+        contentView.backgroundColor = UIColor.white
         
         dateLabel.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
@@ -25,7 +25,7 @@ class DateCell: UICollectionViewCell {
             dateLabel.centerYAnchor.constraint(equalTo: contentView.centerYAnchor)
         ])
 
-        contentView.layer.cornerRadius = 10 // ✅ Rounded edges
+        contentView.layer.cornerRadius = 10
         contentView.clipsToBounds = true
     }
 
@@ -33,7 +33,26 @@ class DateCell: UICollectionViewCell {
         fatalError("init(coder:) has not been implemented")
     }
 
-    func configure(with dateText: String) {
+    // ✅ Updated `configure` Method
+    func configure(with dateText: String, isSelected: Bool, hasPlan: Bool) {
         dateLabel.text = dateText
+
+        if isSelected {
+            contentView.backgroundColor = UIColor.systemOrange
+            dateLabel.textColor = .white
+            contentView.layer.cornerRadius = 10
+            contentView.layer.masksToBounds = true
+//        } else if hasPlan {
+//            contentView.backgroundColor = UIColor.clear
+//            dateLabel.textColor = .white
+//            contentView.layer.cornerRadius = 10
+//            contentView.layer.masksToBounds = true
+        } else {
+            contentView.backgroundColor = .white
+            contentView.layer.borderWidth = 1
+            contentView.layer.borderColor = UIColor.lightGray.cgColor
+            contentView.layer.cornerRadius = 10
+            dateLabel.textColor = .black
+        }
     }
 }
