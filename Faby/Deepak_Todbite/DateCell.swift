@@ -42,11 +42,6 @@ class DateCell: UICollectionViewCell {
             dateLabel.textColor = .white
             contentView.layer.cornerRadius = 10
             contentView.layer.masksToBounds = true
-//        } else if hasPlan {
-//            contentView.backgroundColor = UIColor.clear
-//            dateLabel.textColor = .white
-//            contentView.layer.cornerRadius = 10
-//            contentView.layer.masksToBounds = true
         } else {
             contentView.backgroundColor = .white
             contentView.layer.borderWidth = 1
@@ -55,4 +50,5 @@ class DateCell: UICollectionViewCell {
             dateLabel.textColor = .black
         }
     }
+
 }

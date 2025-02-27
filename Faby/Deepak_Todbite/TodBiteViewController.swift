@@ -901,15 +901,8 @@ class TodBiteViewController: UIViewController, UITableViewDelegate, UISearchBarD
             tableView.isHidden = true
             placeholderLabel.isHidden = true
 
-            // ✅ Only Show Filter Button (No Calendar or History)
-            navigationItem.rightBarButtonItems = nil
-            let filterButton = UIBarButtonItem(
-                image: UIImage(systemName: "line.3.horizontal.decrease.circle"),
-                style: .plain,
-                target: self,
-                action: #selector(openFilterOptions)
-            )
-            navigationItem.rightBarButtonItem = filterButton
+            // ✅ Restore only the Filter button
+            setupSearchBar() // 🔥 Ensures the filter & history button is always added
 
         case 1: // MyBowl
             collectionView.isHidden = true
@@ -918,7 +911,7 @@ class TodBiteViewController: UIViewController, UITableViewDelegate, UISearchBarD
 
             var barButtonItems: [UIBarButtonItem] = []
 
-            // ✅ Add "+" button
+            // ✅ Add "+" button for adding custom bites
             let addButton = UIBarButtonItem(
                 barButtonSystemItem: .add,
                 target: self,
@@ -927,7 +920,7 @@ class TodBiteViewController: UIViewController, UITableViewDelegate, UISearchBarD
             addButton.tintColor = .systemBlue
             barButtonItems.append(addButton)
 
-            // ✅ Add Calendar Button
+            // ✅ Add Calendar Button for opening Feeding Plan
             let calendarButton = UIBarButtonItem(
                 image: UIImage(systemName: "calendar"),
                 style: .plain,
@@ -937,13 +930,24 @@ class TodBiteViewController: UIViewController, UITableViewDelegate, UISearchBarD
             calendarButton.tintColor = .systemBlue
             barButtonItems.append(calendarButton)
 
-            // ✅ Add Feeding Plan History Button
-            
+            // ✅ Add Feeding Plan History Button (🔄 Fix: Restores on switching back)
+            let historyButton = UIBarButtonItem(
+                image: UIImage(systemName: "clock.arrow.circlepath"), // 🕒 Use history icon
+                style: .plain,
+                target: self,
+                action: #selector(openFeedingPlanHistory)
+            )
+            historyButton.tintColor = .systemBlue
+            barButtonItems.append(historyButton)
+
+            // ✅ Set all buttons
+            navigationItem.rightBarButtonItems = barButtonItems
 
         default:
             break
         }
     }
+
 @objc private func openFeedingPlan() {
         let feedingPlanVC = FeedingPlanViewController()
 
@@ -970,10 +974,10 @@ class TodBiteViewController: UIViewController, UITableViewDelegate, UISearchBarD
         navigationController?.pushViewController(feedingPlanVC, animated: true)
     }
 //    @objc private func openFeedingPlanHistory() {
-//        let historyVC = FeedingPlanHistoryViewController() // ✅ Create this ViewController
+//        let historyVC = FeedingPlanHistoryViewController()
 //        navigationController?.pushViewController(historyVC, animated: true)
 //    }
-//
+
 
 
 

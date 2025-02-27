@@ -1,24 +1,25 @@
 import UIKit
 
 class FeedingPlanHistoryViewController: UIViewController {
-
-    private let tableView = UITableView()
-    private var mealHistory: [String: [[String: String]]] = [:]  // ✅ Dictionary to store meal history
-
+    
+    private let tableView = UITableView(frame: .zero, style: .grouped)
+    
+    var feedingHistory: [String: [[String: String]]] = [:] // ✅ Dictionary of saved feeding plans
+    var sortedDates: [String] = [] // ✅ Sorted dates to display
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "Feeding Plan History"
         view.backgroundColor = .white
         setupTableView()
-        loadMealHistory()
+        loadFeedingHistory()
     }
-
+    
     private func setupTableView() {
         tableView.delegate = self
         tableView.dataSource = self
+        tableView.register(FeedingHistoryCell.self, forCellReuseIdentifier: "FeedingHistoryCell") // ✅ Custom Cell
         tableView.translatesAutoresizingMaskIntoConstraints = false
-        tableView.register(UITableViewCell.self, forCellReuseIdentifier: "HistoryCell")
-        
         view.addSubview(tableView)
         
         NSLayoutConstraint.activate([
@@ -28,38 +29,59 @@ class FeedingPlanHistoryViewController: UIViewController {
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
     }
+    
+    private func loadFeedingHistory() {
+        if let savedData = UserDefaults.standard.dictionary(forKey: "mealPlanHistory") as? [String: [[String: String]]] {
+            feedingHistory = savedData
+            sortedDates = feedingHistory.keys.sorted(by: { $0 > $1 }) // ✅ Sort by latest date
 
-    private func loadMealHistory() {
-        mealHistory = UserDefaults.standard.dictionary(forKey: "mealPlanHistory") as? [String: [[String: String]]] ?? [:]
+            // ✅ Debugging: Print Retrieved Data
+            print("📌 Retrieved Feeding History: \(feedingHistory)")
+        } else {
+            print("⚠️ No feeding history found!")
+        }
         tableView.reloadData()
     }
 }
 
-// ✅ Table View Data Source
 extension FeedingPlanHistoryViewController: UITableViewDelegate, UITableViewDataSource {
+    
     func numberOfSections(in tableView: UITableView) -> Int {
-        return mealHistory.keys.count
+        return sortedDates.count
     }
-
+    
     func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
-        let sortedDates = mealHistory.keys.sorted(by: { $0 > $1 })
-        return sortedDates[section]  // ✅ Display the saved date as section title
+        return sortedDates[section] // ✅ Now correctly uses section as Int
     }
 
+    
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        let sortedDates = mealHistory.keys.sorted(by: { $0 > $1 })
-        let selectedDate = sortedDates[section]
-        return mealHistory[selectedDate]?.count ?? 0
+        let date = sortedDates[section]
+        return feedingHistory[date]?.count ?? 0
     }
-
+    
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "HistoryCell", for: indexPath)
-        let sortedDates = mealHistory.keys.sorted(by: { $0 > $1 })
-        let selectedDate = sortedDates[indexPath.section]
-        let meals = mealHistory[selectedDate] ?? []
+        guard let cell = tableView.dequeueReusableCell(withIdentifier: "FeedingHistoryCell", for: indexPath) as? FeedingHistoryCell else {
+            return UITableViewCell()
+        }
 
-        let meal = meals[indexPath.row]
-        cell.textLabel?.text = "\(meal["category"] ?? "") - \(meal["time"] ?? "")"
+        let date = sortedDates[indexPath.section]
+        if let meals = feedingHistory[date] {
+            let meal = meals[indexPath.row]
+            
+            let category = meal["category"] ?? "Unknown"
+            let time = meal["time"] ?? ""
+            let foodName = meal["name"]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            let imageName = meal["image"] ?? ""
+
+            // ✅ Check if food name exists; if empty, use category name
+            let displayFoodName = !foodName.isEmpty ? foodName : category
+
+            print("📌 Configuring cell: \(category) | Time: \(time) | Food Name: \(displayFoodName) | Image: \(imageName)") // 🔍 Debug print
+
+            cell.configure(category: category, time: time, foodName: displayFoodName, imageName: imageName)
+        }
+
         return cell
     }
 }

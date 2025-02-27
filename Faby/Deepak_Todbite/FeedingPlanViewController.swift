@@ -56,7 +56,7 @@ class FeedingPlanViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        
+
         // ✅ Setup UI Components
         setupCollectionView()
         setupUI()
@@ -77,14 +77,16 @@ class FeedingPlanViewController: UIViewController {
         )
 
         let weekDays = getWeekDaysWithDates()
-
+        
         print("📌 Weekdays: \(weekDays)")
         print("📌 Weekly Plan: \(weeklyPlan)")
 
-        // ✅ Auto-select first date with a weekly plan
-        if let firstPlannedDay = weekDays.first(where: { weeklyPlan[$0] != nil }) {
-            selectedDay = firstPlannedDay
-            selectedDateIndex = weekDays.firstIndex(of: firstPlannedDay) ?? 0
+        // ✅ Auto-select TODAY's Date
+        let todayDate = getFormattedDate(Date()) // ✅ Get today's date in "E d MMM" format
+
+        if let todayIndex = weekDays.firstIndex(of: todayDate) {
+            selectedDay = todayDate
+            selectedDateIndex = todayIndex
         } else {
             selectedDay = weekDays.first ?? ""
             selectedDateIndex = 0
@@ -92,30 +94,50 @@ class FeedingPlanViewController: UIViewController {
 
         // ✅ Reload CollectionView & TableView after setup
         DispatchQueue.main.async {
-            self.collectionView.reloadData() // Fix layout issues
+            self.collectionView.reloadData()
             self.tableView.reloadData()
+        }
+
+        // ✅ Ensure Scrolling Happens AFTER CollectionView is Loaded
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { // ⏳ Delay to ensure collectionView is ready
+            if self.selectedDateIndex < self.collectionView.numberOfItems(inSection: 0) {
+                let indexPath = IndexPath(item: self.selectedDateIndex, section: 0)
+                
+                // ✅ Scroll so that selected date is left-aligned
+                self.collectionView.scrollToItem(at: indexPath, at: .left, animated: true)
+            }
         }
     }
 
 
     private func getWeekDaysWithDates() -> [String] {
-        let calendar = Calendar.current
-        let today = Date()
-        let weekday = calendar.component(.weekday, from: today) - 1  // Get current weekday (0 = Sunday)
+            let calendar = Calendar.current
+            let today = Date()
+            let weekday = calendar.component(.weekday, from: today) - 1
 
-        var weekDaysWithDates: [String] = []
+            var weekDaysWithDates: [String] = []
 
-        for i in 0..<7 {
-            if let dayDate = calendar.date(byAdding: .day, value: i - weekday, to: today) {
-                let formatter = DateFormatter()
-                formatter.dateFormat = "E d MMM" // Example: "Mon 12 Feb"
-                weekDaysWithDates.append(formatter.string(from: dayDate))
+            for i in 0..<7 {
+                if let dayDate = calendar.date(byAdding: .day, value: i - weekday, to: today) {
+                    weekDaysWithDates.append(getFormattedDate(dayDate))
+                }
             }
-        }
 
-        return weekDaysWithDates
+            return weekDaysWithDates
+        }
+    private func getFormattedDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "E d MMM" // Example: "Tue 27 Feb"
+        return formatter.string(from: date)
     }
+
     
+    private func getFormattedTodayDate() -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "E d MMM" // Example: "Tue 27 Feb"
+        return formatter.string(from: Date()) // ✅ Returns today's date
+    }
+
     func didSelectDate(_ date: String) {
         print("📌 Selected Day: \(date)")
 
@@ -262,7 +284,6 @@ class FeedingPlanViewController: UIViewController {
         summaryVC.selectedDay = selectedDay
         summaryVC.savedPlan = selectedPlanType == .daily ? myBowlItemsDict : weeklyPlan[selectedDay] ?? [:]
 
-        // ✅ Save History in UserDefaults
         var mealHistory = UserDefaults.standard.dictionary(forKey: "mealPlanHistory") as? [String: [[String: String]]] ?? [:]
 
         var encodedMeals: [[String: String]] = []
@@ -272,17 +293,18 @@ class FeedingPlanViewController: UIViewController {
                 var mealDict: [String: String] = [
                     "category": category.rawValue,
                     "time": getTimeInterval(for: category),
-                    "image": meal.image
+                    "name": meal.name,  // ✅ Storing the food name properly
+                    "image": meal.image // ✅ Storing image as well
                 ]
                 encodedMeals.append(mealDict)
             }
         }
 
-        // ✅ Save Today's Bites
+        // ✅ Save in UserDefaults
         mealHistory[selectedDay] = encodedMeals
         UserDefaults.standard.set(mealHistory, forKey: "mealPlanHistory")
         UserDefaults.standard.set(encodedMeals, forKey: "todaysBites")
-        
+
         // ✅ Store Selected Date
         let todayDateString = DateFormatter.localizedString(from: Date(), dateStyle: .full, timeStyle: .none)
         UserDefaults.standard.set(todayDateString, forKey: "selectedDay")
@@ -290,11 +312,12 @@ class FeedingPlanViewController: UIViewController {
         // ✅ Notify HomeViewController
         NotificationCenter.default.post(name: NSNotification.Name("FeedingPlanUpdated"), object: nil)
 
-        print("✅ Feeding Plan Saved! Meals Count: \(encodedMeals.count)")
+        print("✅ Stored Meals in UserDefaults:", encodedMeals)  // 🔍 Debugging print
 
-        // ✅ Push to Summary Screen (Then Return to Home)
         navigationController?.pushViewController(summaryVC, animated: true)
     }
+
+
 
 
 
@@ -607,20 +630,22 @@ extension FeedingPlanViewController: UICollectionViewDataSource, UICollectionVie
         let weekDaysWithDates = getWeekDaysWithDates()
         let currentDate = weekDaysWithDates[indexPath.item]
 
+        // ✅ Check if the date is today
+        let isToday = currentDate == getFormattedDate(Date())
+
         // ✅ Determine if the date is selected
         let isSelected = indexPath.item == selectedDateIndex
 
         // ✅ Check if the date has a weekly plan
         let hasPlan = weeklyPlan[currentDate] != nil && !(weeklyPlan[currentDate]?.isEmpty ?? true)
 
-        // ✅ Configure the cell with all required parameters
-        cell.configure(with: currentDate, isSelected: isSelected, hasPlan: hasPlan)
-
-        // ✅ Debugging - Print which dates have a weekly plan
-        print("📌 Checking Date: \(currentDate), Has Weekly Plan: \(hasPlan)")
+        // ✅ Configure the cell
+        cell.configure(with: currentDate, isSelected: isSelected || isToday, hasPlan: hasPlan)
 
         return cell
     }
+
+
 
 
 
@@ -633,7 +658,7 @@ extension FeedingPlanViewController: UICollectionViewDataSource, UICollectionVie
 
         selectedDay = selectedDate
         selectedDateIndex = indexPath.item
-        
+
         print("📌 Selected Day: \(selectedDay), Weekly Plan Exists: \(weeklyPlan[selectedDay] != nil)")
 
         if weeklyPlan[selectedDay] == nil {
@@ -645,8 +670,14 @@ extension FeedingPlanViewController: UICollectionViewDataSource, UICollectionVie
         DispatchQueue.main.async {
             self.collectionView.reloadData()  // ✅ Highlight selected date
             self.tableView.reloadData()  // ✅ Show meals for the selected date
+
+            // ✅ Scroll selected date to left-most
+            let indexPath = IndexPath(item: self.selectedDateIndex, section: 0)
+            self.collectionView.scrollToItem(at: indexPath, at: .left, animated: true)
         }
     }
+
+ 
 
 
 
