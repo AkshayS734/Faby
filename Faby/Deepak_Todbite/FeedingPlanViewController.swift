@@ -255,6 +255,7 @@ class FeedingPlanViewController: UIViewController {
 
 
 
+    
     @objc private func savePlanTapped() {
         print("✅ Saving Feeding Plan for \(selectedDay)")
 
@@ -262,42 +263,31 @@ class FeedingPlanViewController: UIViewController {
         summaryVC.selectedDay = selectedDay
         summaryVC.savedPlan = selectedPlanType == .daily ? myBowlItemsDict : weeklyPlan[selectedDay] ?? [:]
 
-        // ✅ Save History in UserDefaults
-        var mealHistory = UserDefaults.standard.dictionary(forKey: "mealPlanHistory") as? [String: [[String: String]]] ?? [:]
-
-        var encodedMeals: [[String: String]] = []
+        // ✅ Convert feeding plan into an array of dictionaries
+        var savedMeals: [[String: String]] = []
 
         for (category, meals) in summaryVC.savedPlan {
             for meal in meals {
-                var mealDict: [String: String] = [
-                    "category": category.rawValue,
-                    "time": getTimeInterval(for: category),
-                    "image": meal.image
+                let mealData: [String: String] = [
+                    "category": category.rawValue,  // Bite type (EarlyBite, NourishBite, etc.)
+                    "name": meal.name,              // Meal name
+                    "image": meal.image,            // Image file name
+                    "time": getTimeInterval(for: category) // Time interval
                 ]
-                encodedMeals.append(mealDict)
+                savedMeals.append(mealData)
             }
         }
 
-        // ✅ Save Today's Bites
-        mealHistory[selectedDay] = encodedMeals
-        UserDefaults.standard.set(mealHistory, forKey: "mealPlanHistory")
-        UserDefaults.standard.set(encodedMeals, forKey: "todaysBites")
-        
-        // ✅ Store Selected Date
-        let todayDateString = DateFormatter.localizedString(from: Date(), dateStyle: .full, timeStyle: .none)
-        UserDefaults.standard.set(todayDateString, forKey: "selectedDay")
+        // ✅ Store the selected day's meals in UserDefaults
+        UserDefaults.standard.set(savedMeals, forKey: "todaysBites")
+        UserDefaults.standard.set(selectedDay, forKey: "selectedDay") // Store selected date
 
-        // ✅ Notify HomeViewController
+        // ✅ Notify HomeViewController that a new Feeding Plan was saved
         NotificationCenter.default.post(name: NSNotification.Name("FeedingPlanUpdated"), object: nil)
 
-        print("✅ Feeding Plan Saved! Meals Count: \(encodedMeals.count)")
-
-        // ✅ Push to Summary Screen (Then Return to Home)
+        // ✅ Push to Summary View
         navigationController?.pushViewController(summaryVC, animated: true)
     }
-
-
-
 
 
     
@@ -602,26 +592,36 @@ extension FeedingPlanViewController: UICollectionViewDataSource, UICollectionVie
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         return getWeekDaysWithDates().count
     }
+
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: DateCell.identifier, for: indexPath) as! DateCell
         let weekDaysWithDates = getWeekDaysWithDates()
         let currentDate = weekDaysWithDates[indexPath.item]
 
-        // ✅ Determine if the date is selected
-        let isSelected = indexPath.item == selectedDateIndex
-
-        // ✅ Check if the date has a weekly plan
-        let hasPlan = weeklyPlan[currentDate] != nil && !(weeklyPlan[currentDate]?.isEmpty ?? true)
-
-        // ✅ Configure the cell with all required parameters
-        cell.configure(with: currentDate, isSelected: isSelected, hasPlan: hasPlan)
+        cell.configure(with: currentDate)
 
         // ✅ Debugging - Print which dates have a weekly plan
-        print("📌 Checking Date: \(currentDate), Has Weekly Plan: \(hasPlan)")
+        print("📌 Checking Date: \(currentDate), Has Weekly Plan: \(weeklyPlan[currentDate] != nil)")
+
+        // ✅ Highlight the selected day
+        if indexPath.item == selectedDateIndex {
+            cell.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.5) // 🔹 Light blue for selected date
+            cell.layer.cornerRadius = 10
+            cell.layer.masksToBounds = true
+        }
+        // ✅ Highlight days that have a weekly plan set
+        else if weeklyPlan[currentDate] != nil, !(weeklyPlan[currentDate]?.isEmpty ?? true) {
+            cell.backgroundColor = UIColor.systemGreen // 🟢 Light green for planned days
+            cell.layer.cornerRadius = 10
+            cell.layer.masksToBounds = true
+        }
+        // ✅ Default appearance for unselected days
+        else {
+            cell.backgroundColor = .clear
+        }
 
         return cell
     }
-
 
 
 
@@ -700,13 +700,3 @@ extension FeedingPlanViewController: UITableViewDropDelegate {
     }
 }
 
-extension FeedingMeal {
-    func toDictionary() -> [String: String] {
-        return [
-            "name": name,
-            "description": description,
-            "image": image,
-            "category": category.rawValue // Convert enum to string
-        ]
-    }
-}

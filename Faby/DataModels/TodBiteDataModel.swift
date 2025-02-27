@@ -50,14 +50,12 @@ enum AgeGroup: String, CaseIterable {
 // MARK: - FeedingItem Model
 
 struct FeedingMeal {
+//    let id: UUID
     let name: String
     let description: String
     let image: String
-    let category: BiteType
-    let region: RegionType // ✅ Added region filter
-    let ageGroup: AgeGroup // ✅ Added age filter
+    let category: BiteType  // Which BiteCategory this belongs to
 }
-
 
 
 
@@ -93,11 +91,11 @@ struct FeedingPlan {
     let schedule: [BiteType: FeedingMeal] // Parent's finalized meal selection per BiteCategory
 }
 
+
 struct TodayBite {
     let title: String
     let time: String
     let imageName: String
 }
-
 
 
