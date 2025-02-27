@@ -344,15 +344,6 @@ class GrowthMilestonesDataModel {
             category: .physical
         ),
         GrowthMilestone(
-            title: "Feeds Self with Fingers",
-            subtitle: "Developing Self-Feeding",
-            query: "Does your child feed themselves with their fingers?",
-            image: "feeds_self_fingers_image",
-            milestoneMonth: .month18,
-            description: "Self-feeding with fingers shows fine motor skill development and growing independence during mealtime.",
-            category: .physical
-        ),
-        GrowthMilestone(
             title: "Tries to Use a Spoon",
             subtitle: "Learning to Eat Independently",
             query: "Does your child try to use a spoon?",
@@ -497,17 +488,8 @@ class GrowthMilestonesDataModel {
             category: .physical
         ),
         
-        // MARK: - 30 months
+        // MARK: - 30 monthsspoon
         //Social
-        GrowthMilestone(
-            title: "Plays Next to or With Other Children",
-            subtitle: "Social Interaction",
-            query: "Does your child play next to other children and sometimes join them?",
-            image: "plays_with_others_image",
-            milestoneMonth: .month30,
-            description: "Playing alongside or with other children demonstrates the development of social interaction and cooperation skills.",
-            category: .social
-        ),
         GrowthMilestone(
             title: "Shows What She Can Do",
             subtitle: "Confidence and Self-Awareness",
