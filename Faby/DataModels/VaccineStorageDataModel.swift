@@ -46,10 +46,9 @@ struct Vaccine: Codable {
 // Extension to Baby class to handle vaccine-related data
 extension Baby {
     // Store completed vaccines for this baby
-    private var vaccineStorageKey: String {
-        "vaccines_\(id.uuidString)"
+    var vaccineStorageKey: String {
+        "vaccines_\(self.babyID.uuidString)"
     }
-    
     var completedVaccines: [String: [VaccineDose]] {
         get {
             if let data = UserDefaults.standard.data(forKey: vaccineStorageKey),
