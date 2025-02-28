@@ -73,7 +73,7 @@ class MealDetailViewController: UIViewController, UITableViewDataSource, UITable
         tableView.register(SectionItemTableViewCell.self, forCellReuseIdentifier: "SectionItemCell")
         tableView.dataSource = self
         tableView.delegate = self
-        tableView.rowHeight = 70  // Adjust row height for spacing
+        tableView.rowHeight = 70
         tableView.separatorInset = UIEdgeInsets(top: 0, left: 16, bottom: 0, right: 16) // Spacing between cells
         tableView.tableFooterView = UIView()
         view.addSubview(tableView)
@@ -183,7 +183,7 @@ extension MealDetailViewController: SectionItemTableViewCellDelegate {
             todBiteVC.myBowlItemsDict[category]?.append(item)
             todBiteVC.MealItemDetails(message: "\"\(item.name)\" added to MyBowl!")
             
-            // Show pop-up alert
+//            // Show pop-up alert
             showAlert(for: item.name)
             
             // Debug reload logic
