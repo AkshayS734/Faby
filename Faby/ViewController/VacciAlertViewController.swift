@@ -99,7 +99,7 @@ struct CalendarContainerView: View {
                         }
                         .padding(.horizontal)
                     } else {
-                        Text("No upcoming vaccinations for the next 6 months")
+                        Text("No upcoming vaccinations for the next 3 months")
                             .font(.body)
                             .foregroundColor(.gray)
                             .padding()
@@ -182,12 +182,31 @@ class VacciAlertViewController: UIViewController {
         fatalError("init(coder:) has not been implemented")
     }
     
+    @objc private func navigateToVaccineReminder() {
+        let reminderVC = VaccineReminderViewController()
+        navigationController?.pushViewController(reminderVC, animated: true)
+    }
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
         setupVaccineData()
+        
+        // Add notification observer
+        // Add notification observer
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(navigateToVaccineReminder),
+            name: NSNotification.Name("NavigateToVaccineReminder"),
+            object: nil
+        )
     }
+
+    @objc private func refreshVaccinationData() {
+        // Refresh your data here
+        setupVaccineData()
+    }
+
     
     // MARK: - UI Setup
     private func setupUI() {
