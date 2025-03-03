@@ -35,7 +35,7 @@ class MealListViewController: UITableViewController {
         super.viewDidLoad()
         title = "Select a Meal"
         tableView.register(MealTableViewCell.self, forCellReuseIdentifier: "MealCell")
-        tableView.rowHeight = 80 // ✅ Increase row height for better spacing
+        tableView.rowHeight = 80 
     }
     
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {

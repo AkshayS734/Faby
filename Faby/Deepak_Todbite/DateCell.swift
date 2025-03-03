@@ -33,7 +33,7 @@ class DateCell: UICollectionViewCell {
         fatalError("init(coder:) has not been implemented")
     }
 
-    // ✅ Updated `configure` Method
+ 
     func configure(with dateText: String, isSelected: Bool, hasPlan: Bool) {
         dateLabel.text = dateText
 

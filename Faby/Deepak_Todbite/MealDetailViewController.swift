@@ -117,7 +117,7 @@ class MealDetailViewController: UIViewController, UITableViewDataSource, UITable
         var favorites = UserDefaults.standard.array(forKey: "favoriteMeals") as? [[String: String]] ?? []
 
         if isLiked {
-            // ✅ Add to favorites if not already present
+            // Add to favorites if not already present
             let mealDict: [String: String] = [
                 "name": selectedItem.name,
                 "image": selectedItem.image,
@@ -127,7 +127,7 @@ class MealDetailViewController: UIViewController, UITableViewDataSource, UITable
                 favorites.append(mealDict)
             }
         } else {
-            // ✅ Remove from favorites
+           
             favorites.removeAll(where: { $0["name"] == selectedItem.name })
         }
 
@@ -196,19 +196,19 @@ extension MealDetailViewController: SectionItemTableViewCellDelegate {
         if let todBiteVC = navigationController?.viewControllers.first(where: { $0 is TodBiteViewController }) as? TodBiteViewController {
 
             if let existingMeals = todBiteVC.myBowlItemsDict[category], existingMeals.contains(where: { $0.name == item.name }) {
-                // ✅ Already Added - Show Message
+                //  Already Added - Show Message
                 todBiteVC.MealItemDetails(message: "❗ \"\(item.name)\" is already added to MyBowl.")
             } else {
-                // ✅ Add New Meal
+                //  Add New Meal
                 if todBiteVC.myBowlItemsDict[category] == nil {
                     todBiteVC.myBowlItemsDict[category] = []
                 }
                 todBiteVC.myBowlItemsDict[category]?.append(item)
 
-                // ✅ Show success message
+                //  Show success message
                 todBiteVC.MealItemDetails(message: "✅ \"\(item.name)\" added to MyBowl!")
 
-                // ✅ Reload table if needed
+                //  Reload table if needed
                 if todBiteVC.segmentedControl.selectedSegmentIndex == 1 {
                     todBiteVC.tableView.reloadData()
                 }

@@ -116,7 +116,7 @@ extension FeedingPlanHistoryViewController: UITableViewDelegate, UITableViewData
         return cell
     }
     
-    // ✅ Swipe to Delete Full Day Plan (Header swipe alternative)
+    
     func tableView(_ tableView: UITableView, editActionsForRowAt indexPath: IndexPath) -> [UITableViewRowAction]? {
         let deleteAction = UITableViewRowAction(style: .destructive, title: "Delete Meal") { [weak self] _, indexPath in
             guard let self = self else { return }
@@ -135,7 +135,7 @@ extension FeedingPlanHistoryViewController: UITableViewDelegate, UITableViewData
         return [deleteAction]
     }
 
-    // ✅ Context Menu for Section (Full Day Delete Option)
+  
     func tableView(_ tableView: UITableView, contextMenuConfigurationForSection section: Int, point: CGPoint) -> UIContextMenuConfiguration? {
         let date = sortedDates[section]
 

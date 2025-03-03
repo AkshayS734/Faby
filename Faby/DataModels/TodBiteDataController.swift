@@ -228,7 +228,7 @@ class BiteSampleData {
                 ],
                 
                 .SnackBite: [
-                    FeedingMeal(name: "Ghugni (Chickpeas Snack)", description: "Bengali-style yellow peas curry, soft and easy to chew.", image: "Ghugni (Chickpeas Snack)", category: .SnackBite, region: .east, ageGroup: .months12to18),
+                    FeedingMeal(name: "Ghugni (Chickpeas Snack)", description: "Yellow peas curry, soft and easy to chew.", image: "Ghugni (Chickpeas Snack)", category: .SnackBite, region: .east, ageGroup: .months12to18),
                     FeedingMeal(name: "Boiled Sweet Corn", description: "Rich in fiber, vitamins, and energy.", image: "Boiled Sweet Corn", category: .SnackBite, region: .east, ageGroup: .months12to18),
                     FeedingMeal(name: "Sesame Ladoo", description: "Iron and calcium-rich jaggery-sesame balls.", image: "Sesame Ladoo", category: .SnackBite, region: .east, ageGroup: .months12to18),
                     FeedingMeal(name: "Mashed Papaya", description: "Soft, naturally sweet fruit mash.", image: "Mashed Papaya", category: .SnackBite, region: .east, ageGroup: .months12to18),
@@ -300,24 +300,21 @@ class BiteSampleData {
 
     ]
 ]
-
-
-
     // MARK: - User-Defined Data
-    var userAddedMeals: [FeedingMeal] = []  // Stores user-added meals
-    var myBowl: [FeedingMeal] = []         // Stores user-selected meals
-    var feedingPlans: [FeedingPlan] = [] // Stores feeding plans
+    var userAddedMeals: [FeedingMeal] = []
+    var myBowl: [FeedingMeal] = []
+    var feedingPlans: [FeedingPlan] = []
 
     // MARK: - Get Meals by Category
     func getItems(for category: BiteType, in region: RegionType, for ageGroup: AgeGroup) -> [FeedingMeal] {
         let allItems = categories[category] ?? []
 
-        // ✅ Filter meals based on `region` & `ageGroup`
+
         let filteredItems = allItems.filter { meal in
             return meal.region == region && meal.ageGroup == ageGroup
         }
 
-        // ✅ Debugging Logs
+     
         print("\n📌 Fetching Meals for \(category.rawValue), Region: \(region.rawValue), Age: \(ageGroup.rawValue)")
         print("🔍 Found \(filteredItems.count) meals.")
 
@@ -325,14 +322,7 @@ class BiteSampleData {
     }
 
    
-
-
-
-
-
-
-    // MARK: - Add Meal to "My Bowl"
-    func addToMyBowl(_ item: FeedingMeal) {
+   func addToMyBowl(_ item: FeedingMeal) {
         if !myBowl.contains(where: { $0.name == item.name }) {
             myBowl.append(item)
         }
@@ -362,10 +352,6 @@ class BiteSampleData {
     }
     
     var weeklyPlan: [String: [BiteType: [FeedingMeal]]] = [:]
-
-    
-    
-    
 }
 extension BiteSampleData {
     func getDailyPlanMeals() -> [FeedingMeal] {
