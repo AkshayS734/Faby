@@ -91,7 +91,7 @@ class SectionItemTableViewCell: UITableViewCell {
         descriptionLabel.text = item.description
     }
 
-  \
+  
     // MARK: - Actions
     @objc private func addButtonTapped() {
         guard let item = currentItem else { return }
