@@ -62,7 +62,7 @@ class MealDetailViewController: UIViewController, UITableViewDataSource, UITable
 
     private func setupConstraints() {
         NSLayoutConstraint.activate([
-            topImageView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16),
+            topImageView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 4),
             topImageView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             topImageView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             topImageView.heightAnchor.constraint(equalToConstant: 300),
@@ -87,6 +87,7 @@ class MealDetailViewController: UIViewController, UITableViewDataSource, UITable
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
     }
+    
 
     // MARK: - Data Setup
     private func configureData() {
