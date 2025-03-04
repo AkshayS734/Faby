@@ -7,13 +7,10 @@ protocol FilterViewControllerDelegate: AnyObject {
 class FilterViewController: UIViewController {
     
     weak var delegate: FilterViewControllerDelegate?
-    
     private let regions: [RegionType] = [.east, .west, .north, .south]
     private let ageGroups: [AgeGroup] = [.months12to18, .months18to24]
-    
     private var selectedRegion: RegionType?
     private var selectedAgeGroup: AgeGroup?
-
     private let regionButton = UIButton(type: .system)
     private let ageButton = UIButton(type: .system)
     
@@ -21,7 +18,6 @@ class FilterViewController: UIViewController {
         super.viewDidLoad()
         view.backgroundColor = .white
         title = "Filter Meals"
-        
         setupUI()
         setDefaultSelections()
     }
@@ -30,7 +26,6 @@ class FilterViewController: UIViewController {
         let regionLabel = UILabel()
         regionLabel.text = "Select Region"
         regionLabel.font = .boldSystemFont(ofSize: 16)
-        
         regionButton.setTitle("Choose Region", for: .normal)
         regionButton.setTitleColor(.black, for: .normal)
         regionButton.layer.cornerRadius = 10
