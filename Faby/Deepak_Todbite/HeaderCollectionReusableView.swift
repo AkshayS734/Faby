@@ -29,7 +29,7 @@ class HeaderCollectionReusableView: UICollectionReusableView {
         intervalLabel.textColor = .darkGray
         chevronImageView.image = UIImage(systemName: "chevron.right")
         chevronImageView.contentMode = .scaleAspectFit
-        chevronImageView.tintColor = .gray
+        chevronImageView.tintColor = .black
 
         NSLayoutConstraint.activate([
             headerLabel.topAnchor.constraint(equalTo: topAnchor, constant: 8),
@@ -39,7 +39,7 @@ class HeaderCollectionReusableView: UICollectionReusableView {
             intervalLabel.leadingAnchor.constraint(equalTo: headerLabel.leadingAnchor),
             intervalLabel.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -8),
 
-            chevronImageView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -22),
+            chevronImageView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -24),
             chevronImageView.leadingAnchor.constraint(equalTo: headerLabel.trailingAnchor, constant: 0),
             chevronImageView.widthAnchor.constraint(equalToConstant: 16),
             chevronImageView.heightAnchor.constraint(equalToConstant: 16)

@@ -185,7 +185,7 @@ class BiteSampleData {
                 ],
                 
                 .MidDayBite: [
-                    FeedingMeal(name: "Aloo Posto with Rice", description: "Bengali-style potato curry with poppy seeds, mild and nutritious.", image: "Aloo Posto with Rice", category: .MidDayBite, region: .east, ageGroup: .months12to18),
+                    FeedingMeal(name: "Aloo Posto with Rice", description: "Potato curry with poppy seeds, mild and nutritious.", image: "Aloo Posto with Rice", category: .MidDayBite, region: .east, ageGroup: .months12to18),
                     FeedingMeal(name: "Tomato Dal", description: "Tangy tomato-based lentil curry, easy to digest.", image: "Tomato Dal", category: .MidDayBite, region: .east, ageGroup: .months12to18),
                     FeedingMeal(name: "Mixed Vegetable Pulao", description: "Lightly spiced rice cooked with mixed vegetables.", image: "Mixed Vegetable Pulao", category: .MidDayBite, region: .east, ageGroup: .months12to18),
                     FeedingMeal(name: "Lemon Rice", description: "Zesty lemon-flavored rice, rich in vitamin C.", image: "Lemon Rice", category: .MidDayBite, region: .east, ageGroup: .months12to18),
