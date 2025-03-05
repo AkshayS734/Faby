@@ -326,18 +326,10 @@ class HospitalViewController: UIViewController, UITableViewDataSource, UITableVi
     }
     
     private func navigateToVacciAlert() {
-        let vacciAlertVC = VacciAlertViewController()
-        
-        if let presentingVC = presentingViewController {
-            dismiss(animated: true) {
-                if let navigationController = presentingVC as? UINavigationController {
-                    navigationController.pushViewController(vacciAlertVC, animated: true)
-                } else {
-                    presentingVC.navigationController?.pushViewController(vacciAlertVC, animated: true)
-                }
-            }
-        } else {
-            navigationController?.pushViewController(vacciAlertVC, animated: true)
+        // Just dismiss this view controller
+        dismiss(animated: true) {
+            // Post a notification to navigate to VaccineReminderViewController
+            NotificationCenter.default.post(name: NSNotification.Name("NavigateToVaccineReminder"), object: nil)
         }
     }
 }
