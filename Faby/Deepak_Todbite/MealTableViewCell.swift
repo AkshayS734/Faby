@@ -2,7 +2,7 @@ import UIKit
 
 class MealTableViewCell: UITableViewCell {
 
-    // UI Elements
+ 
     let mealImageView = UIImageView()
     let mealNameLabel = UILabel()
 
@@ -16,17 +16,17 @@ class MealTableViewCell: UITableViewCell {
     }
 
     private func setupCell() {
-        // Configure Image View
+        
         mealImageView.contentMode = .scaleAspectFill
         mealImageView.clipsToBounds = true
         mealImageView.layer.cornerRadius = 8
         mealImageView.translatesAutoresizingMaskIntoConstraints = false
 
-        // Configure Label
+       
         mealNameLabel.font = UIFont.boldSystemFont(ofSize: 16)
         mealNameLabel.translatesAutoresizingMaskIntoConstraints = false
 
-        // Stack View for Layout
+     
         let stackView = UIStackView(arrangedSubviews: [mealImageView, mealNameLabel])
         stackView.axis = .horizontal
         stackView.spacing = 10

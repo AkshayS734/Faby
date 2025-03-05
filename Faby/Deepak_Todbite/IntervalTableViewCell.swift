@@ -10,7 +10,7 @@ class IntervalTableViewCell: UITableViewCell {
     private let actionButton = UIButton(type: .system)
     private var currentInterval: String?
     weak var delegate: IntervalTableViewCellDelegate?
-    private var isSelectedInterval: Bool = false // State of the button
+    private var isSelectedInterval: Bool = false 
 
     // MARK: - Initialization
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {

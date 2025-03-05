@@ -12,7 +12,7 @@ class SectionItemTableViewCell: UITableViewCell {
     private let addButton = UIButton(type: .system)
 
     // MARK: - Properties
-    weak var delegate: SectionItemTableViewCellDelegate? // Delegate reference
+    weak var delegate: SectionItemTableViewCellDelegate?
     private var currentItem: FeedingMeal?
 
     // MARK: - Initializers
@@ -28,7 +28,7 @@ class SectionItemTableViewCell: UITableViewCell {
 
     // MARK: - UI Setup
     private func setupUI() {
-        // Configure Item Image View
+       
         itemImageView.translatesAutoresizingMaskIntoConstraints = false
         itemImageView.contentMode = .scaleAspectFill
         itemImageView.clipsToBounds = true
@@ -75,7 +75,7 @@ class SectionItemTableViewCell: UITableViewCell {
             descriptionLabel.trailingAnchor.constraint(equalTo: titleLabel.trailingAnchor),
             descriptionLabel.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -8),
 
-            // Add Button Constraints
+            // Adding Button Constraints
             addButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
             addButton.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
             addButton.widthAnchor.constraint(equalToConstant: 30),
@@ -91,7 +91,7 @@ class SectionItemTableViewCell: UITableViewCell {
         descriptionLabel.text = item.description
     }
 
-    // MARK: - Actions
+  
     // MARK: - Actions
     @objc private func addButtonTapped() {
         guard let item = currentItem else { return }
@@ -101,7 +101,7 @@ class SectionItemTableViewCell: UITableViewCell {
         let newImageName = isAdded ? "checkmark.circle.fill" : "plus.square.fill"
         
         addButton.setImage(UIImage(systemName: newImageName), for: .normal)
-        addButton.tintColor = isAdded ? .green : .gray // Change color for better UX
+        addButton.tintColor = isAdded ? .green : .gray
         
         delegate?.didTapAddButton(for: item)
     }

@@ -4,7 +4,7 @@ class MealSelectionViewController: UIViewController, UITableViewDelegate, UITabl
     
     var onMealSelected: ((FeedingMeal) -> Void)?
     private let tableView = UITableView()
-    private let availableMeals = BiteSampleData.shared.categories // All meals
+    private let availableMeals = BiteSampleData.shared.categories 
     
     override func viewDidLoad() {
         super.viewDidLoad()

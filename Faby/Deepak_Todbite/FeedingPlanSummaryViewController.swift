@@ -65,7 +65,7 @@ class FeedingPlanSummaryViewController: UIViewController {
         ])
     }
 
-    // ✅ Share Feeding Plan
+
     @objc private func sharePlan() {
         let mealText = generateShareableText()
         let activityVC = UIActivityViewController(activityItems: [mealText], applicationActivities: nil)
@@ -92,14 +92,14 @@ class FeedingPlanSummaryViewController: UIViewController {
     private func getOrderedBiteTypes() -> [BiteType] {
         var orderedBites: [BiteType] = []
 
-        // ✅ Add predefined bites in fixed order
+      
         for bite in fixedBiteOrder {
             if savedPlan[bite] != nil {
                 orderedBites.append(bite)
             }
         }
 
-        // ✅ Add custom bites (which are not in fixed order)
+      
         let customBites = savedPlan.keys.filter { !fixedBiteOrder.contains($0) }
         orderedBites.append(contentsOf: customBites)
 
@@ -107,7 +107,7 @@ class FeedingPlanSummaryViewController: UIViewController {
     }
 }
 
-// ✅ Table View Data Source
+
 extension FeedingPlanSummaryViewController: UITableViewDelegate, UITableViewDataSource {
     func numberOfSections(in tableView: UITableView) -> Int {
         return getOrderedBiteTypes().count
@@ -115,7 +115,7 @@ extension FeedingPlanSummaryViewController: UITableViewDelegate, UITableViewData
 
     func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
         let categories = getOrderedBiteTypes()
-        return categories[section].rawValue // ✅ BiteType name (EarlyBite, etc.)
+        return categories[section].rawValue
     }
 
 

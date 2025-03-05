@@ -34,7 +34,7 @@ class FeedingPlanViewController: UIViewController {
      
     private var selectedDay: String = "Monday"
     var weeklyPlan: [String: [BiteType: [FeedingMeal]]] = [:]
-    var customBitesDict: [String: [FeedingMeal]] = [:]  // ✅ Custom bites storage
+    var customBitesDict: [String: [FeedingMeal]] = [:]
     
 
     
@@ -56,19 +56,19 @@ class FeedingPlanViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        
-        // ✅ Setup UI Components
+
+    
         setupCollectionView()
         setupUI()
         setupTableView()
 
-        // ✅ Enable Drag & Drop for TableView
+       
         tableView.dragDelegate = self
         tableView.dropDelegate = self
         tableView.dragInteractionEnabled = true
         tableView.register(FeedingPlanCell.self, forCellReuseIdentifier: "FeedingPlanCell")
 
-        // ✅ Add Back Button
+  
         navigationItem.leftBarButtonItem = UIBarButtonItem(
             title: "Back",
             style: .plain,
@@ -77,52 +77,74 @@ class FeedingPlanViewController: UIViewController {
         )
 
         let weekDays = getWeekDaysWithDates()
-
+        
         print("📌 Weekdays: \(weekDays)")
         print("📌 Weekly Plan: \(weeklyPlan)")
 
-        // ✅ Auto-select first date with a weekly plan
-        if let firstPlannedDay = weekDays.first(where: { weeklyPlan[$0] != nil }) {
-            selectedDay = firstPlannedDay
-            selectedDateIndex = weekDays.firstIndex(of: firstPlannedDay) ?? 0
+        //  Auto-select TODAY's Date
+        let todayDate = getFormattedDate(Date()) // Get today's date in "E d MMM" format
+
+        if let todayIndex = weekDays.firstIndex(of: todayDate) {
+            selectedDay = todayDate
+            selectedDateIndex = todayIndex
         } else {
             selectedDay = weekDays.first ?? ""
             selectedDateIndex = 0
         }
 
-        // ✅ Reload CollectionView & TableView after setup
+       
         DispatchQueue.main.async {
-            self.collectionView.reloadData() // Fix layout issues
+            self.collectionView.reloadData()
             self.tableView.reloadData()
+        }
+
+       
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            if self.selectedDateIndex < self.collectionView.numberOfItems(inSection: 0) {
+                let indexPath = IndexPath(item: self.selectedDateIndex, section: 0)
+                
+                
+                self.collectionView.scrollToItem(at: indexPath, at: .left, animated: true)
+            }
         }
     }
 
 
     private func getWeekDaysWithDates() -> [String] {
-        let calendar = Calendar.current
-        let today = Date()
-        let weekday = calendar.component(.weekday, from: today) - 1  // Get current weekday (0 = Sunday)
+            let calendar = Calendar.current
+            let today = Date()
+            let weekday = calendar.component(.weekday, from: today) - 1
 
-        var weekDaysWithDates: [String] = []
+            var weekDaysWithDates: [String] = []
 
-        for i in 0..<7 {
-            if let dayDate = calendar.date(byAdding: .day, value: i - weekday, to: today) {
-                let formatter = DateFormatter()
-                formatter.dateFormat = "E d MMM" // Example: "Mon 12 Feb"
-                weekDaysWithDates.append(formatter.string(from: dayDate))
+            for i in 0..<7 {
+                if let dayDate = calendar.date(byAdding: .day, value: i - weekday, to: today) {
+                    weekDaysWithDates.append(getFormattedDate(dayDate))
+                }
             }
-        }
 
-        return weekDaysWithDates
+            return weekDaysWithDates
+        }
+    private func getFormattedDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "E d MMM"
+        return formatter.string(from: date)
     }
+
     
+    private func getFormattedTodayDate() -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "E d MMM"
+        return formatter.string(from: Date())
+    }
+
     func didSelectDate(_ date: String) {
         print("📌 Selected Day: \(date)")
 
-        // ✅ Update selected day
+      
         selectedDay = date
 
-        // ✅ Reload tableView to show correct meals for selected date
+        
         tableView.reloadData()
     }
 
@@ -145,7 +167,7 @@ class FeedingPlanViewController: UIViewController {
         collectionView.dataSource = self
         collectionView.delegate = self
         collectionView.showsHorizontalScrollIndicator = false
-        collectionView.backgroundColor = .clear // ✅ Match background
+        collectionView.backgroundColor = .clear
 
         view.addSubview(collectionView)
 
@@ -166,7 +188,7 @@ class FeedingPlanViewController: UIViewController {
 
         navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Save", style: .done, target: self, action: #selector(savePlanTapped))
 
-        // ✅ StackView now contains both segmentedControl and collectionView (initially hidden)
+    
         let stackView = UIStackView(arrangedSubviews: [segmentedControl, collectionView])
         stackView.axis = .vertical
         stackView.spacing = 8
@@ -188,7 +210,7 @@ class FeedingPlanViewController: UIViewController {
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
 
-        // ✅ Initially hide collectionView (only show for Weekly Plan)
+       
         collectionView.isHidden = true
     }
 
@@ -203,7 +225,7 @@ class FeedingPlanViewController: UIViewController {
     // MARK: - Actions
     @objc private func segmentChanged() {
         selectedPlanType = segmentedControl.selectedSegmentIndex == 0 ? .daily : .weekly
-        collectionView.isHidden = selectedPlanType == .daily // ✅ Show only for Weekly Plan
+        collectionView.isHidden = selectedPlanType == .daily
 
         if selectedPlanType == .weekly {
             print("📌 Switching to Weekly Plan")
@@ -211,7 +233,7 @@ class FeedingPlanViewController: UIViewController {
             let weekDays = getWeekDaysWithDates()
             for day in weekDays {
                 if weeklyPlan[day] == nil {
-                    weeklyPlan[day] = [:]  // ✅ Ensure every day has an empty dictionary
+                    weeklyPlan[day] = [:]
                 }
             }
 
@@ -228,15 +250,6 @@ class FeedingPlanViewController: UIViewController {
     }
 
 
-    
-    
-
-
-
-
-
-
-    
     @objc private func dayChanged(to index: Int) {
         selectedDateIndex = index
         selectedDay = weekDates[index]
@@ -262,7 +275,6 @@ class FeedingPlanViewController: UIViewController {
         summaryVC.selectedDay = selectedDay
         summaryVC.savedPlan = selectedPlanType == .daily ? myBowlItemsDict : weeklyPlan[selectedDay] ?? [:]
 
-        // ✅ Save History in UserDefaults
         var mealHistory = UserDefaults.standard.dictionary(forKey: "mealPlanHistory") as? [String: [[String: String]]] ?? [:]
 
         var encodedMeals: [[String: String]] = []
@@ -272,29 +284,30 @@ class FeedingPlanViewController: UIViewController {
                 var mealDict: [String: String] = [
                     "category": category.rawValue,
                     "time": getTimeInterval(for: category),
+                    "name": meal.name,
                     "image": meal.image
                 ]
                 encodedMeals.append(mealDict)
             }
         }
 
-        // ✅ Save Today's Bites
         mealHistory[selectedDay] = encodedMeals
         UserDefaults.standard.set(mealHistory, forKey: "mealPlanHistory")
         UserDefaults.standard.set(encodedMeals, forKey: "todaysBites")
-        
-        // ✅ Store Selected Date
+
+   
         let todayDateString = DateFormatter.localizedString(from: Date(), dateStyle: .full, timeStyle: .none)
         UserDefaults.standard.set(todayDateString, forKey: "selectedDay")
 
-        // ✅ Notify HomeViewController
+      
         NotificationCenter.default.post(name: NSNotification.Name("FeedingPlanUpdated"), object: nil)
 
-        print("✅ Feeding Plan Saved! Meals Count: \(encodedMeals.count)")
+        print("✅ Stored Meals in UserDefaults:", encodedMeals)  // 🔍 Debugging print
 
-        // ✅ Push to Summary Screen (Then Return to Home)
         navigationController?.pushViewController(summaryVC, animated: true)
     }
+
+
 
 
 
@@ -318,7 +331,7 @@ extension FeedingPlanViewController: UITableViewDelegate, UITableViewDataSource 
         if editingStyle == .delete {
             let category = fixedBiteOrder[indexPath.section]  // ✅ Get category
 
-            // ✅ Check if valid index before deleting
+            //  Check if valid index before deleting
             if selectedPlanType == .daily {
                 guard let meals = myBowlItemsDict[category], indexPath.row < meals.count else {
                     print("⚠️ Error: Attempted to delete invalid index in Daily Plan")
@@ -326,7 +339,7 @@ extension FeedingPlanViewController: UITableViewDelegate, UITableViewDataSource 
                 }
                 myBowlItemsDict[category]?.remove(at: indexPath.row)
                 
-                // ✅ Remove empty categories after deletion
+                //  Remove empty categories after deletion
                 if myBowlItemsDict[category]?.isEmpty == true {
                     myBowlItemsDict.removeValue(forKey: category)
                 }
@@ -337,13 +350,13 @@ extension FeedingPlanViewController: UITableViewDelegate, UITableViewDataSource 
                 }
                 weeklyPlan[selectedDay]?[category]?.remove(at: indexPath.row)
 
-                // ✅ Remove empty categories after deletion
+                // Remove empty categories after deletion
                 if weeklyPlan[selectedDay]?[category]?.isEmpty == true {
                     weeklyPlan[selectedDay]?.removeValue(forKey: category)
                 }
             }
 
-            // ✅ Reload table safely after deletion
+            //  Reload table safely after deletion
             DispatchQueue.main.async {
                 self.tableView.reloadData()
             }
@@ -355,8 +368,8 @@ extension FeedingPlanViewController: UITableViewDelegate, UITableViewDataSource 
     
     func numberOfSections(in tableView: UITableView) -> Int {
         let predefinedCount = fixedBiteOrder.count
-        let customBitesCount = customBitesDict.keys.count  // ✅ Include Custom Bites
-        return predefinedCount + customBitesCount  // ✅ Total sections: Predefined + Custom
+        let customBitesCount = customBitesDict.keys.count
+        return predefinedCount + customBitesCount
     }
 
 
@@ -366,11 +379,11 @@ extension FeedingPlanViewController: UITableViewDelegate, UITableViewDataSource 
         let predefinedCount = fixedBiteOrder.count
 
         if section < predefinedCount {
-            return fixedBiteOrder[section].rawValue  // ✅ Standard Bites
+            return fixedBiteOrder[section].rawValue
         } else {
             let customIndex = section - predefinedCount
             let customCategory = Array(customBitesDict.keys)[customIndex]
-            return customCategory  // ✅ Show Custom Bite Name
+            return customCategory
         }
     }
 
@@ -387,27 +400,16 @@ extension FeedingPlanViewController: UITableViewDelegate, UITableViewDataSource 
         let predefinedCount = fixedBiteOrder.count
 
         if section < predefinedCount {
-            // ✅ Standard Bites (EarlyBite, SnackBite, etc.)
+            // Standard Bites (EarlyBite, SnackBite, etc.)
             let category = fixedBiteOrder[section]
             return selectedPlanType == .daily ? myBowlItemsDict[category]?.count ?? 0 : weeklyPlan[selectedDay]?[category]?.count ?? 0
         } else {
-            // ✅ Custom Bites
+            // Custom Bites
             let customIndex = section - predefinedCount
             let customCategory = Array(customBitesDict.keys)[customIndex]
             return customBitesDict[customCategory]?.count ?? 0
         }
     }
-
-
-
-
-
-
-
-
-
-
-    
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         guard let cell = tableView.dequeueReusableCell(withIdentifier: "FeedingPlanCell", for: indexPath) as? FeedingPlanCell else {
             fatalError("❌ Error: Could not dequeue FeedingPlanCell. Check if the identifier is correctly set.")
@@ -417,17 +419,17 @@ extension FeedingPlanViewController: UITableViewDelegate, UITableViewDataSource 
         let meal: FeedingMeal?
 
         if indexPath.section < predefinedCount {
-            // ✅ Standard Bites
+           
             let category = fixedBiteOrder[indexPath.section]
             meal = selectedPlanType == .daily ? myBowlItemsDict[category]?[indexPath.row] : weeklyPlan[selectedDay]?[category]?[indexPath.row]
         } else {
-            // ✅ Custom Bites
+            
             let customIndex = indexPath.section - predefinedCount
             let customCategory = Array(customBitesDict.keys)[customIndex]
             meal = customBitesDict[customCategory]?[indexPath.row]
         }
 
-        // ✅ Handle Empty Meals
+     
         if meal == nil {
             cell.textLabel?.text = "No meals added"
             cell.textLabel?.textAlignment = .center
@@ -437,17 +439,16 @@ extension FeedingPlanViewController: UITableViewDelegate, UITableViewDataSource 
             return cell
         }
 
-        // ✅ Remove existing subviews (to prevent duplication)
+        
         cell.contentView.subviews.forEach { $0.removeFromSuperview() }
 
-        // ✅ Create a Horizontal StackView to align Image & Label
+
         let contentStackView = UIStackView()
         contentStackView.axis = .horizontal
         contentStackView.alignment = .center
         contentStackView.spacing = 10
         contentStackView.translatesAutoresizingMaskIntoConstraints = false
 
-        // ✅ Create ImageView
         let mealImageView = UIImageView()
         mealImageView.contentMode = .scaleAspectFill
         mealImageView.clipsToBounds = true
@@ -457,16 +458,16 @@ extension FeedingPlanViewController: UITableViewDelegate, UITableViewDataSource 
         if let imageUrl = meal?.image {
             mealImageView.image = UIImage(named: imageUrl)
         } else {
-            mealImageView.image = UIImage(named: "placeholder")  // Default placeholder
+            mealImageView.image = UIImage(named: "placeholder")
         }
 
-        // ✅ Set Image Size Constraints
+        
         NSLayoutConstraint.activate([
             mealImageView.widthAnchor.constraint(equalToConstant: 30),
             mealImageView.heightAnchor.constraint(equalToConstant: 30)
         ])
 
-        // ✅ Create Label for Meal Name
+
         let mealLabel = UILabel()
         mealLabel.text = meal?.name ?? "No Meal"
         mealLabel.font = UIFont.systemFont(ofSize: 16, weight: .medium)
@@ -474,14 +475,14 @@ extension FeedingPlanViewController: UITableViewDelegate, UITableViewDataSource 
         mealLabel.numberOfLines = 1
         mealLabel.translatesAutoresizingMaskIntoConstraints = false
 
-        // ✅ Add Image & Label to StackView
+     
         contentStackView.addArrangedSubview(mealImageView)
         contentStackView.addArrangedSubview(mealLabel)
 
-        // ✅ Add StackView to Cell
+     
         cell.contentView.addSubview(contentStackView)
 
-        // ✅ Apply Constraints
+        
         NSLayoutConstraint.activate([
             contentStackView.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 10),
             contentStackView.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -10),
@@ -492,29 +493,13 @@ extension FeedingPlanViewController: UITableViewDelegate, UITableViewDataSource 
         return cell
     }
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-
-
-
-
-    
     func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
         let headerView = UIView()
         headerView.backgroundColor = .systemGroupedBackground
 
         let titleLabel = UILabel()
         titleLabel.font = UIFont.systemFont(ofSize: 18, weight: .bold)
-        titleLabel.textColor = .black  // ✅ Ensure proper visibility
+        titleLabel.textColor = .black
 
         let intervalLabel = UILabel()
         intervalLabel.font = UIFont.systemFont(ofSize: 14, weight: .regular)
@@ -523,26 +508,25 @@ extension FeedingPlanViewController: UITableViewDelegate, UITableViewDataSource 
         let predefinedBitesCount = fixedBiteOrder.count
 
         if section < predefinedBitesCount {
-            // ✅ Standard predefined bite types
+            
             let category = fixedBiteOrder[section]
             titleLabel.text = category.rawValue.prefix(1).capitalized + category.rawValue.dropFirst()
             intervalLabel.text = getTimeInterval(for: category)
         } else {
-            // ✅ Custom Bites Handling
             let customIndex = section - predefinedBitesCount
             let customBites = Array(customBitesDict.keys)
 
-            // ✅ Prevent out-of-bounds crash
+            //  Prevent out-of-bounds crash
             guard customIndex < customBites.count else { return nil }
 
             let customCategory = customBites[customIndex]
-            titleLabel.text = customCategory  // ✅ Display custom bite name
+            titleLabel.text = customCategory
 
-            // ✅ Retrieve the custom time interval if available
+           
             intervalLabel.text = customBiteTimes[BiteType.custom(customCategory)] ?? "Custom Time"
         }
 
-        // ✅ Add labels to headerView
+        // Add labels to headerView
         headerView.addSubview(titleLabel)
         headerView.addSubview(intervalLabel)
 
@@ -563,7 +547,7 @@ extension FeedingPlanViewController: UITableViewDelegate, UITableViewDataSource 
 
 
     func tableView(_ tableView: UITableView, canMoveRowAt indexPath: IndexPath) -> Bool {
-        return true  // ✅ Allow moving meals across categories
+        return true
     }
 
     func tableView(_ tableView: UITableView, moveRowAt fromIndexPath: IndexPath, to toIndexPath: IndexPath) {
@@ -574,10 +558,10 @@ extension FeedingPlanViewController: UITableViewDelegate, UITableViewDataSource 
 
         let movedMeal = fromMeals.remove(at: fromIndexPath.row)
 
-        // ✅ Remove meal from source category
+        // Remove meal from source category
         myBowlItemsDict[fromCategory] = fromMeals.isEmpty ? nil : fromMeals
 
-        // ✅ Add meal to destination category
+        //  Add meal to destination category
         if myBowlItemsDict[toCategory] == nil {
             myBowlItemsDict[toCategory] = []
         }
@@ -607,33 +591,27 @@ extension FeedingPlanViewController: UICollectionViewDataSource, UICollectionVie
         let weekDaysWithDates = getWeekDaysWithDates()
         let currentDate = weekDaysWithDates[indexPath.item]
 
-        // ✅ Determine if the date is selected
+        // Check if the date is today
+        let isToday = currentDate == getFormattedDate(Date())
+
+        // Determine if the date is selected
         let isSelected = indexPath.item == selectedDateIndex
 
-        // ✅ Check if the date has a weekly plan
+        // Check if the date has a weekly plan
         let hasPlan = weeklyPlan[currentDate] != nil && !(weeklyPlan[currentDate]?.isEmpty ?? true)
 
-        // ✅ Configure the cell with all required parameters
-        cell.configure(with: currentDate, isSelected: isSelected, hasPlan: hasPlan)
-
-        // ✅ Debugging - Print which dates have a weekly plan
-        print("📌 Checking Date: \(currentDate), Has Weekly Plan: \(hasPlan)")
+   
+        cell.configure(with: currentDate, isSelected: isSelected || isToday, hasPlan: hasPlan)
 
         return cell
     }
-
-
-
-
-
-
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         let weekDaysWithDates = getWeekDaysWithDates()
         let selectedDate = weekDaysWithDates[indexPath.item]
 
         selectedDay = selectedDate
         selectedDateIndex = indexPath.item
-        
+
         print("📌 Selected Day: \(selectedDay), Weekly Plan Exists: \(weeklyPlan[selectedDay] != nil)")
 
         if weeklyPlan[selectedDay] == nil {
@@ -643,15 +621,14 @@ extension FeedingPlanViewController: UICollectionViewDataSource, UICollectionVie
         didSelectDate(selectedDate)
 
         DispatchQueue.main.async {
-            self.collectionView.reloadData()  // ✅ Highlight selected date
-            self.tableView.reloadData()  // ✅ Show meals for the selected date
+            self.collectionView.reloadData()
+            self.tableView.reloadData()
+
+            
+            let indexPath = IndexPath(item: self.selectedDateIndex, section: 0)
+            self.collectionView.scrollToItem(at: indexPath, at: .left, animated: true)
         }
     }
-
-
-
-
-
 }
 extension FeedingPlanViewController: UITableViewDragDelegate {
     func tableView(_ tableView: UITableView, itemsForBeginning session: UIDragSession, at indexPath: IndexPath) -> [UIDragItem] {
@@ -660,7 +637,7 @@ extension FeedingPlanViewController: UITableViewDragDelegate {
         
         let itemProvider = NSItemProvider(object: meal.name as NSString)
         let dragItem = UIDragItem(itemProvider: itemProvider)
-        dragItem.localObject = (meal, category)  // ✅ Store both meal and its category
+        dragItem.localObject = (meal, category)
         return [dragItem]
     }
 }
@@ -670,21 +647,19 @@ extension FeedingPlanViewController: UITableViewDropDelegate {
     func tableView(_ tableView: UITableView, performDropWith coordinator: UITableViewDropCoordinator) {
         guard let destinationIndexPath = coordinator.destinationIndexPath else { return }
 
-        let destinationCategory = fixedBiteOrder[destinationIndexPath.section]  // ✅ Get category where dropped
+        let destinationCategory = fixedBiteOrder[destinationIndexPath.section]
 
         if let dragItem = coordinator.items.first,
            let (sourceMeal, sourceCategory) = dragItem.dragItem.localObject as? (FeedingMeal, BiteType) {
 
             tableView.performBatchUpdates({
-                // ✅ Remove from old category
+                
                 if let index = myBowlItemsDict[sourceCategory]?.firstIndex(where: { $0.name == sourceMeal.name }) {
                     myBowlItemsDict[sourceCategory]?.remove(at: index)
                     if myBowlItemsDict[sourceCategory]?.isEmpty == true {
                         myBowlItemsDict.removeValue(forKey: sourceCategory)
                     }
                 }
-
-                // ✅ Add to new category
                 if myBowlItemsDict[destinationCategory] == nil {
                     myBowlItemsDict[destinationCategory] = []
                 }
@@ -706,7 +681,7 @@ extension FeedingMeal {
             "name": name,
             "description": description,
             "image": image,
-            "category": category.rawValue // Convert enum to string
+            "category": category.rawValue
         ]
     }
 }
