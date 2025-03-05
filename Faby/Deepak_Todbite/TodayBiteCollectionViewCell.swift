@@ -24,12 +24,12 @@ class TodayBiteCollectionViewCell: UICollectionViewCell {
 
     private let timeLabel: UILabel = {
         let label = UILabel()
-        label.font = UIFont.systemFont(ofSize: 14, weight: .regular) // ✅ Medium weight for better readability
-        label.textColor = UIColor.systemGray // ✅ Changed from gray to black for better visibility
+        label.font = UIFont.systemFont(ofSize: 14, weight: .regular)
+        label.textColor = UIColor.systemGray
         label.textAlignment = .left
         label.numberOfLines = 1
-        label.adjustsFontSizeToFitWidth = true // ✅ Auto adjusts if text is too long
-        label.minimumScaleFactor = 0.8 // ✅ Allows minor scaling if needed
+        label.adjustsFontSizeToFitWidth = true
+        label.minimumScaleFactor = 0.8
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
     }()
@@ -50,18 +50,21 @@ class TodayBiteCollectionViewCell: UICollectionViewCell {
         contentView.addSubview(timeLabel)
 
         NSLayoutConstraint.activate([
-            // ✅ ImageView
+           
+            
             imageView.topAnchor.constraint(equalTo: contentView.topAnchor),
             imageView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
             imageView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
-            imageView.heightAnchor.constraint(equalToConstant: 150), // ✅ Adjusted for better spacing
+            imageView.heightAnchor.constraint(equalToConstant: 150),
 
-            // ✅ Title Label (left-aligned below image)
+           
+            
             titleLabel.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 5),
             titleLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
 //            titleLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -10),
 
-            // ✅ Time Label (left-aligned below title)
+            
+            
             timeLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 3),
             timeLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
 //            timeLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -10),

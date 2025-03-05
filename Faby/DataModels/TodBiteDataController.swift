@@ -113,9 +113,9 @@ class BiteSampleData {
                 
                 
                 FeedingMeal(name: "Thepla with Curd", description: "Soft whole wheat thepla served with cooling curd.", image: "Thepla with Curd", category: .EarlyBite, region: .west, ageGroup: .months12to18),
-                FeedingMeal(name: "Poha with Vegetables", description: "Light and iron-rich flattened rice cooked with mild veggies.", image: "Dal Chawal with Ghee", category: .EarlyBite, region: .west, ageGroup: .months12to18),
-                FeedingMeal(name: "Sabudana Khichdi", description: "Soft tapioca pearls cooked with mild spices and peanuts.", image: "Dalia", category: .EarlyBite, region: .west, ageGroup: .months12to18),
-                FeedingMeal(name: "Dhokla", description: "Fermented chickpea flour steamed cake, light and easy to digest.", image: "Dhokla", category: .EarlyBite, region: .west, ageGroup: .months12to18),
+                FeedingMeal(name: "Poha with Vegetables", description: "Light and iron-rich flattened rice cooked with mild veggies.", image: "Poha with Vegetables", category: .EarlyBite, region: .west, ageGroup: .months12to18),
+                FeedingMeal(name: "Sabudana Khichdi", description: "Soft tapioca pearls cooked with mild spices and peanuts.", image: "Sabudana Khichdi", category: .EarlyBite, region: .west, ageGroup: .months12to18),
+//                FeedingMeal(name: "Dhokla", description: "Fermented chickpea flour steamed cake, light and easy to digest.", image: "Dhokla", category: .EarlyBite, region: .west, ageGroup: .months12to18),
                
                 
                 
@@ -153,10 +153,10 @@ class BiteSampleData {
 //                     west
                     
                     
-                    FeedingMeal(name: "Dal Dhokli", description: "Gujarati-style whole wheat dumplings in lentil soup.", image: "Mashed Banana with Milk", category: .NourishBite, region: .west, ageGroup: .months12to18),
-                            FeedingMeal(name: "Mashed Spinach with Potato", description: "Iron-rich spinach mashed with soft-boiled potato.", image: "Mashed Lentils with Ghee Rice", category: .NourishBite, region: .west, ageGroup: .months12to18),
-                            FeedingMeal(name: "Paneer Bhurji with Roti", description: "Soft crumbled cottage cheese cooked mildly.", image: "Mashed Seasonal Fruits", category: .NourishBite, region: .west, ageGroup: .months12to18),
-                            FeedingMeal(name: "Ghee Rice with Moong Dal", description: "Soft-cooked rice and lentils with a touch of ghee.", image: "Milk with Dry Fruits", category: .NourishBite, region: .west, ageGroup: .months12to18),
+                    FeedingMeal(name: "Dal Dhokli", description: "Gujarati-style whole wheat dumplings in lentil soup.", image: "Dal Dhokli", category: .NourishBite, region: .west, ageGroup: .months12to18),
+                            FeedingMeal(name: "Mashed Spinach with Potato", description: "Iron-rich spinach mashed with soft-boiled potato.", image: "Mashed Spinach with Potato", category: .NourishBite, region: .west, ageGroup: .months12to18),
+                            FeedingMeal(name: "Paneer Bhurji with Roti", description: "Soft crumbled cottage cheese cooked mildly.", image: "Paneer Bhurji with Roti", category: .NourishBite, region: .west, ageGroup: .months12to18),
+                            FeedingMeal(name: "Ghee Rice with Moong Dal", description: "Soft-cooked rice and lentils with a touch of ghee.", image: "Ghee Rice with Moong Dal", category: .NourishBite, region: .west, ageGroup: .months12to18),
                     
                     
                     
@@ -185,7 +185,7 @@ class BiteSampleData {
                 ],
                 
                 .MidDayBite: [
-                    FeedingMeal(name: "Aloo Posto with Rice", description: "Bengali-style potato curry with poppy seeds, mild and nutritious.", image: "Aloo Posto with Rice", category: .MidDayBite, region: .east, ageGroup: .months12to18),
+                    FeedingMeal(name: "Aloo Posto with Rice", description: "Potato curry with poppy seeds, mild and nutritious.", image: "Aloo Posto with Rice", category: .MidDayBite, region: .east, ageGroup: .months12to18),
                     FeedingMeal(name: "Tomato Dal", description: "Tangy tomato-based lentil curry, easy to digest.", image: "Tomato Dal", category: .MidDayBite, region: .east, ageGroup: .months12to18),
                     FeedingMeal(name: "Mixed Vegetable Pulao", description: "Lightly spiced rice cooked with mixed vegetables.", image: "Mixed Vegetable Pulao", category: .MidDayBite, region: .east, ageGroup: .months12to18),
                     FeedingMeal(name: "Lemon Rice", description: "Zesty lemon-flavored rice, rich in vitamin C.", image: "Lemon Rice", category: .MidDayBite, region: .east, ageGroup: .months12to18),
@@ -198,10 +198,10 @@ class BiteSampleData {
                     
                     
                     
-                    FeedingMeal(name: "Aloo Paratha with Curd", description: "Soft whole wheat paratha stuffed with mild mashed potatoes.", image: "Palak Paneer with Rice", category: .MidDayBite, region: .west, ageGroup: .months12to18),
-                            FeedingMeal(name: "Dal Chawal with Ghee", description: "Soft rice with mild lentil curry and ghee.", image: "Poha with Vegetables", category: .MidDayBite, region: .west, ageGroup: .months12to18),
-                            FeedingMeal(name: "Gatte ki Sabzi with Rice", description: "Rajasthani-style chickpea dumplings in mild curry.", image: "Puffed Rice with Jaggery", category: .MidDayBite, region: .west, ageGroup: .months12to18),
-                            FeedingMeal(name: "Matar Paneer", description: "Soft cottage cheese cubes with mildly spiced green peas curry.", image: "Soft Aloo Paratha with Ghee", category: .MidDayBite, region: .west, ageGroup: .months12to18),
+                    FeedingMeal(name: "Aloo Paratha with Curd", description: "Soft whole wheat paratha stuffed with mild mashed potatoes.", image: "Aloo Paratha with Curd", category: .MidDayBite, region: .west, ageGroup: .months12to18),
+                            FeedingMeal(name: "Dal Chawal with Ghee", description: "Soft rice with mild lentil curry and ghee.", image: "Dal Chawal with Ghee", category: .MidDayBite, region: .west, ageGroup: .months12to18),
+                            FeedingMeal(name: "Gatte ki Sabzi with Rice", description: "Rajasthani-style chickpea dumplings in mild curry.", image: "Gatte ki Sabzi with Rice", category: .MidDayBite, region: .west, ageGroup: .months12to18),
+                            FeedingMeal(name: "Matar Paneer", description: "Soft cottage cheese cubes with mildly spiced green peas curry.", image: "Matar Paneer", category: .MidDayBite, region: .west, ageGroup: .months12to18),
                            
                     
                     
@@ -228,7 +228,7 @@ class BiteSampleData {
                 ],
                 
                 .SnackBite: [
-                    FeedingMeal(name: "Ghugni (Chickpeas Snack)", description: "Bengali-style yellow peas curry, soft and easy to chew.", image: "Ghugni (Chickpeas Snack)", category: .SnackBite, region: .east, ageGroup: .months12to18),
+                    FeedingMeal(name: "Ghugni (Chickpeas Snack)", description: "Yellow peas curry, soft and easy to chew.", image: "Ghugni (Chickpeas Snack)", category: .SnackBite, region: .east, ageGroup: .months12to18),
                     FeedingMeal(name: "Boiled Sweet Corn", description: "Rich in fiber, vitamins, and energy.", image: "Boiled Sweet Corn", category: .SnackBite, region: .east, ageGroup: .months12to18),
                     FeedingMeal(name: "Sesame Ladoo", description: "Iron and calcium-rich jaggery-sesame balls.", image: "Sesame Ladoo", category: .SnackBite, region: .east, ageGroup: .months12to18),
                     FeedingMeal(name: "Mashed Papaya", description: "Soft, naturally sweet fruit mash.", image: "Mashed Papaya", category: .SnackBite, region: .east, ageGroup: .months12to18),
@@ -236,10 +236,10 @@ class BiteSampleData {
                     
 //                     west
                     
-                    FeedingMeal(name: "Boiled Corn with Butter", description: "Soft boiled corn kernels with a touch of butter.", image: "Vegetable Pulao", category: .SnackBite, region: .west, ageGroup: .months12to18),
-                            FeedingMeal(name: "Roasted Sweet Potato Fries", description: "Soft roasted sweet potatoes, naturally sweet.", image: "Boiled Sweet Corn", category: .SnackBite, region: .west, ageGroup: .months12to18),
-                            FeedingMeal(name: "Peanut Chikki (if non-allergic)", description: "Protein and iron-rich jaggery-peanut snack.", image: "Dal Chawal with Ghee", category: .SnackBite, region: .west, ageGroup: .months12to18),
-                            FeedingMeal(name: "Curd with Fruits", description: "Fresh seasonal fruits mixed with homemade curd.", image: "Dalia", category: .SnackBite, region: .west, ageGroup: .months12to18),
+                    FeedingMeal(name: "Boiled Corn with Butter", description: "Soft boiled corn kernels with a touch of butter.", image: "Boiled Corn with Butter", category: .SnackBite, region: .west, ageGroup: .months12to18),
+                            FeedingMeal(name: "Roasted Sweet Potato Fries", description: "Soft roasted sweet potatoes, naturally sweet.", image: "Roasted Sweet Potato Fries", category: .SnackBite, region: .west, ageGroup: .months12to18),
+                            FeedingMeal(name: "Peanut Chikki", description: "Protein and iron-rich jaggery-peanut snack.", image: "Peanut Chikki", category: .SnackBite, region: .west, ageGroup: .months12to18),
+                            FeedingMeal(name: "Curd with Fruits", description: "Fresh seasonal fruits mixed with homemade curd.", image: "Curd with Fruits", category: .SnackBite, region: .west, ageGroup: .months12to18),
                           
                     
                     
@@ -270,10 +270,10 @@ class BiteSampleData {
                     
                     
                     
-                    FeedingMeal(name: "Mashed Dal and Rice", description: "Soft-cooked lentils and rice for easy digestion.", image: "Gobhi Aloo With Roti", category: .NightBite, region: .west, ageGroup: .months12to18),
-                            FeedingMeal(name: "Lemon Rice", description: "Mild lemon-flavored rice, easy to digest.", image: "Mashed Banana with Milk", category: .NightBite, region: .west, ageGroup: .months12to18),
-                            FeedingMeal(name: "Palak Dal with Rice", description: "Spinach-infused lentil soup served with rice.", image: "Mashed Lentils with Ghee Rice", category: .NightBite, region: .west, ageGroup: .months12to18),
-                            FeedingMeal(name: "Tomato Rasam", description: "Light South Indian-style tomato soup.", image: "Mashed Seasonal Fruits", category: .NightBite, region: .west, ageGroup: .months12to18),
+                    FeedingMeal(name: "Mashed Dal and Rice", description: "Soft-cooked lentils and rice for easy digestion.", image: "Mashed Dal and Rice", category: .NightBite, region: .west, ageGroup: .months12to18),
+                            FeedingMeal(name: "Lemon Rice", description: "Mild lemon-flavored rice, easy to digest.", image: "Lemon Rice", category: .NightBite, region: .west, ageGroup: .months12to18),
+                            FeedingMeal(name: "Palak Dal with Rice", description: "Spinach-infused lentil soup served with rice.", image: "Palak Dal with Rice", category: .NightBite, region: .west, ageGroup: .months12to18),
+                            FeedingMeal(name: "Tomato Rasam", description: "Light South Indian-style tomato soup.", image: "Tomato Rasam", category: .NightBite, region: .west, ageGroup: .months12to18),
                             
                     
                     
@@ -300,24 +300,21 @@ class BiteSampleData {
 
     ]
 ]
-
-
-
     // MARK: - User-Defined Data
-    var userAddedMeals: [FeedingMeal] = []  // Stores user-added meals
-    var myBowl: [FeedingMeal] = []         // Stores user-selected meals
-    var feedingPlans: [FeedingPlan] = [] // Stores feeding plans
+    var userAddedMeals: [FeedingMeal] = []
+    var myBowl: [FeedingMeal] = []
+    var feedingPlans: [FeedingPlan] = []
 
     // MARK: - Get Meals by Category
     func getItems(for category: BiteType, in region: RegionType, for ageGroup: AgeGroup) -> [FeedingMeal] {
         let allItems = categories[category] ?? []
 
-        // ✅ Filter meals based on `region` & `ageGroup`
+
         let filteredItems = allItems.filter { meal in
             return meal.region == region && meal.ageGroup == ageGroup
         }
 
-        // ✅ Debugging Logs
+     
         print("\n📌 Fetching Meals for \(category.rawValue), Region: \(region.rawValue), Age: \(ageGroup.rawValue)")
         print("🔍 Found \(filteredItems.count) meals.")
 
@@ -325,14 +322,7 @@ class BiteSampleData {
     }
 
    
-
-
-
-
-
-
-    // MARK: - Add Meal to "My Bowl"
-    func addToMyBowl(_ item: FeedingMeal) {
+   func addToMyBowl(_ item: FeedingMeal) {
         if !myBowl.contains(where: { $0.name == item.name }) {
             myBowl.append(item)
         }
@@ -362,10 +352,6 @@ class BiteSampleData {
     }
     
     var weeklyPlan: [String: [BiteType: [FeedingMeal]]] = [:]
-
-    
-    
-    
 }
 extension BiteSampleData {
     func getDailyPlanMeals() -> [FeedingMeal] {
