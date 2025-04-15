@@ -19,12 +19,28 @@ class SpecialMomentsViewController: UIViewController {
         return collectionView
     }()
     
+    private let emptyStateCardView: UIView = {
+        let view = UIView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        view.isUserInteractionEnabled = true
+        return view
+    }()
+    
+    private let emptyStateImageView: UIImageView = {
+        let imageView = UIImageView()
+        imageView.image = UIImage(named: "special_moments")
+        imageView.contentMode = .scaleAspectFit
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        return imageView
+    }()
+    
     private let emptyLabel: UILabel = {
         let label = UILabel()
-        label.text = "No Special Moments added yet"
-        label.textColor = .darkGray
-        label.font = UIFont.systemFont(ofSize: 16)
+        label.text = "No growth added yet"
+        label.textColor = UIColor(hex: "#333333")
+        label.font = UIFont.systemFont(ofSize: 16, weight: .medium)
         label.textAlignment = .center
+        label.numberOfLines = 0
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
     }()
@@ -34,20 +50,47 @@ class SpecialMomentsViewController: UIViewController {
         view.backgroundColor = .clear
         setupUI()
         populateMilestones()
+        
+        // Add content inset to maintain proper spacing
+        collectionView.contentInset = UIEdgeInsets(top: 0, left: 16, bottom: 0, right: 16)
     }
 
     private func setupUI() {
         view.addSubview(collectionView)
-        view.addSubview(emptyLabel)
+        view.addSubview(emptyStateCardView)
+        
+        emptyStateCardView.addSubview(emptyStateImageView)
+        emptyStateCardView.addSubview(emptyLabel)
+
+        // Add tap gesture to the entire card
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleCardTap))
+        emptyStateCardView.addGestureRecognizer(tapGesture)
 
         NSLayoutConstraint.activate([
             collectionView.topAnchor.constraint(equalTo: view.topAnchor),
             collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            emptyLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            emptyLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+            
+            emptyStateCardView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            emptyStateCardView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            emptyStateCardView.heightAnchor.constraint(equalToConstant: 225),
+            emptyStateCardView.topAnchor.constraint(equalTo: view.topAnchor),
+            
+            emptyStateImageView.centerXAnchor.constraint(equalTo: emptyStateCardView.centerXAnchor),
+            emptyStateImageView.topAnchor.constraint(equalTo: emptyStateCardView.topAnchor, constant: 30),
+            emptyStateImageView.widthAnchor.constraint(equalToConstant: 80),
+            emptyStateImageView.heightAnchor.constraint(equalToConstant: 80),
+            
+            emptyLabel.topAnchor.constraint(equalTo: emptyStateImageView.bottomAnchor, constant: 16),
+            emptyLabel.leadingAnchor.constraint(equalTo: emptyStateCardView.leadingAnchor, constant: 16),
+            emptyLabel.trailingAnchor.constraint(equalTo: emptyStateCardView.trailingAnchor, constant: -16)
         ])
+    }
+
+    @objc private func handleCardTap() {
+        // Handle the tap action here - this will be called both when tapping the card or the button
+        // You can implement the navigation to add memory screen here
     }
 
     func populateMilestones() {
@@ -56,9 +99,11 @@ class SpecialMomentsViewController: UIViewController {
             return !imagePath.isEmpty
         }
         if milestones.isEmpty {
-            emptyLabel.isHidden = false
+            emptyStateCardView.isHidden = false
+            collectionView.isHidden = true
         } else {
-            emptyLabel.isHidden = true
+            emptyStateCardView.isHidden = true
+            collectionView.isHidden = false
         }
         collectionView.reloadData()
     }
