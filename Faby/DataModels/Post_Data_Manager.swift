@@ -66,7 +66,7 @@ class PostDataManager {
         userPosts.insert(newPost, at: 0)
         
         // ✅ Print Statement to Log Post Creation
-        print("📝 New Post Created by \(currentParent.name) (\(currentParent.id ))")
+//        print("📝 New Post Created by \(currentParent.name) (\(currentParent.id ))")
         print("📌 Post Title: \(title)")
         print("🗒️ Post Content: \(text)")
     }

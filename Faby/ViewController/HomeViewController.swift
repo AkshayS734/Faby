@@ -97,6 +97,57 @@ class HomeViewController: UIViewController {
     
     var todaysBitesData: [TodayBite] = []
     
+    private let todaysBitesEmptyStateView: UIView = {
+        let view = UIView()
+        view.backgroundColor = .white
+        view.layer.cornerRadius = 16
+        view.clipsToBounds = false
+        // iOS-native card shadow
+        view.layer.shadowColor = UIColor.black.cgColor
+        view.layer.shadowOffset = CGSize(width: 0, height: 1)
+        view.layer.shadowRadius = 4
+        view.layer.shadowOpacity = 0.1
+        view.translatesAutoresizingMaskIntoConstraints = false
+        return view
+    }()
+    
+    private let todaysBitesContentStack: UIStackView = {
+        let stack = UIStackView()
+        stack.axis = .vertical
+        stack.alignment = .center
+        stack.spacing = 12
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        return stack
+    }()
+    
+    private let todaysBitesEmptyImageView: UIImageView = {
+        let imageView = UIImageView()
+        imageView.image = UIImage(named: "todayBite")
+        imageView.contentMode = .scaleAspectFit
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        return imageView
+    }()
+    
+    private let todaysBitesEmptyLabel: UILabel = {
+        let label = UILabel()
+        label.text = "No meal plan added yet"
+        label.textColor = .systemGray
+        label.font = .systemFont(ofSize: 16)
+        label.textAlignment = .center
+        label.translatesAutoresizingMaskIntoConstraints = false
+        return label
+    }()
+    
+    private let addMealPlanButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.setTitle("Add Meal Plan", for: .normal)
+        button.backgroundColor = UIColor(red: 98/255, green: 206/255, blue: 156/255, alpha: 1.0)
+        button.setTitleColor(.white, for: .normal)
+        button.titleLabel?.font = .systemFont(ofSize: 17, weight: .semibold)
+        button.layer.cornerRadius = 22 // Half of height for pill shape
+        button.translatesAutoresizingMaskIntoConstraints = false
+        return button
+    }()
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -171,6 +222,18 @@ class HomeViewController: UIViewController {
         contentView.addSubview(todaysBitesLabel)
         contentView.addSubview(todaysBitesCollectionView)
         
+        // Add empty state views with proper hierarchy
+        contentView.addSubview(todaysBitesEmptyStateView)
+        todaysBitesEmptyStateView.addSubview(todaysBitesContentStack)
+        
+        todaysBitesContentStack.addArrangedSubview(todaysBitesEmptyImageView)
+        todaysBitesContentStack.addArrangedSubview(todaysBitesEmptyLabel)
+        todaysBitesContentStack.addArrangedSubview(addMealPlanButton)
+        
+        // Set custom spacing after image
+        todaysBitesContentStack.setCustomSpacing(8, after: todaysBitesEmptyImageView)
+        todaysBitesContentStack.setCustomSpacing(16, after: todaysBitesEmptyLabel)
+
         NSLayoutConstraint.activate([
             scrollView.topAnchor.constraint(equalTo: view.topAnchor),
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
@@ -197,14 +260,38 @@ class HomeViewController: UIViewController {
             specialMomentsContainerView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
             specialMomentsContainerView.heightAnchor.constraint(equalToConstant: 225),
             
-            todaysBitesLabel.topAnchor.constraint(equalTo: specialMomentsContainerView.bottomAnchor),
-            todaysBitesLabel.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
+            todaysBitesLabel.topAnchor.constraint(equalTo: specialMomentsContainerView.bottomAnchor, constant: 24),
+            todaysBitesLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
             
             todaysBitesCollectionView.topAnchor.constraint(equalTo: todaysBitesLabel.bottomAnchor, constant: 10),
             todaysBitesCollectionView.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
             todaysBitesCollectionView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
-            todaysBitesCollectionView.heightAnchor.constraint(equalToConstant: 225)
+            todaysBitesCollectionView.heightAnchor.constraint(equalToConstant: 225),
+            
+            // Card constraints
+            todaysBitesEmptyStateView.topAnchor.constraint(equalTo: todaysBitesLabel.bottomAnchor, constant: 12),
+            todaysBitesEmptyStateView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            todaysBitesEmptyStateView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+            
+            // Content stack constraints
+            todaysBitesContentStack.topAnchor.constraint(equalTo: todaysBitesEmptyStateView.topAnchor, constant: 24),
+            todaysBitesContentStack.leadingAnchor.constraint(equalTo: todaysBitesEmptyStateView.leadingAnchor, constant: 16),
+            todaysBitesContentStack.trailingAnchor.constraint(equalTo: todaysBitesEmptyStateView.trailingAnchor, constant: -16),
+            todaysBitesContentStack.bottomAnchor.constraint(equalTo: todaysBitesEmptyStateView.bottomAnchor, constant: -24),
+            
+            // Image constraints
+            todaysBitesEmptyImageView.heightAnchor.constraint(lessThanOrEqualToConstant: 100),
+            todaysBitesEmptyImageView.widthAnchor.constraint(lessThanOrEqualToConstant: 100),
+            
+            // Button constraints
+            addMealPlanButton.heightAnchor.constraint(equalToConstant: 44),
+            addMealPlanButton.widthAnchor.constraint(equalToConstant: 160)
         ])
+        
+        addMealPlanButton.addTarget(self, action: #selector(addMealPlanTapped), for: .touchUpInside)
+        
+        // Update the empty state visibility
+        updateTodaysBitesEmptyState()
     }
     
     private func setupVaccineView() {
@@ -330,6 +417,9 @@ class HomeViewController: UIViewController {
         }
         todaysBitesData = updatedBites
         todaysBitesCollectionView.reloadData()
+        
+        // Update the empty state
+        updateTodaysBitesEmptyState()
     }
     @objc private func handleNewVaccineScheduled(_ notification: Notification) {
         loadVaccinations()
@@ -364,6 +454,19 @@ class HomeViewController: UIViewController {
         
     }
     
+    @objc private func addMealPlanTapped() {
+        openTodBiteViewController()
+    }
+    
+    private func updateTodaysBitesEmptyState() {
+        if todaysBitesData.isEmpty {
+            todaysBitesCollectionView.isHidden = true
+            todaysBitesEmptyStateView.isHidden = false
+        } else {
+            todaysBitesCollectionView.isHidden = false
+            todaysBitesEmptyStateView.isHidden = true
+        }
+    }
     
 }
 
@@ -393,13 +496,11 @@ struct VaccineCardsView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            // Using UIViewRepresentable to get exact UILabel styling match
             UILabelRepresentable(text: "Vaccine Reminder", font: UIFont.boldSystemFont(ofSize: 20))
-                .frame(height: 24)  // Approximate height for the label
+                .frame(height: 24)
                 .padding(.horizontal, 16)
             
             if vaccines.isEmpty {
-                // Empty state with centered message
                 GeometryReader { geometry in
                     VStack {
                         Spacer()
@@ -410,7 +511,7 @@ struct VaccineCardsView: View {
                         Spacer()
                     }
                 }
-                .frame(height: 120)
+                .frame(height: 100)
                 .background(Color(UIColor(hex: "#f2f2f7")))
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -430,7 +531,7 @@ struct VaccineCardsView: View {
                 .frame(height: 120)
             }
         }
-        .frame(height: 200)
+        .frame(height: 160)
         .background(Color(UIColor(hex: "#f2f2f7")))
     }
 }

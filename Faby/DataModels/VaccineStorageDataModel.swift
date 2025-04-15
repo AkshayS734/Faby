@@ -55,7 +55,7 @@ class BabyVaccineTracker {
     
     // Vaccine storage key based on baby ID
     private var vaccineStorageKey: String {
-        return baby.id.uuidString
+        return baby.babyID.uuidString
     }
     
     // Vaccine data for this baby
