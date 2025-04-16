@@ -1,5 +1,3 @@
-// VaccineModel.swift
-
 import Foundation
 import UIKit
 
@@ -43,37 +41,49 @@ struct Vaccine: Codable {
     }
 }
 
-// Extension to Baby class to handle vaccine-related data
-extension Baby {
-    // Store completed vaccines for this baby
+// Storage for all babies' vaccine data - using a dictionary in memory
+private var allBabiesVaccineData: [String: [String: [VaccineDose]]] = [:]
+
+// Notification name for vaccine updates
+extension Notification.Name {
+    static let vaccinesUpdated = Notification.Name("vaccinesUpdated")
+}
+
+// Vaccine tracker class that works with Baby
+class BabyVaccineTracker {
+    let baby: Baby
+    
+    // Vaccine storage key based on baby ID
     private var vaccineStorageKey: String {
-        "vaccines_\(id.uuidString)"
+        return baby.babyID.uuidString
     }
     
+    // Vaccine data for this baby
     var completedVaccines: [String: [VaccineDose]] {
         get {
-            if let data = UserDefaults.standard.data(forKey: vaccineStorageKey),
-               let decoded = try? JSONDecoder().decode([String: [VaccineDose]].self, from: data) {
-                return decoded
-            }
-            return [:]
+            return allBabiesVaccineData[vaccineStorageKey] ?? [:]
         }
         set {
-            if let encoded = try? JSONEncoder().encode(newValue) {
-                UserDefaults.standard.set(encoded, forKey: vaccineStorageKey)
-            }
+            allBabiesVaccineData[vaccineStorageKey] = newValue
         }
     }
     
+    // Initialize with a baby reference
+    init(baby: Baby) {
+        self.baby = baby
+    }
+    
+    // Calculate baby's age in months
     var ageInMonths: Int {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd"
-        guard let dob = dateFormatter.date(from: dateOfBirth) else { return 0 }
+        guard let dob = dateFormatter.date(from: baby.dateOfBirth) else { return 0 }
         let calendar = Calendar.current
         let components = calendar.dateComponents([.month], from: dob, to: Date())
         return components.month ?? 0
     }
     
+    // Update a vaccine for this baby
     func updateVaccine(_ vaccine: Vaccine, dose: VaccineDose, date: Date, location: String? = nil, notes: String? = nil) {
         var updatedDose = dose
         updatedDose.dateAdministered = date
@@ -89,11 +99,11 @@ extension Baby {
         
         NotificationCenter.default.post(name: .vaccinesUpdated, object: nil)
     }
-}
-
-// Notification name extension
-extension Notification.Name {
-    static let vaccinesUpdated = Notification.Name("vaccinesUpdated")
+    
+    // Get completed doses for a specific vaccine
+    func getCompletedDoses(for vaccineName: String) -> [DoseType] {
+        return completedVaccines[vaccineName]?.map { $0.doseType } ?? []
+    }
 }
 
 // Vaccine data manager
@@ -128,12 +138,12 @@ class VaccineDataManager {
         // Add other vaccines...
     ]
     
-    func getUpcomingVaccinations(for baby: Baby) -> [(name: String, dose: VaccineDose)] {
+    func getUpcomingVaccinations(for vaccineTracker: BabyVaccineTracker) -> [(name: String, dose: VaccineDose)] {
         var upcoming: [(name: String, dose: VaccineDose)] = []
         
         for vaccine in vaccines {
-            let completedDoses = baby.completedVaccines[vaccine.name]?.map { $0.doseType } ?? []
-            if let nextDose = vaccine.getNextRequiredDose(childAgeInMonths: baby.ageInMonths,
+            let completedDoses = vaccineTracker.getCompletedDoses(for: vaccine.name)
+            if let nextDose = vaccine.getNextRequiredDose(childAgeInMonths: vaccineTracker.ageInMonths,
                                                         completedDoses: completedDoses) {
                 upcoming.append((vaccine.name, nextDose))
             }

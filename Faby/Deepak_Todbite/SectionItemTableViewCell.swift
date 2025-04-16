@@ -1,7 +1,7 @@
 import UIKit
 
 protocol SectionItemTableViewCellDelegate: AnyObject {
-    func didTapAddButton(for item: Item)
+    func didTapAddButton(for item: FeedingMeal)
 }
 
 class SectionItemTableViewCell: UITableViewCell {
@@ -12,8 +12,8 @@ class SectionItemTableViewCell: UITableViewCell {
     private let addButton = UIButton(type: .system)
 
     // MARK: - Properties
-    weak var delegate: SectionItemTableViewCellDelegate? // Delegate reference
-    private var currentItem: Item?
+    weak var delegate: SectionItemTableViewCellDelegate?
+    private var currentItem: FeedingMeal?
 
     // MARK: - Initializers
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
@@ -28,7 +28,7 @@ class SectionItemTableViewCell: UITableViewCell {
 
     // MARK: - UI Setup
     private func setupUI() {
-        // Configure Item Image View
+       
         itemImageView.translatesAutoresizingMaskIntoConstraints = false
         itemImageView.contentMode = .scaleAspectFill
         itemImageView.clipsToBounds = true
@@ -75,7 +75,7 @@ class SectionItemTableViewCell: UITableViewCell {
             descriptionLabel.trailingAnchor.constraint(equalTo: titleLabel.trailingAnchor),
             descriptionLabel.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -8),
 
-            // Add Button Constraints
+            // Adding Button Constraints
             addButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
             addButton.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
             addButton.widthAnchor.constraint(equalToConstant: 30),
@@ -84,16 +84,26 @@ class SectionItemTableViewCell: UITableViewCell {
     }
 
     // MARK: - Configuration
-    func configure(with item: Item) {
+    func configure(with item: FeedingMeal) {
         currentItem = item
         itemImageView.image = UIImage(named: item.image)
         titleLabel.text = item.name
         descriptionLabel.text = item.description
     }
 
+  
     // MARK: - Actions
     @objc private func addButtonTapped() {
         guard let item = currentItem else { return }
+        
+        // Toggle button state
+        let isAdded = addButton.currentImage == UIImage(systemName: "plus.square.fill")
+        let newImageName = isAdded ? "checkmark.circle.fill" : "plus.square.fill"
+        
+        addButton.setImage(UIImage(systemName: newImageName), for: .normal)
+        addButton.tintColor = isAdded ? .green : .gray
+        
         delegate?.didTapAddButton(for: item)
     }
+
 }

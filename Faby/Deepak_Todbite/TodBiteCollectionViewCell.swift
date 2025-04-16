@@ -2,11 +2,10 @@ import UIKit
 
 // Define the delegate protocol
 protocol TodBiteCollectionViewCellDelegate: AnyObject {
-    func didTapAddButton(for item: Item, in category: CategoryType)
+    func didTapAddButton(for item: FeedingMeal, in category: BiteType)
 }
 
 class TodBiteCollectionViewCell: UICollectionViewCell {
-    @IBOutlet weak var stackView: UIStackView!
     // MARK: - UI Components
     @IBOutlet weak var foodNameLabel: UILabel!
     @IBOutlet weak var nutritionLabel: UILabel!
@@ -15,8 +14,8 @@ class TodBiteCollectionViewCell: UICollectionViewCell {
 
     // MARK: - Properties
     weak var delegate: TodBiteCollectionViewCellDelegate?
-    private var currentItem: Item?
-    private var currentCategory: CategoryType?
+    private var currentItem: FeedingMeal?
+    private var currentCategory: BiteType?
 
     // MARK: - Lifecycle
     override func awakeFromNib() {
@@ -97,9 +96,15 @@ class TodBiteCollectionViewCell: UICollectionViewCell {
             nutritionLabel.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -8)
         ])
     }
+    func updateButtonState(_ isAdded: Bool) {
+        let buttonImage = isAdded ? "checkmark.circle.fill" : "plus.square.fill"
+        addButton.setImage(UIImage(systemName: buttonImage), for: .normal)
+        addButton.tintColor = isAdded ? .systemGreen : .white
+    }
+
 
     // MARK: - Configure Cell
-    func configure(with item: Item, category: CategoryType, isAdded: Bool) {
+    func configure(with item: FeedingMeal, category: BiteType, isAdded: Bool) {
         self.currentItem = item
         self.currentCategory = category
 
@@ -112,6 +117,7 @@ class TodBiteCollectionViewCell: UICollectionViewCell {
         let buttonImage = isAdded ? "checkmark.circle.fill" : "plus.square.fill"
         addButton.setImage(UIImage(systemName: buttonImage), for: .normal)
         addButton.tintColor = isAdded ? .systemGreen : .white
+
     }
 
     // MARK: - Button Action

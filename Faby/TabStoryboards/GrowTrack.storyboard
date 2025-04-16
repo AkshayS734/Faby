@@ -82,11 +82,13 @@
                         <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <segmentedControl opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="left" contentVerticalAlignment="top" segmentControlStyle="plain" selectedSegmentIndex="0" translatesAutoresizingMaskIntoConstraints="NO" id="6mZ-XZ-7nq">
+                            <segmentedControl opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="left" contentVerticalAlignment="top" segmentControlStyle="plain" selectedSegmentIndex="3" translatesAutoresizingMaskIntoConstraints="NO" id="6mZ-XZ-7nq">
                                 <rect key="frame" x="16" y="119" width="361" height="32"/>
                                 <segments>
-                                    <segment title="First"/>
-                                    <segment title="Second"/>
+                                    <segment title="Week"/>
+                                    <segment title="Month"/>
+                                    <segment title="6 Months"/>
+                                    <segment title="Year"/>
                                 </segments>
                                 <connections>
                                     <action selector="timeSpanChanged:" destination="QcD-le-w5v" eventType="valueChanged" id="Vce-dR-Z1p"/>

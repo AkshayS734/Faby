@@ -9,7 +9,7 @@ import UIKit
 
 // Define the delegate protocol
 protocol PostViewDelegate: AnyObject {
-    func didPostComment(_ comment: Comment)
+    func didPostComment(_ comment: Post)
 }
 
 class PostViewController: UIViewController, UITextViewDelegate {
@@ -20,44 +20,59 @@ class PostViewController: UIViewController, UITextViewDelegate {
     @IBOutlet weak var userName: UILabel!
     @IBOutlet weak var stackView: UIStackView!
     @IBOutlet weak var userImage: UIImageView!
-    
-    // Placeholder label for the UITextView
+
     let placeholderLabel = UILabel()
-    
-    // Delegate property
+
     weak var delegate: PostViewDelegate?
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        // Set up the user interface
-        userName.text = "VIVEK CHAUDHARY"
+        // Dynamically set the username label from ParentDataModel
+        if let currentParent = ParentDataModel.shared.currentParent {
+            userName.text = currentParent.name
+        } else {
+            userName.text = "Unknown User" // Fallback text
+        }
+        
         stackView.layer.cornerRadius = 12
-        
-        // Configure placeholder for UITextView
         configurePlaceholder()
-        
-        // Set the UITextView delegate
         commentTextView.delegate = self
     }
-    
-    // Action for posting a comment
+  
     @IBAction func postComment(_ sender: Any) {
-        // Ensure valid input
         guard let title = titleTextBox.text, let text = commentTextView.text, !title.isEmpty, !text.isEmpty else {
             showAlert(message: "Please enter both a title and a comment.")
             return
         }
-        
-        // Create a new Comment object
-        let newComment = Comment(username: "VIVEK CHAUDHARY", title: title, text: text, likes: 0, replies: [])
-        
+
+        guard let currentParent = ParentDataModel.shared.currentParent else {
+            showAlert(message: "Error: No parent found!")
+            return
+        }
+
+        // ✅ Call `addPost` without passing `username`
+        PostDataManager.shared.addPost(title: title, text: text)
+
+        print("✅ Post added successfully, navigating back!")
+
+        // ✅ Create a new `Post` instance with `parentId`
+        let newComment = Post(
+       
+            username: currentParent.name,
+            title: title,
+            text: text,
+            likes: 0,
+            replies: []
+        )
+
         // Call the delegate method
         delegate?.didPostComment(newComment)
-        
+
         // Navigate back to the previous screen
         navigationController?.popViewController(animated: true)
     }
+
     
     // Helper function to show an alert
     private func showAlert(message: String) {
