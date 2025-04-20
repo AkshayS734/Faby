@@ -307,7 +307,30 @@ class HospitalViewController: UIViewController, UITableViewDataSource, UITableVi
             babyId: hospital.babyId
         )
         
+        // Save to local storage
         VaccinationStorageManager.shared.saveSchedule(schedule)
+        
+        // Save to Supabase
+        Task {
+            do {
+                let record = VacciAlertRecord(
+                    babyId: hospital.babyId,
+                    vaccineName: schedule.type,
+                    doseType: "Scheduled",
+                    scheduledDate: date,
+                    administeredDate: nil,
+                    hospitalName: hospital.name,
+                    hospitalAddress: hospital.address,
+                    location: nil,
+                    notes: "Scheduled vaccination"
+                )
+                
+                try await VacciAlertSupabaseManager.shared.saveVaccineRecord(record)
+                print("✅ Successfully saved vaccination schedule to Supabase")
+            } catch {
+                print("❌ Error saving to Supabase: \(error)")
+            }
+        }
     }
     
     private func showConfirmationMessage() {
