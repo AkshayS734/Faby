@@ -200,14 +200,53 @@ class VacciAlertViewController: UIViewController {
             name: NSNotification.Name("NavigateToVaccineReminder"),
             object: nil
         )
+        
+        // Load vaccination data from Supabase
+        loadVaccinationDataFromSupabase()
     }
 
     @objc private func refreshVaccinationData() {
         // Refresh your data here
         setupVaccineData()
+        
+        // Also refresh data from Supabase
+        loadVaccinationDataFromSupabase()
+    }
+    
+    // MARK: - Supabase Integration
+    private func loadVaccinationDataFromSupabase() {
+        // For now, we'll use a fixed baby ID for testing
+        // In a real app, you would get the current baby's ID
+        let babyId = UUID()
+        
+        Task {
+            do {
+                // Get the current baby
+                // This is a placeholder - replace with actual code to get current baby
+                // In a real implementation, you would get the actual baby from your app's state
+                let dummyBaby = Baby(name: "Test Baby", dateOfBirth: "2023-04-15", gender: .male)
+                
+                // Create a vaccine tracker for this baby
+                let vaccineTracker = dummyBaby.getVaccineTracker()
+                
+                // Fetch vaccination records from Supabase
+                await vaccineTracker.fetchVaccinationRecords()
+                
+                // Update UI on main thread
+                await MainActor.run {
+                    // Update your UI with the fetched data
+                    // This might involve updating selectedVaccines or other UI elements
+                    print("✅ Successfully loaded vaccination data from Supabase")
+                    
+                    // Re-setup vaccine data to reflect changes
+                    setupVaccineData()
+                }
+            } catch {
+                print("❌ Error loading vaccination data from Supabase: \(error)")
+            }
+        }
     }
 
-    
     // MARK: - UI Setup
     private func setupUI() {
         navigationItem.hidesBackButton = true
