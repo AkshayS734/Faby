@@ -141,7 +141,7 @@ class VaccineInputViewController: UIViewController, UITableViewDataSource, UITab
         confirmationAlert.addAction(UIAlertAction(title: "OK", style: .default) { [weak self] _ in
             guard let self = self else { return }
             let vacciAlertVC = VacciAlertViewController()
-            vacciAlertVC.selectedVaccines = self.selectedVaccines // This will now work
+//            vacciAlertVC.selectedVaccines = self.selectedVaccines // This will now work
             self.navigationController?.pushViewController(vacciAlertVC, animated: true)
         })
 

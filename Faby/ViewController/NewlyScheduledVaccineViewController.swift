@@ -304,8 +304,57 @@ class NewlyScheduledVaccineViewController: UIViewController {
     
     // MARK: - Data Loading
     private func loadCompletedVaccines() {
+        // Load from local storage
         completedVaccines = storageManager.getCompletedVaccines()
-        updateUI()
+        
+        // Also load from Supabase
+        Task {
+            do {
+                // Get the current baby from the app's state
+                let baby = BabyDataModel.shared.babyList[0]
+                
+                // Create a Supabase manager
+                let supabaseManager = SupabaseVaccineManager.shared
+                
+                // Fetch administered vaccines for this baby
+                let administeredVaccines = try await supabaseManager.fetchAdministeredVaccines(forBabyId: baby.babyID.uuidString)
+                
+                await MainActor.run {
+                    // Convert administered vaccines to dictionary format
+                    let vaccineRecords = administeredVaccines.map { record -> [String: String] in
+                        let dateFormatter = DateFormatter()
+                        dateFormatter.dateStyle = .medium
+                        
+                        return [
+                            "type": "Vaccine", // Will need to fetch actual name
+                            "date": dateFormatter.string(from: record.administeredDate),
+                            "hospital": "Hospital" // Need to include hospital info
+                        ]
+                    }
+                    
+                    // Combine local and Supabase data (avoiding duplicates)
+                    var allVaccines = completedVaccines
+                    
+                    for supabaseVaccine in vaccineRecords {
+                        // Check if this vaccine is already in our list
+                        let isDuplicate = allVaccines.contains { localVaccine in
+                            localVaccine["type"] == supabaseVaccine["type"] &&
+                            localVaccine["date"] == supabaseVaccine["date"]
+                        }
+                        
+                        if !isDuplicate {
+                            allVaccines.append(supabaseVaccine)
+                        }
+                    }
+                    
+                    // Update the UI
+                    completedVaccines = allVaccines
+                    updateUI()
+                }
+            } catch {
+                print("❌ Error loading administered vaccines from Supabase: \(error)")
+            }
+        }
     }
     
     private func updateUI() {

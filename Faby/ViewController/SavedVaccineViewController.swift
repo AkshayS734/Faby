@@ -1,26 +1,174 @@
 import UIKit
 import PDFKit
+import Supabase
+
+// MARK: - Supabase Vaccine Manager
+class VaccineDataManager {
+    static let shared = VaccineDataManager()
+    
+    private init() {}
+    
+    // Helper function to get Supabase client
+    private func getSupabaseClient() -> SupabaseClient? {
+        if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
+            return appDelegate.supabase
+        } else if let sceneDelegate = UIApplication.shared.connectedScenes.first?.delegate as? SceneDelegate {
+            return sceneDelegate.supabase
+        }
+        return nil
+    }
+    
+    // Get all available vaccines from Supabase
+    func fetchAllVaccines() async throws -> [Vaccine] {
+        guard let supabase = getSupabaseClient() else {
+            throw NSError(domain: "VaccineError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Supabase client not available"])
+        }
+        
+        let response = try await supabase.from("Vaccines")
+            .select()
+            .execute()
+            
+        return try JSONDecoder().decode([Vaccine].self, from: response.data)
+    }
+    
+    // Get all vaccines scheduled for a specific baby
+    func fetchVaccineSchedules(forBaby babyId: UUID) async throws -> [VaccineSchedule] {
+        guard let supabase = getSupabaseClient() else {
+            throw NSError(domain: "VaccineError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Supabase client not available"])
+        }
+        
+        let response = try await supabase.from("VaccineSchedules")
+            .select()
+            .eq("babyID", value: babyId.uuidString)
+            .execute()
+            
+        return try JSONDecoder().decode([VaccineSchedule].self, from: response.data)
+    }
+    
+    // Get all administered vaccines for a baby
+    func fetchAdministeredVaccines(forBaby babyId: UUID) async throws -> [VaccineAdministered] {
+        guard let supabase = getSupabaseClient() else {
+            throw NSError(domain: "VaccineError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Supabase client not available"])
+        }
+        
+        let response = try await supabase.from("VaccineAdministered")
+            .select()
+            .eq("babyId", value: babyId.uuidString)
+            .execute()
+            
+        return try JSONDecoder().decode([VaccineAdministered].self, from: response.data)
+    }
+    
+    // Mark a vaccine as administered
+    // Mark a vaccine as administered
+    func addAdministeredVaccine(babyId: UUID, vaccineId: UUID, scheduleId: UUID? = nil, date: Date, location: String) async throws {
+        guard let supabase = getSupabaseClient() else {
+            throw NSError(domain: "VaccineError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Supabase client not available"])
+        }
+        
+        let record = VaccineAdministered(
+            id: UUID(),
+            babyId: babyId,
+            vaccineId: vaccineId,
+            scheduleId: scheduleId ?? UUID(),
+            administeredDate: date
+        )
+        
+        // Format date for Supabase compatibility
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
+        let dateString = dateFormatter.string(from: date)
+        
+        // Create an Encodable struct for Supabase
+        struct SupabaseVaccineRecord: Encodable {
+            let id: String
+            let babyId: String
+            let vaccineId: String
+            let scheduleId: String
+            let administeredDate: String
+        }
+        
+        let supabaseRecord = SupabaseVaccineRecord(
+            id: record.id.uuidString,
+            babyId: record.babyId.uuidString,
+            vaccineId: record.vaccineId.uuidString,
+            scheduleId: record.scheduleId.uuidString,
+            administeredDate: dateString
+        )
+        
+        try await supabase.from("VaccineAdministered")
+            .insert(supabaseRecord)
+            .execute()
+    }
+    // Delete an administered vaccine record
+    func removeAdministeredVaccine(recordId: UUID) async throws {
+        guard let supabase = getSupabaseClient() else {
+            throw NSError(domain: "VaccineError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Supabase client not available"])
+        }
+        
+        try await supabase.from("VaccineAdministered")
+            .delete()
+            .eq("id", value: recordId.uuidString)
+            .execute()
+    }
+}
 
 class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
     
     // MARK: - Properties
     private let tableView = UITableView(frame: .zero, style: .insetGrouped)
-    private let vaccineManager = VaccineManager.shared
-    private var groupedVaccines: [String: [String]] = [:]
-    private var stages: [String] = []
-    private var vaccineDates: [String: Date] = [:] // This will now be in-memory only
+    private let emptyStateView = UIView()
+    private let vaccineDataManager = VaccineDataManager.shared
+    
+    private var allVaccines: [Vaccine] = []
+    private var vaccineSchedules: [VaccineSchedule] = []
+    private var administeredVaccines: [VaccineAdministered] = []
+    
+    // For organizing the UI
+    private var groupedVaccines: [String: [VaccineWithStatus]] = [:]
+    private var ageGroups: [String] = []
+    
+    private var baby: Baby!
+    
+    // MARK: - Helper Struct for UI
+    private struct VaccineWithStatus {
+        let vaccine: Vaccine
+        let isAdministered: Bool
+        let administeredDate: Date?
+        let vaccineAdministeredId: UUID?
+        
+        // Helper to determine display stage based on weeks
+        var stageTitle: String {
+            let weeks = vaccine.startWeek
+            if weeks <= 6 {
+                return "Birth to 6 Weeks"
+            } else if weeks <= 10 {
+                return "6 to 10 Weeks"
+            } else if weeks <= 14 {
+                return "10 to 14 Weeks"
+            } else if weeks <= 24 {
+                return "14 to 24 Weeks"
+            } else if weeks <= 52 {
+                return "24 to 52 Weeks"
+            } else if weeks <= 104 {
+                return "1 to 2 Years"
+            } else {
+                return "Over 2 Years"
+            }
+        }
+    }
     
     // MARK: - Lifecycle Methods
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
         configureTableView()
+        setupEmptyStateView()
     }
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         loadSavedData()
-        tableView.reloadData()
     }
     
     // MARK: - UI Setup
@@ -33,6 +181,31 @@ class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITab
             target: self,
             action: #selector(downloadTapped)
         )
+    }
+    
+    private func setupEmptyStateView() {
+        emptyStateView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(emptyStateView)
+        
+        let noDataLabel = UILabel()
+        noDataLabel.translatesAutoresizingMaskIntoConstraints = false
+        noDataLabel.text = "No vaccination records found"
+        noDataLabel.textAlignment = .center
+        noDataLabel.textColor = .secondaryLabel
+        emptyStateView.addSubview(noDataLabel)
+        
+        NSLayoutConstraint.activate([
+            emptyStateView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            emptyStateView.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            emptyStateView.widthAnchor.constraint(equalTo: view.widthAnchor),
+            emptyStateView.heightAnchor.constraint(equalToConstant: 100),
+            
+            noDataLabel.centerXAnchor.constraint(equalTo: emptyStateView.centerXAnchor),
+            noDataLabel.centerYAnchor.constraint(equalTo: emptyStateView.centerYAnchor),
+            noDataLabel.widthAnchor.constraint(equalTo: emptyStateView.widthAnchor, constant: -40)
+        ])
+        
+        emptyStateView.isHidden = true
     }
     
     private func configureTableView() {
@@ -52,63 +225,163 @@ class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITab
     
     // MARK: - Data Management
     private func loadSavedData() {
-        // Create grouped vaccines from VaccineManager data
-        groupedVaccines = [:]
-        stages = vaccineManager.vaccineData.map { $0.stageTitle }
+        showLoadingIndicator()
         
-        // Get selected vaccines from VaccineManager
-        let selectedVaccines = vaccineManager.getSelectedVaccines()
-        
-        // Filter selected vaccines and group them by stage
-        for stage in vaccineManager.vaccineData {
-            let selectedVaccinesForStage = stage.vaccines.filter {
-                selectedVaccines.contains($0)
-            }
-            if !selectedVaccinesForStage.isEmpty {
-                groupedVaccines[stage.stageTitle] = selectedVaccinesForStage
+        Task {
+            do {
+                // Get the current baby
+                if !BabyDataModel.shared.babyList.isEmpty {
+                    baby = BabyDataModel.shared.babyList[0]
+                    
+                    // Load all data concurrently
+                    async let allVaccinesTask = vaccineDataManager.fetchAllVaccines()
+                    async let schedulesTask = vaccineDataManager.fetchVaccineSchedules(forBaby: baby.babyID)
+                    async let administeredTask = vaccineDataManager.fetchAdministeredVaccines(forBaby: baby.babyID)
+                    
+                    // Wait for all to complete
+                    (allVaccines, vaccineSchedules, administeredVaccines) = try await (allVaccinesTask, schedulesTask, administeredTask)
+                    
+                    // Process the data for display
+                    processVaccineData()
+                    
+                    await MainActor.run {
+                        hideLoadingIndicator()
+                        
+                        if self.administeredVaccines.isEmpty {
+                            self.emptyStateView.isHidden = false
+                            self.tableView.isHidden = true
+                        } else {
+                            self.emptyStateView.isHidden = true
+                            self.tableView.isHidden = false
+                            self.tableView.reloadData()
+                        }
+                    }
+                } else {
+                    await MainActor.run {
+                        hideLoadingIndicator()
+                        self.emptyStateView.isHidden = false
+                        self.tableView.isHidden = true
+                    }
+                }
+            } catch {
+                print("❌ Error loading vaccines from Supabase: \(error)")
+                await MainActor.run {
+                    hideLoadingIndicator()
+                    showErrorMessage("Failed to load vaccination records: \(error.localizedDescription)")
+                    self.emptyStateView.isHidden = false
+                    self.tableView.isHidden = true
+                }
             }
         }
     }
     
-    private func saveVaccineDate(_ date: Date, for vaccine: String) {
-        vaccineDates[vaccine] = date
-        tableView.reloadData()
+    private func processVaccineData() {
+        // Create VaccineWithStatus objects by combining data
+        var vaccinesWithStatus: [VaccineWithStatus] = []
+        
+        for vaccine in allVaccines {
+            // Find if this vaccine has been administered
+            let administered = administeredVaccines.first { $0.vaccineId == vaccine.id }
+            
+            vaccinesWithStatus.append(VaccineWithStatus(
+                vaccine: vaccine,
+                isAdministered: administered != nil,
+                administeredDate: administered?.administeredDate,
+                vaccineAdministeredId: administered?.id
+            ))
+        }
+        
+        // Only show administered vaccines
+        let administeredVaccinesWithStatus = vaccinesWithStatus.filter { $0.isAdministered }
+        
+        // Group by stage
+        groupedVaccines = Dictionary(grouping: administeredVaccinesWithStatus) { $0.stageTitle }
+        
+        // Set up age groups for sections
+        ageGroups = Array(groupedVaccines.keys).sorted { (group1, group2) -> Bool in
+            // Sort age groups by start week
+            let weekRanges = [
+                "Birth to 6 Weeks": 0,
+                "6 to 10 Weeks": 6,
+                "10 to 14 Weeks": 10,
+                "14 to 24 Weeks": 14,
+                "24 to 52 Weeks": 24,
+                "1 to 2 Years": 52,
+                "Over 2 Years": 104
+            ]
+            
+            return (weekRanges[group1] ?? 0) < (weekRanges[group2] ?? 0)
+        }
+    }
+    
+    private func saveVaccineDate(_ date: Date, for vaccineWithStatus: VaccineWithStatus) {
+        showLoadingIndicator()
+        
+        Task {
+            do {
+                // If already administered, update it
+                if let existingId = vaccineWithStatus.vaccineAdministeredId {
+                    // Remove the old record
+                    try await vaccineDataManager.removeAdministeredVaccine(recordId: existingId)
+                }
+                
+                // Create a new record
+                try await vaccineDataManager.addAdministeredVaccine(
+                    babyId: baby.babyID,
+                    vaccineId: vaccineWithStatus.vaccine.id,
+                    date: date,
+                    location: "Added manually"
+                )
+                
+                // Reload data to get the updated records
+                await loadSavedData()
+                
+                await MainActor.run {
+                    hideLoadingIndicator()
+                    showSuccessMessage("Vaccination date saved successfully")
+                }
+            } catch {
+                await MainActor.run {
+                    hideLoadingIndicator()
+                    showErrorMessage("Failed to save vaccination date: \(error.localizedDescription)")
+                }
+            }
+        }
     }
     
     // MARK: - UITableViewDataSource Methods
     func numberOfSections(in tableView: UITableView) -> Int {
-        return stages.count
+        return ageGroups.count
     }
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        let stage = stages[section]
-        return groupedVaccines[stage]?.count ?? 0
+        let ageGroup = ageGroups[section]
+        return groupedVaccines[ageGroup]?.count ?? 0
     }
     
     func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
-        let stage = stages[section]
-        return groupedVaccines[stage]?.isEmpty == false ? stage : nil
+        let ageGroup = ageGroups[section]
+        return groupedVaccines[ageGroup]?.isEmpty == false ? ageGroup : nil
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "VaccineCell", for: indexPath) as! VaccineTableViewCell
         
-        let stage = stages[indexPath.section]
-        if let vaccines = groupedVaccines[stage] {
-            let vaccine = vaccines[indexPath.row]
+        let ageGroup = ageGroups[indexPath.section]
+        if let vaccinesInGroup = groupedVaccines[ageGroup] {
+            let vaccineWithStatus = vaccinesInGroup[indexPath.row]
             
-            cell.configure(with: vaccine)
-            
-            if let date = vaccineDates[vaccine] {
+            // Get formatted date for display
+            var displayDate = "Not administered yet"
+            if let administeredDate = vaccineWithStatus.administeredDate {
                 let dateFormatter = DateFormatter()
                 dateFormatter.dateStyle = .medium
-                cell.setDate(dateFormatter.string(from: date))
-            } else {
-                cell.setDate(nil)
+                displayDate = dateFormatter.string(from: administeredDate)
             }
             
+            cell.configure(vaccineName: vaccineWithStatus.vaccine.name, date: displayDate)
             cell.onOptionsButtonTapped = { [weak self] in
-                self?.showDatePicker(for: vaccine)
+                self?.showDatePicker(for: vaccineWithStatus)
             }
         }
         
@@ -122,38 +395,43 @@ class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITab
     
     func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
         if editingStyle == .delete {
-            let stage = stages[indexPath.section]
-            guard var vaccines = groupedVaccines[stage],
-                  indexPath.row < vaccines.count else { return }
+            let ageGroup = ageGroups[indexPath.section]
+            guard var vaccinesInGroup = groupedVaccines[ageGroup],
+                  indexPath.row < vaccinesInGroup.count else { return }
             
-            let vaccineToDelete = vaccines[indexPath.row]
+            let vaccineToDelete = vaccinesInGroup[indexPath.row]
             
             let alert = UIAlertController(
-                title: "Delete Vaccine",
-                message: "Are you sure you want to remove \(vaccineToDelete) from your vaccination record?",
+                title: "Delete Vaccine Record",
+                message: "Are you sure you want to remove \(vaccineToDelete.vaccine.name) from your vaccination record?",
                 preferredStyle: .alert
             )
             
             alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
             alert.addAction(UIAlertAction(title: "Delete", style: .destructive) { [weak self] _ in
-                guard let self = self else { return }
+                guard let self = self,
+                      let vaccineAdministeredId = vaccineToDelete.vaccineAdministeredId else { return }
                 
-                // Remove from VaccineManager's selected vaccines
-                self.vaccineManager.unselectVaccine(vaccineToDelete)
+                self.showLoadingIndicator()
                 
-                // Remove from grouped vaccines
-                vaccines.remove(at: indexPath.row)
-                self.groupedVaccines[stage] = vaccines
-                
-                // Remove associated date
-                self.vaccineDates.removeValue(forKey: vaccineToDelete)
-                
-                // Update UI
-                if vaccines.isEmpty {
-                    self.loadSavedData() // Reload all data to clean up empty sections
-                    self.tableView.reloadData()
-                } else {
-                    self.tableView.deleteRows(at: [indexPath], with: .fade)
+                Task {
+                    do {
+                        // Remove from Supabase
+                        try await self.vaccineDataManager.removeAdministeredVaccine(recordId: vaccineAdministeredId)
+                        
+                        // Reload all data
+                        await self.loadSavedData()
+                        
+                        await MainActor.run {
+                            self.hideLoadingIndicator()
+                            self.showSuccessMessage("Vaccination record removed successfully")
+                        }
+                    } catch {
+                        await MainActor.run {
+                            self.hideLoadingIndicator()
+                            self.showErrorMessage("Failed to remove vaccination record: \(error.localizedDescription)")
+                        }
+                    }
                 }
             })
             
@@ -162,7 +440,7 @@ class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITab
     }
     
     // MARK: - Date Picker
-    private func showDatePicker(for vaccine: String) {
+    private func showDatePicker(for vaccineWithStatus: VaccineWithStatus) {
         let alert = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
         
         let titleLabel = UILabel()
@@ -174,7 +452,7 @@ class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITab
         let datePicker = UIDatePicker()
         datePicker.datePickerMode = .date
         datePicker.preferredDatePickerStyle = .wheels
-        if let existingDate = vaccineDates[vaccine] {
+        if let existingDate = vaccineWithStatus.administeredDate {
             datePicker.date = existingDate
         }
         
@@ -205,7 +483,7 @@ class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITab
         alert.view.addConstraint(constraintHeight)
         
         alert.addAction(UIAlertAction(title: "Save", style: .default) { [weak self] _ in
-            self?.saveVaccineDate(datePicker.date, for: vaccine)
+            self?.saveVaccineDate(datePicker.date, for: vaccineWithStatus)
         })
         
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
@@ -215,6 +493,11 @@ class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITab
     
     // MARK: - PDF Export
     @objc private func downloadTapped() {
+        guard !administeredVaccines.isEmpty else {
+            showAlert(title: "No Data", message: "There are no vaccination records to export")
+            return
+        }
+        
         guard let pdfData = generatePDF() else {
             showAlert(title: "Error", message: "Could not generate PDF")
             return
@@ -279,32 +562,37 @@ class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITab
             
             var yPosition: CGFloat = titleRect.maxY + 60
             
-            for stage in stages {
-                if let vaccines = groupedVaccines[stage], !vaccines.isEmpty {
+            for ageGroup in ageGroups {
+                if let vaccinesInGroup = groupedVaccines[ageGroup], !vaccinesInGroup.isEmpty {
                     let stageAttributes = [
                         NSAttributedString.Key.font: UIFont.boldSystemFont(ofSize: 16)
                     ]
-                    stage.draw(
+                    ageGroup.draw(
                         at: CGPoint(x: 50, y: yPosition),
                         withAttributes: stageAttributes
                     )
                     yPosition += 25
                     
-                    for vaccine in vaccines {
+                    for vaccineWithStatus in vaccinesInGroup {
                         let vaccineAttributes = [
                             NSAttributedString.Key.font: UIFont.systemFont(ofSize: 14)
                         ]
                         
-                        vaccine.draw(
+                        vaccineWithStatus.vaccine.name.draw(
                             at: CGPoint(x: 70, y: yPosition),
                             withAttributes: vaccineAttributes
                         )
                         
-                        if let date = vaccineDates[vaccine] {
+                        if let date = vaccineWithStatus.administeredDate {
                             let dateFormatter = DateFormatter()
                             dateFormatter.dateStyle = .medium
                             let dateString = dateFormatter.string(from: date)
                             dateString.draw(
+                                at: CGPoint(x: pageWidth - 200, y: yPosition),
+                                withAttributes: vaccineAttributes
+                            )
+                        } else {
+                            "Not administered".draw(
                                 at: CGPoint(x: pageWidth - 200, y: yPosition),
                                 withAttributes: vaccineAttributes
                             )
@@ -325,6 +613,7 @@ class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITab
         return data
     }
     
+    // MARK: - Utility Methods
     private func showAlert(title: String, message: String) {
         let alert = UIAlertController(
             title: title,
@@ -334,10 +623,42 @@ class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITab
         alert.addAction(UIAlertAction(title: "OK", style: .default))
         present(alert, animated: true)
     }
+    
+    private func showLoadingIndicator() {
+        // Add activity indicator if it doesn't exist
+        if view.viewWithTag(999) == nil {
+            let activityIndicator = UIActivityIndicatorView(style: .large)
+            activityIndicator.translatesAutoresizingMaskIntoConstraints = false
+            activityIndicator.startAnimating()
+            activityIndicator.tag = 999
+            
+            view.addSubview(activityIndicator)
+            
+            NSLayoutConstraint.activate([
+                activityIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+                activityIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+            ])
+        }
+    }
+    
+    private func hideLoadingIndicator() {
+        // Remove activity indicator
+        if let activityIndicator = view.viewWithTag(999) as? UIActivityIndicatorView {
+            activityIndicator.stopAnimating()
+            activityIndicator.removeFromSuperview()
+        }
+    }
+    
+    private func showSuccessMessage(_ message: String) {
+        showAlert(title: "Success", message: message)
+    }
+    
+    private func showErrorMessage(_ message: String) {
+        showAlert(title: "Error", message: message)
+    }
 }
 
 // MARK: - VaccineTableViewCell
-
 class VaccineTableViewCell: UITableViewCell {
     private let vaccineLabel = UILabel()
     private let dateLabel = UILabel()
@@ -391,13 +712,17 @@ class VaccineTableViewCell: UITableViewCell {
     }
     
     // MARK: - Configuration
-    func configure(with vaccineName: String) {
+    func configure(vaccineName: String, date: String? = nil) {
         vaccineLabel.text = vaccineName
+        setDate(date)
     }
     
     func setDate(_ dateString: String?) {
-        if let dateString = dateString {
+        if let dateString = dateString, dateString != "Not administered yet" {
             dateLabel.text = "Administered on: \(dateString)"
+            dateLabel.isHidden = false
+        } else if let dateString = dateString {
+            dateLabel.text = dateString
             dateLabel.isHidden = false
         } else {
             dateLabel.text = nil
