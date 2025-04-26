@@ -28,9 +28,9 @@ Feature	Description
 ⸻
 
 🚀 Getting Started
-	1.	Clone the repository:
+	1.	Clone the repository: 
 
-git clone 
+git clone https://github.com/AkshayS734/Faby.git
 
 
 	2.	Open in Xcode:
