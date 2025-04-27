@@ -349,7 +349,7 @@ class NewlyScheduledVaccineViewController: UIViewController {
                     
                     // Update the UI
                     completedVaccines = allVaccines
-                    updateUI()
+        updateUI()
                 }
             } catch {
                 print("❌ Error loading administered vaccines from Supabase: \(error)")

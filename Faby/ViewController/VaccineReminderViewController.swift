@@ -1,4 +1,5 @@
 import UIKit
+import SwiftUI
 
 // MARK: - Custom Calendar with Indicators
 class CalendarWithIndicators: UIDatePicker {
@@ -163,6 +164,8 @@ class VaccineReminderViewController: UIViewController, UISearchBarDelegate {
         formatter.dateStyle = .medium
         return formatter
     }()
+    
+    private var vaccinationListHostingController: UIHostingController<VaccinationListView>?
     
     // MARK: - Lifecycle Methods
     override func viewDidLoad() {
@@ -349,45 +352,21 @@ class VaccineReminderViewController: UIViewController, UISearchBarDelegate {
     
     // MARK: - Data Loading and Display
     private func loadVaccinations() {
-        print("📋 Loading vaccinations for baby: \(currentBabyId.uuidString)")
+        print("📋 Loading vaccinations for all babies")
         activityIndicator.startAnimating()
         
         Task {
             do {
-                // Get scheduled vaccines
-                let scheduledVaccines = try await VaccineScheduleManager.shared.fetchSchedules(forBaby: currentBabyId)
-                print("✅ Fetched \(scheduledVaccines.count) scheduled vaccines")
+                // Fetch all scheduled vaccines (no baby filter)
+                let scheduledVaccines = try await VaccineScheduleManager.shared.fetchAllSchedules()
+                print("✅ Fetched \(scheduledVaccines.count) scheduled vaccines (all babies)")
                 
-                // If no vaccines are found, add a sample one for testing
-                let vaccines: [VaccineSchedule]
-                if scheduledVaccines.isEmpty {
-                    print("⚠️ No scheduled vaccines found, creating a sample record for testing")
-                    
-                    // Create a test vaccination for tomorrow
-                    let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date()
-                    let testVaccine = VaccineSchedule(
-                        id: UUID(),
-                        babyID: currentBabyId,
-                        vaccineId: UUID(),
-                        hospital: "Test Hospital",
-                        date: tomorrow,
-                        location: "123 Test Street, City",
-                        isAdministered: false
-                    )
-                    
-                    vaccines = [testVaccine]
-                } else {
-                    vaccines = scheduledVaccines
-                }
-                
-                // Get administered vaccines 
-                // (Skip for now to simplify troubleshooting)
-                // let administeredVaccines = try await AdministeredVaccineManager.shared.fetchAdministeredVaccines(forBaby: currentBabyId)
+                // Get administered vaccines (optional, can be filtered if needed)
                 let administeredVaccines: [VaccineAdministered] = []
                 
                 // Process and combine records
                 let combinedRecords = processVaccinationRecords(
-                    scheduledVaccines: vaccines,
+                    scheduledVaccines: scheduledVaccines,
                     administeredVaccines: administeredVaccines
                 )
                 
@@ -399,47 +378,18 @@ class VaccineReminderViewController: UIViewController, UISearchBarDelegate {
                     self.vaccinations = combinedRecords
                     self.filteredVaccinations = combinedRecords
                     self.calendarWithIndicators?.updateScheduledDates(vaccineDates)
-                    self.displayVaccinations()
+                    self.displayVaccinations(combinedRecords)
                     self.activityIndicator.stopAnimating()
                 }
             } catch {
                 print("❌ Error loading vaccinations: \(error)")
-                
-                // Create fallback data for testing
-                let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date()
-                let nextWeek = Calendar.current.date(byAdding: .day, value: 7, to: Date()) ?? Date()
-                
-                let fallbackVaccines = [
-                    VaccineSchedule(
-                        id: UUID(),
-                        babyID: currentBabyId,
-                        vaccineId: UUID(),
-                        hospital: "General Hospital",
-                        date: tomorrow,
-                        location: "123 Main Street, San Francisco",
-                        isAdministered: false
-                    ),
-                    VaccineSchedule(
-                        id: UUID(),
-                        babyID: currentBabyId,
-                        vaccineId: UUID(),
-                        hospital: "Children's Hospital",
-                        date: nextWeek,
-                        location: "456 Oak Avenue, San Francisco",
-                        isAdministered: false
-                    )
-                ]
-                
                 DispatchQueue.main.async { [weak self] in
                     guard let self = self else { return }
-                    self.vaccinations = fallbackVaccines
-                    self.filteredVaccinations = fallbackVaccines
-                    self.calendarWithIndicators?.updateScheduledDates(fallbackVaccines.map { $0.date })
-                    self.displayVaccinations()
                     self.activityIndicator.stopAnimating()
-                    
-                    // Show a more friendly error message
-                    self.showErrorAlert(message: "We're having trouble connecting to the server. Using sample data for now.")
+                    self.showErrorAlert(message: "Unable to load vaccination schedules. Please try again later.")
+                    self.vaccinations = []
+                    self.filteredVaccinations = []
+                    self.displayVaccinations([])
                 }
             }
         }
@@ -489,16 +439,27 @@ class VaccineReminderViewController: UIViewController, UISearchBarDelegate {
     private func displayVaccinations(_ vaccinationsToDisplay: [VaccineSchedule]? = nil) {
         let vaccines = vaccinationsToDisplay ?? filteredVaccinations
         
-        print("📊 Displaying \(vaccines.count) vaccinations")
+        // Remove any existing vaccination list view
+        vaccinationListHostingController?.view.removeFromSuperview()
+        vaccinationListHostingController?.removeFromParent()
         
-        if vaccines.isEmpty {
-            vaccinationsTableView.isHidden = true
-            emptyStateView.isHidden = false
-        } else {
-            vaccinationsTableView.isHidden = false
-            emptyStateView.isHidden = true
-            vaccinationsTableView.reloadData()
-        }
+        // Create and add the new SwiftUI vaccination list view
+        let vaccinationListView = VaccinationListView(vaccinations: vaccines)
+        let hostingController = UIHostingController(rootView: vaccinationListView)
+        addChild(hostingController)
+        view.addSubview(hostingController.view)
+        
+        // Setup constraints for the hosting controller
+        hostingController.view.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            hostingController.view.topAnchor.constraint(equalTo: calendarView.bottomAnchor),
+            hostingController.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            hostingController.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            hostingController.view.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
+        
+        hostingController.didMove(toParent: self)
+        vaccinationListHostingController = hostingController
     }
     
     // MARK: - Date Selection

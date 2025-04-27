@@ -15,7 +15,7 @@ class HospitalViewController: UIViewController, UITableViewDataSource, UITableVi
     
     // Vaccine properties
     var vaccine: Vaccine?
-    var vaccineName: String = "Vaccination" 
+    var vaccineName: String = "Vaccination"
     var vaccineId: UUID = UUID()
     
     private var hospitals: [Hospital] = []

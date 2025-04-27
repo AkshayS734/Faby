@@ -24,9 +24,9 @@ class LocationManager: NSObject, CLLocationManagerDelegate {
         
         switch authorizationStatus {
         case .notDetermined:
-            manager.requestWhenInUseAuthorization()
+        manager.requestWhenInUseAuthorization()
         case .authorizedWhenInUse, .authorizedAlways:
-            manager.requestLocation()
+        manager.requestLocation()
         case .denied, .restricted:
             onPermissionDenied?()
         @unknown default:

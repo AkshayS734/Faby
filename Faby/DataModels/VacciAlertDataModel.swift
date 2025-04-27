@@ -6,12 +6,20 @@ import Supabase
 // MARK: - Core Vaccination Data Models
 
 /// Base model for vaccine information
-struct Vaccine: Identifiable,Codable {
+struct Vaccine: Identifiable, Codable, Equatable {
     var id = UUID()
-        let name: String
+    let name: String
     let startWeek: Int
     let endWeek: Int
     let description: String
+    
+    // Implement Equatable to properly compare vaccine instances
+    static func == (lhs: Vaccine, rhs: Vaccine) -> Bool {
+        return lhs.id == rhs.id &&
+               lhs.name == rhs.name &&
+               lhs.startWeek == rhs.startWeek &&
+               lhs.endWeek == rhs.endWeek
+    }
 }
 
 /// Record representing a vaccine schedule
@@ -58,7 +66,7 @@ struct VaccineAdministered: Identifiable, Codable {
 struct Hospital: Identifiable {
     let id: UUID
     let babyId: UUID
-    let name: String
+        let name: String
     let address: String
     let distance: Double
     var coordinates: CLLocationCoordinate2D?

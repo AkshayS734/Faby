@@ -9,27 +9,36 @@ struct VaccineCardView: View {
     let babyBirthDate: Date
     let onTap: () -> Void
     
+    @Environment(\.colorScheme) private var colorScheme
+    @ScaledMetric var scaledPadding: CGFloat = 16
+
     var body: some View {
         Button(action: onTap) {
             HStack {
-                VStack(alignment: .leading) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text(vaccine.name)
                         .font(.body)
-                        .foregroundColor(.black)
+                        .fontWeight(.medium)
+                        .foregroundColor(.primary)
                     
                     Text(formatDateRange(startWeek: vaccine.startWeek, endWeek: vaccine.endWeek, birthDate: babyBirthDate))
-                        .font(.subheadline)
-                        .foregroundColor(.gray)
+                        .font(.footnote)
+                        .foregroundColor(.secondary)
                 }
                 Spacer()
-                Image(systemName: "plus.circle")
-                    .foregroundColor(Color(UIColor(hex: "#0076BA")))
+                Image(systemName: "plus.circle.fill")
+                    .font(.title3)
+                    .foregroundColor(Color.accentColor)
+                    .frame(width: 44, height: 44) // Optimal tap target size
+                    .contentShape(Rectangle())
             }
-            .padding()
+            .padding(scaledPadding)
             .background(Color.white)
-            .cornerRadius(8)
-            .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
+            .cornerRadius(16)
+            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.1 : 0.05),
+                    radius: 4, x: 0, y: 2)
         }
+        .buttonStyle(PlainButtonStyle()) // Prevents default button styling
     }
     
     private func formatDateRange(startWeek: Int, endWeek: Int, birthDate: Date) -> String {
@@ -39,7 +48,7 @@ struct VaccineCardView: View {
         
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
-        
+
         if startDate < Date() && endDate < Date() {
             return "Overdue since \(formatter.string(from: endDate))"
         }
@@ -55,67 +64,179 @@ struct VaccineListView: View {
     let vaccines: [Vaccine]
     let babyBirthDate: Date
     let onVaccineTap: (Vaccine) -> Void
+    let refreshAction: () -> Void
+    
+    @Environment(\.colorScheme) private var colorScheme
+    @ScaledMetric var scaledPadding: CGFloat = 16
     
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: scaledPadding) {
                 Text("Available Vaccines")
-                    .font(.headline)
-                    .padding(.horizontal)
+                    .font(.title3)
+                    .fontWeight(.semibold)
+                    .padding(.horizontal, scaledPadding)
+                    .padding(.bottom, 8)
+                    .accessibilityAddTraits(.isHeader)
                 
                 if vaccines.isEmpty {
-                    Text("No vaccines found for this age range")
-                        .foregroundColor(.gray)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .padding()
+                    EmptyStateView()
                 } else {
-                    ForEach(vaccines) { vaccine in
-                        VaccineCardView(
-                            vaccine: vaccine,
-                            babyBirthDate: babyBirthDate,
-                            onTap: { onVaccineTap(vaccine) }
-                        )
-                        .padding(.horizontal)
-                    }
+                    VaccinesList(vaccines: vaccines, babyBirthDate: babyBirthDate, onVaccineTap: onVaccineTap)
                 }
             }
-            .padding(.vertical,30)
+            .padding(.vertical, 16)
+        }
+        .background(Color(.systemGroupedBackground).edgesIgnoringSafeArea(.all))
+    }
+}
+
+struct VaccinesList: View {
+    let vaccines: [Vaccine]
+    let babyBirthDate: Date
+    let onVaccineTap: (Vaccine) -> Void
+    
+    @ScaledMetric var scaledSpacing: CGFloat = 12
+    
+    var body: some View {
+        LazyVStack(spacing: scaledSpacing) {
+            ForEach(vaccines) { vaccine in
+                VaccineCardView(
+                    vaccine: vaccine,
+                    babyBirthDate: babyBirthDate,
+                    onTap: { onVaccineTap(vaccine) }
+                )
+                .padding(.horizontal, 16)
+            }
         }
     }
 }
 
+struct EmptyStateView: View {
+    var body: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "cross.case.fill")
+                .font(.system(size: 48))
+                .foregroundColor(.secondary)
+            
+            Text("No vaccines found for this age range")
+                .font(.headline)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                
+            Text("Try selecting a different time period")
+                .font(.subheadline)
+                .foregroundColor(.secondary.opacity(0.8))
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 40)
+    }
+}
+
+// Pull-to-refresh control
+struct RefreshControl: View {
+    @Binding var isRefreshing: Bool
+    let onRefresh: () -> Void
+    
+    var body: some View {
+        GeometryReader { geometry in
+            if geometry.frame(in: .global).minY > 50 {
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        ProgressView()
+                            .onAppear {
+                                if !isRefreshing {
+                                    isRefreshing = true
+                                    onRefresh()
+                                }
+                            }
+                        Spacer()
+                    }
+                    Spacer()
+                }
+            } else if geometry.frame(in: .global).minY > 0 {
+                // Optional: Show a "pull to refresh" text here when user starts pulling
+                Color.clear.preference(key: RefreshPreferenceKey.self, value: geometry.frame(in: .global).minY)
+            }
+        }
+        .frame(height: isRefreshing ? 50 : 0)
+    }
+}
+
+struct RefreshPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
 // MARK: - VacciAlert View Controller
-class VacciAlertViewController: UIViewController, ButtonsCollectionViewDelegate {
+class VacciAlertViewController: UIViewController, TimePeriodCollectionViewDelegate {
     // MARK: - Properties
     private let selectedDateSubject = PassthroughSubject<Date, Never>()
     private var babyBirthDate: Date = Date()
     private var vaccineData: [Vaccine] = []
     private var scheduledVaccines: [String] = []
     private var cancellables = Set<AnyCancellable>()
-    private var monthButtonCollectionView: ButtonsCollectionView!
-    private let monthButtonTitles = ["12 months", "15 months", "18 months", "24 months", "30 months", "36 months"]
-    private let monthButtonSize = CGSize(width: 90, height: 100)
+    private var currentLoadingTask: Task<Void, Never>?
     
-    // UI elements
-    private let activityIndicator = UIActivityIndicatorView(style: .large)
-    private let emptyStateLabel = UILabel()
+    // Cache for vaccines
+    private var cachedAllVaccines: [Vaccine]?
+    private var lastVaccinesFetchTime: Date?
+    private let cacheDuration: TimeInterval = 300 // 5 minutes
+    
+    // Debounce timer
+    private var debounceTimer: Timer?
+    private let debounceInterval: TimeInterval = 0.5
+    
+    // New time period collection view
+    private var timePeriodCollectionView: TimePeriodCollectionView!
+    private let timePeriods = ["Birth", "6 weeks", "10 weeks", "14 weeks", "9-12 month", "16-24 month"]
+    
+    private let emptyStateLabel: UILabel = {
+        let label = UILabel()
+        label.textAlignment = .center
+        label.textColor = .secondaryLabel
+        label.numberOfLines = 0
+        label.font = UIFont.systemFont(ofSize: 16, weight: .medium)
+        label.isHidden = true
+        return label
+    }()
+    
     private var vaccineListHostingController: UIHostingController<VaccineListView>?
-    
-    // MARK: - Initialization
-    init() {
-        super.init(nibName: nil, bundle: nil)
-    }
-    
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
     
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
+        print("🔍 DEBUG: viewDidLoad called")
         setupUI()
+        setupNotifications()
         
-        // Add notification observers
+        // Preload vaccines cache
+        Task {
+            do {
+                _ = try await getAllVaccines()
+            } catch {
+                print("❌ DEBUG: Error preloading vaccines: \(error)")
+            }
+        }
+        
+        // Initial data load
+        if let currentBaby = BabyDataModel.shared.babyList.first(where: { $0.babyID == UserDefaultsManager.shared.currentBabyId }) {
+            print("🔍 DEBUG: Loading data for current baby: \(currentBaby.name)")
+            processBabyData(currentBaby)
+            loadVaccinesByTimePeriod("Birth")
+        } else if let firstBaby = BabyDataModel.shared.babyList.first {
+            print("🔍 DEBUG: Loading data for first baby: \(firstBaby.name)")
+            UserDefaultsManager.shared.currentBabyId = firstBaby.babyID
+            processBabyData(firstBaby)
+            loadVaccinesByTimePeriod("Birth")
+        }
+    }
+    
+    private func setupNotifications() {
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(navigateToVaccineReminder),
@@ -138,292 +259,311 @@ class VacciAlertViewController: UIViewController, ButtonsCollectionViewDelegate 
         )
     }
     
-    override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(animated)
-        // Refresh data when view appears
-        loadBabyData()
-    }
-    
     // MARK: - UI Setup
     private func setupUI() {
+        view.backgroundColor = .systemGroupedBackground
+        
+        // Setup navigation bar
         navigationItem.hidesBackButton = true
-        navigationItem.title = "VacciTime"
-        view.backgroundColor = UIColor(hex: "#f2f2f7")
+        setNavigationTitle()
         
-        // Add a refresh button to the navigation bar
-        let refreshButton = UIBarButtonItem(
-            barButtonSystemItem: .refresh,
+        // Replace the refresh button with a calendar/reminder button
+        let reminderButton = UIBarButtonItem(
+            image: UIImage(systemName: "calendar"),
+            style: .plain,
             target: self,
-            action: #selector(refreshVaccinationData)
+            action: #selector(navigateToVaccineReminder)
         )
-        navigationItem.rightBarButtonItem = refreshButton
+        navigationItem.rightBarButtonItem = reminderButton
         
-        // Setup month button collection view
-        monthButtonCollectionView = ButtonsCollectionView(
-            buttonTitles: monthButtonTitles,
-            categoryButtonTitles: [],
-            categoryButtonImages: [],
-            buttonSize: monthButtonSize,
-            minimumLineSpacing: 5,
-            cornerRadius: 10
+        // Setup time period collection view with new component
+        timePeriodCollectionView = TimePeriodCollectionView(
+            timePeriods: timePeriods,
+            itemSize: CGSize(width: 85, height: 85),
+            lineSpacing: 8
         )
-        monthButtonCollectionView.delegate = self
-        view.addSubview(monthButtonCollectionView)
+        timePeriodCollectionView.delegate = self
+        view.addSubview(timePeriodCollectionView)
         
-        // Setup month collection view constraints
-        monthButtonCollectionView.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            monthButtonCollectionView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
-            monthButtonCollectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            monthButtonCollectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            monthButtonCollectionView.heightAnchor.constraint(equalToConstant: 100)
-        ])
-        
-        // Setup activity indicator
-        activityIndicator.translatesAutoresizingMaskIntoConstraints = false
-        activityIndicator.hidesWhenStopped = true
-        activityIndicator.color = UIColor(hex: "#0076BA")
-        view.addSubview(activityIndicator)
+        // Setup time period collection view constraints
+        timePeriodCollectionView.translatesAutoresizingMaskIntoConstraints = false
         
         // Setup empty state label
         emptyStateLabel.translatesAutoresizingMaskIntoConstraints = false
-        emptyStateLabel.textAlignment = .center
-        emptyStateLabel.textColor = .gray
-        emptyStateLabel.numberOfLines = 0
-        emptyStateLabel.font = UIFont.systemFont(ofSize: 16)
-        emptyStateLabel.isHidden = true
         view.addSubview(emptyStateLabel)
         
-        // Set constraints
+        // Apply consistent spacing per HIG
         NSLayoutConstraint.activate([
-            activityIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            activityIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            timePeriodCollectionView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            timePeriodCollectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            timePeriodCollectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            timePeriodCollectionView.heightAnchor.constraint(equalToConstant: 90),
             
             emptyStateLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             emptyStateLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-            emptyStateLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            emptyStateLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20)
+            emptyStateLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
+            emptyStateLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24)
         ])
         
         // Initialize the SwiftUI hosting controller with empty data
         setupVaccineListView(with: [])
     }
     
+    private func setNavigationTitle() {
+        let titleAttributes: [NSAttributedString.Key: Any] = [
+            .font: UIFont.systemFont(ofSize: 34, weight: .bold),
+        ]
+        
+        navigationController?.navigationBar.prefersLargeTitles = true
+        navigationController?.navigationBar.largeTitleTextAttributes = titleAttributes
+        navigationItem.title = "VacciTime"
+        
+        // Ensure the large title is always displayed
+        navigationItem.largeTitleDisplayMode = .always
+        
+        // Update navigation bar appearance
+        let appearance = UINavigationBarAppearance()
+        appearance.configureWithTransparentBackground()
+        appearance.largeTitleTextAttributes = titleAttributes
+        appearance.backgroundColor = .clear
+        
+        navigationController?.navigationBar.standardAppearance = appearance
+        navigationController?.navigationBar.scrollEdgeAppearance = appearance
+        navigationController?.navigationBar.compactAppearance = appearance
+        
+        // Remove the separator line
+        navigationController?.navigationBar.shadowImage = UIImage()
+        navigationController?.navigationBar.setBackgroundImage(UIImage(), for: .default)
+    }
+    
     private func setupVaccineListView(with vaccines: [Vaccine]) {
-        // If we already have a hosting controller, remove it
+        print("🎨 DEBUG: Setting up vaccine list view with \(vaccines.count) vaccines")
+        
+        // If we already have a hosting controller, just update its root view
         if let existingHostingController = vaccineListHostingController {
-            existingHostingController.willMove(toParent: nil)
-            existingHostingController.view.removeFromSuperview()
-            existingHostingController.removeFromParent()
+            print("🔄 DEBUG: Updating existing hosting controller")
+            
+            // Use animation for smoother transitions
+            UIView.transition(with: existingHostingController.view, duration: 0.25, options: .transitionCrossDissolve) {
+                let updatedView = VaccineListView(
+                    vaccines: vaccines,
+                    babyBirthDate: self.babyBirthDate,
+                    onVaccineTap: { [weak self] vaccine in
+                        self?.handleVaccineScheduling(vaccine)
+                    },
+                    refreshAction: { [weak self] in
+                        self?.refreshVaccinationData()
+                    }
+                )
+                existingHostingController.rootView = updatedView
+            }
+            return
         }
         
-        // Create SwiftUI view
+        // Create new hosting controller for first time setup
+        print("➕ DEBUG: Creating new hosting controller")
         let vaccineListView = VaccineListView(
             vaccines: vaccines,
             babyBirthDate: babyBirthDate,
             onVaccineTap: { [weak self] vaccine in
                 self?.handleVaccineScheduling(vaccine)
+            },
+            refreshAction: { [weak self] in
+                self?.refreshVaccinationData()
             }
         )
         
-        // Create hosting controller
         let hostingController = UIHostingController(rootView: vaccineListView)
         vaccineListHostingController = hostingController
         
-        // Add as child view controller
         addChild(hostingController)
         hostingController.view.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(hostingController.view)
         hostingController.didMove(toParent: self)
         
-        // Set constraints
         NSLayoutConstraint.activate([
-            hostingController.view.topAnchor.constraint(equalTo: monthButtonCollectionView.bottomAnchor, constant: 20),
+            hostingController.view.topAnchor.constraint(equalTo: timePeriodCollectionView.bottomAnchor, constant: 16),
             hostingController.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             hostingController.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             hostingController.view.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
         
-        hostingController.view.backgroundColor = UIColor(hex: "#f2f2f7")
+        hostingController.view.backgroundColor = .systemGroupedBackground
     }
     
-    // MARK: - Button Collection View Delegate
-    func didSelectButton(withTitle title: String, inCollection collection: ButtonsCollectionView) {
-        print("Button Tapped: \(title)")
-        loadVaccinesByAge(monthString: title)
+    // MARK: - TimePeriodCollectionViewDelegate
+    func didSelectTimePeriod(_ period: String) {
+        print("👆 DEBUG: Time period selected: \(period)")
+        loadVaccinesByTimePeriod(period)
     }
     
     // MARK: - Data Loading
-    private func loadBabyData() {
-        // Get the current baby - in a real app, you would get this from your app state
-        guard let currentBabyId = UserDefaultsManager.shared.currentBabyId,
-              let currentBaby = BabyDataModel.shared.babyList.first(where: { $0.babyID == currentBabyId }) else {
-            // Use the first baby as fallback
-            if let firstBaby = BabyDataModel.shared.babyList.first {
-                processBabyData(firstBaby)
-            } else {
-                print("❌ No baby data available")
+    private func loadBabyDataSilently() async {
+        if let currentBabyId = UserDefaultsManager.shared.currentBabyId,
+           let currentBaby = BabyDataModel.shared.babyList.first(where: { $0.babyID == currentBabyId }) {
+            processBabyData(currentBaby)
+        } else if let firstBaby = BabyDataModel.shared.babyList.first {
+            UserDefaultsManager.shared.currentBabyId = firstBaby.babyID
+            processBabyData(firstBaby)
+        } else {
+            await MainActor.run {
                 updateEmptyState("No baby data available. Please add a baby first.")
             }
-            return
         }
-        
-        processBabyData(currentBaby)
     }
     
     private func processBabyData(_ baby: Baby) {
-        // Convert string date to Date object
+        print("🔍 DEBUG: Processing baby data")
         let inputFormatter = DateFormatter()
         inputFormatter.dateFormat = "ddMMyyyy"
 
-        let outputFormatter = DateFormatter()
-        outputFormatter.dateFormat = "yyyy-MM-dd"
-
         if let birthDate = inputFormatter.date(from: baby.dateOfBirth) {
+            print("🔍 DEBUG: Successfully parsed birth date")
             self.babyBirthDate = birthDate
-            let formattedDateString = outputFormatter.string(from: birthDate)
-            print("Formatted date: \(formattedDateString)")
-            loadVaccinationData(for: baby)
         } else {
-            print("❌ Invalid date format for baby's birth date")
-            updateEmptyState("Invalid date format for baby's birth date")
+            print("❌ DEBUG: Failed to parse birth date")
         }
     }
     
-    private func loadVaccinationData(for baby: Baby) {
-        Task {
-            do {
-                showLoading(true)
-                
-                // First, fetch scheduled vaccines for this baby
-                let vaccineSchedules = try await VaccineScheduleManager.shared.fetchSchedules(forBaby: baby.babyID)
-                
-                // Extract the vaccine IDs that are already scheduled
-                let scheduledVaccineIds = vaccineSchedules.map { $0.vaccineId }
-                self.scheduledVaccines = scheduledVaccineIds.map { $0.uuidString }
-                
-                // Fetch all vaccines recommended for this baby's age
-                let recommendedVaccines = try await FetchingVaccines.shared.fetchRecommendedVaccines(forBaby: baby)
-                
-                // Filter out vaccines that are already scheduled
-                let upcomingVaccines = recommendedVaccines.filter { vaccine in
-                    !scheduledVaccineIds.contains(vaccine.id)
-                }
-                
-                // Update UI on main thread
-                await MainActor.run {
-                    self.vaccineData = upcomingVaccines
-                    if upcomingVaccines.isEmpty {
-                        self.updateEmptyState("No upcoming vaccines available")
-                    } else {
-                        print("✅ Successfully loaded \(upcomingVaccines.count) upcoming vaccines")
-                        self.setupVaccineListView(with: upcomingVaccines)
-                        self.emptyStateLabel.isHidden = true
-                    }
-                    self.showLoading(false)
-                }
-            } catch {
-                print("❌ Error loading vaccination data: \(error.localizedDescription)")
-                
-                // Show error state
-                await MainActor.run {
-                    self.vaccineData = []
-                    self.updateEmptyState("Error loading vaccination data: \(error.localizedDescription)")
-                    self.showLoading(false)
-                }
+    private func loadVaccinesByTimePeriod(_ period: String) {
+        print("📥 DEBUG: loadVaccinesByTimePeriod called for period: \(period)")
+        
+        // Cancel existing debounce timer
+        debounceTimer?.invalidate()
+        
+        // Create new debounce timer
+        debounceTimer = Timer.scheduledTimer(withTimeInterval: debounceInterval, repeats: false) { [weak self] _ in
+            self?.executeLoadVaccines(period)
+        }
+    }
+    
+    private func executeLoadVaccines(_ period: String) {
+        // Cancel any existing task
+        if currentLoadingTask != nil {
+            print("🚫 DEBUG: Cancelling existing task")
+            currentLoadingTask?.cancel()
+        }
+        
+        // Create new loading task
+        currentLoadingTask = Task { [weak self] in
+            guard let self = self else {
+                print("❌ DEBUG: Self is nil")
+                return
             }
-        }
-    }
-    
-    private func loadVaccinesByAge(monthString: String) {
-        // Extract the number of months from the button title
-        guard let monthsString = monthString.components(separatedBy: " ").first,
-              let months = Int(monthsString) else {
-            print("❌ Invalid month format: \(monthString)")
-            return
-        }
-        
-        print("🔍 Loading vaccines for \(months) months")
-        showLoading(true)
-        
-        // Convert months to weeks for filtering
-        let weeksLowerBound = (months - 3) * 4 // 3 months before
-        let weeksUpperBound = (months + 3) * 4 // 3 months after
-        
-        Task {
+            
             do {
-                // Get the current baby
+                print("🔍 DEBUG: Starting to fetch data")
                 guard let currentBabyId = UserDefaultsManager.shared.currentBabyId else {
-                    print("❌ No current baby ID available")
-                    await MainActor.run {
-                        self.updateEmptyState("No baby selected")
-                        self.showLoading(false)
-                    }
+                    print("❌ DEBUG: No baby ID found")
+                    throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "No baby selected"])
+                }
+                
+                let (lowerWeeks, upperWeeks) = self.convertPeriodToWeeks(period)
+                print("📊 DEBUG: Fetching vaccines for weeks \(lowerWeeks)-\(upperWeeks)")
+                
+                async let allVaccinesTask = self.getAllVaccines()
+                async let scheduledVaccinesTask = VaccineScheduleManager.shared.fetchSchedules(forBaby: currentBabyId)
+                
+                let (allVaccines, scheduledVaccines) = try await (allVaccinesTask, scheduledVaccinesTask)
+                
+                if Task.isCancelled {
+                    print("🚫 DEBUG: Task was cancelled")
                     return
                 }
                 
-                // First, fetch scheduled vaccines for this baby
-                let vaccineSchedules = try await VaccineScheduleManager.shared.fetchSchedules(forBaby: currentBabyId)
-                
-                // Extract the vaccine IDs that are already scheduled
-                let scheduledVaccineIds = vaccineSchedules.map { $0.vaccineId }
-                
-                // Fetch all vaccines from Supabase
-                let allVaccines = try await FetchingVaccines.shared.fetchAllVaccines()
-                
-                // Filter vaccines for the selected month range
+                // Process results
+                let scheduledVaccineIds = scheduledVaccines.map { $0.vaccineId }
                 let ageAppropriateVaccines = allVaccines.filter { vaccine in
-                    return vaccine.startWeek >= weeksLowerBound &&
-                           vaccine.endWeek <= weeksUpperBound
+                    return vaccine.startWeek >= lowerWeeks && vaccine.endWeek <= upperWeeks
                 }
-                
-                // Further filter out already scheduled vaccines
                 let availableVaccines = ageAppropriateVaccines.filter { vaccine in
                     !scheduledVaccineIds.contains(vaccine.id)
                 }
                 
+                print("📊 DEBUG: Found \(availableVaccines.count) available vaccines")
+                
                 await MainActor.run {
+                    print("🎯 DEBUG: Updating UI with vaccines")
                     if availableVaccines.isEmpty {
-                        print("ℹ️ No vaccines found for \(months) months")
-                        self.updateEmptyState("No vaccines found for \(months) months")
+                        self.updateEmptyState("No vaccines found for \(period)")
                     } else {
-                        print("✅ Found \(availableVaccines.count) vaccines for \(months) months")
+                        self.vaccineData = availableVaccines
                         self.setupVaccineListView(with: availableVaccines)
                         self.emptyStateLabel.isHidden = true
                     }
-                    self.showLoading(false)
                 }
             } catch {
-                print("❌ Error loading vaccines for \(months) months: \(error.localizedDescription)")
-                await MainActor.run {
-                    self.updateEmptyState("Error loading vaccines: \(error.localizedDescription)")
-                    self.showLoading(false)
+                print("❌ DEBUG: Error loading vaccines: \(error)")
+                if !Task.isCancelled {
+                    await MainActor.run {
+                        self.updateEmptyState("Error loading vaccines: \(error.localizedDescription)")
+                    }
                 }
             }
         }
     }
     
-    private func showLoading(_ isLoading: Bool) {
-        DispatchQueue.main.async {
-            if isLoading {
-                self.activityIndicator.startAnimating()
-                self.vaccineListHostingController?.view.isHidden = true
-                self.emptyStateLabel.isHidden = true
-            } else {
-                self.activityIndicator.stopAnimating()
-                self.vaccineListHostingController?.view.isHidden = false
-            }
+    private func getAllVaccines() async throws -> [Vaccine] {
+        // Check if we have a valid cache
+        if let cached = cachedAllVaccines,
+           let lastFetch = lastVaccinesFetchTime,
+           Date().timeIntervalSince(lastFetch) < cacheDuration {
+            print("📦 DEBUG: Using cached vaccines")
+            return cached
+        }
+        
+        // Fetch fresh data
+        print("🔄 DEBUG: Fetching fresh vaccines data")
+        let vaccines = try await FetchingVaccines.shared.fetchAllVaccines()
+        
+        // Update cache
+        cachedAllVaccines = vaccines
+        lastVaccinesFetchTime = Date()
+        
+        return vaccines
+    }
+    
+    // Helper method to convert time period string to week range
+    private func convertPeriodToWeeks(_ period: String) -> (Int, Int) {
+        switch period {
+        case "Birth":
+            return (0, 4) // 0-4 weeks
+            
+        case "6 weeks":
+            return (4, 8) // 4-8 weeks
+            
+        case "10 weeks":
+            return (8, 12) // 8-12 weeks
+            
+        case "14 weeks":
+            return (12, 16) // 12-16 weeks
+            
+        case "9-12 month":
+            // 9-12 months = 36-52 weeks
+            return (36, 52)
+            
+        case "16-24 month":
+            // 16-24 months = 64-104 weeks
+            return (64, 104)
+            
+        default:
+            // Default range - covers first year
+            return (0, 52)
         }
     }
     
     private func updateEmptyState(_ message: String) {
+        vaccineListHostingController?.view.isHidden = true
         emptyStateLabel.isHidden = false
         emptyStateLabel.text = message
-        vaccineListHostingController?.view.isHidden = true
     }
     
     @objc private func refreshVaccinationData() {
-        loadBabyData()
+        print("🔄 DEBUG: refreshVaccinationData called")
+        // Get currently selected period
+        let selectedPeriod = timePeriods[timePeriodCollectionView.selectedIndex]
+        print("🔄 DEBUG: Refreshing data for period: \(selectedPeriod)")
+        loadVaccinesByTimePeriod(selectedPeriod)
     }
     
     @objc private func navigateToVaccineReminder() {
@@ -441,7 +581,31 @@ class VacciAlertViewController: UIViewController, ButtonsCollectionViewDelegate 
     private func showAddVaccinationModal(for vaccine: Vaccine) {
         let hospitalVC = HospitalViewController()
         hospitalVC.vaccine = vaccine
-        hospitalVC.modalPresentationStyle = .pageSheet
+        
+        // Use a sheet presentation controller for better visual style
+        if let sheet = hospitalVC.sheetPresentationController {
+            sheet.detents = [.medium(), .large()]
+            sheet.prefersGrabberVisible = true
+            sheet.preferredCornerRadius = 24
+        }
+        
         present(hospitalVC, animated: true)
     }
+    
+    // Helper method to ensure we have a current baby ID
+    private func ensureCurrentBabyIdIsSet() {
+        // Check if a current baby ID is already set
+        if UserDefaultsManager.shared.currentBabyId == nil {
+            // If not set, use the first baby in the list (if available)
+            if let firstBaby = BabyDataModel.shared.babyList.first {
+                print("🔧 No current baby ID set, using first baby: \(firstBaby.name) (ID: \(firstBaby.babyID))")
+                UserDefaultsManager.shared.currentBabyId = firstBaby.babyID
+            } else {
+                print("⚠️ No babies in baby list, cannot set current baby ID")
+            }
+        } else {
+            print("✅ Current baby ID already set: \(UserDefaultsManager.shared.currentBabyId!)")
+        }
+    }
 }
+

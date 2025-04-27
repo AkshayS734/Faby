@@ -201,13 +201,6 @@ class HomeViewController: UIViewController {
         super.viewWillAppear(animated)
         print("🚀 HomeViewController viewWillAppear")
         loadVaccinations() // Reload vaccinations when view appears
-        
-        // Check if scheduledVaccines is empty and add a test record if needed
-        if scheduledVaccines.isEmpty {
-            print("🔍 No scheduled vaccines found in viewWillAppear, adding a test record...")
-            addTestVaccineRecord()
-        }
-        
         updateSpecialMoments()
         updateTodaysBites()
     }
@@ -472,29 +465,23 @@ class HomeViewController: UIViewController {
     
     private func loadVaccinations() {
         print("📋 Loading vaccinations...")
-        
-        // Fetch all vaccination records from Supabase
-        print("🌐 Fetching vaccination records from Supabase...")
+        print("🌐 Fetching all vaccination records from Supabase...")
         Task {
             do {
-                // Fetch scheduled vaccines using the manager
-                let scheduledRecords = try await VaccineScheduleManager.shared.fetchSchedules(forBaby: baby.babyID)
-                print("✅ Successfully fetched \(scheduledRecords.count) scheduled vaccination records")
+                // Fetch all scheduled vaccines from Supabase (no baby filter)
+                let allScheduledRecords = try await VaccineScheduleManager.shared.fetchAllSchedules()
+                print("✅ Successfully fetched \(allScheduledRecords.count) scheduled vaccination records (all babies)")
                 
-                // Fetch administered vaccines using the manager
-                let administeredRecords = try await AdministeredVaccineManager.shared.fetchAdministeredVaccines(forBaby: baby.babyID)
-                print("✅ Successfully fetched \(administeredRecords.count) administered vaccination records")
+                // Fetch administered vaccines for all babies (optional, can be filtered if needed)
+                let allAdministeredRecords = try await AdministeredVaccineManager.shared.fetchAllAdministeredVaccines()
+                print("✅ Successfully fetched \(allAdministeredRecords.count) administered vaccination records (all babies)")
                 
                 // Convert scheduled records to dictionaries
                 var scheduledDictionaries: [[String: String]] = []
-                for record in scheduledRecords {
-                    // Create a date formatter for display
+                for record in allScheduledRecords {
                     let dateFormatter = DateFormatter()
                     dateFormatter.dateStyle = .medium
-                    
-                    // Get name from vaccine ID (you may need to fetch this or use a more direct approach)
                     let vaccineName = await getVaccineName(for: record.vaccineId)
-                    
                     let dict: [String: String] = [
                         "type": vaccineName,
                         "date": dateFormatter.string(from: record.date),
@@ -506,43 +493,27 @@ class HomeViewController: UIViewController {
                 
                 // Convert administered records to dictionaries
                 var administeredDictionaries: [[String: String]] = []
-                for record in administeredRecords {
-                    // Create a date formatter for display
+                for record in allAdministeredRecords {
                     let dateFormatter = DateFormatter()
                     dateFormatter.dateStyle = .medium
-                    
-                    // Get name from vaccine ID (you may need to fetch this or use a more direct approach)
                     let vaccineName = await getVaccineName(for: record.vaccineId)
-                    
                     let dict: [String: String] = [
                         "type": vaccineName,
                         "date": dateFormatter.string(from: record.administeredDate),
-                        "hospital": "Unknown Hospital", // This may need to come from somewhere else
-                        "location": "Unknown Location"  // This may need to come from somewhere else
+                        "hospital": "Unknown Hospital",
+                        "location": "Unknown Location"
                     ]
                     administeredDictionaries.append(dict)
                 }
                 
-                print("📊 Processed \(scheduledDictionaries.count) scheduled and \(administeredDictionaries.count) administered vaccines")
+                print("📊 Processed \(scheduledDictionaries.count) scheduled and \(administeredDictionaries.count) administered vaccines (all babies)")
                 
                 await MainActor.run {
                     self.scheduledVaccines = scheduledDictionaries
                     self.administeredVaccines = administeredDictionaries
-                    
-                    print("🔢 UI updated with \(self.scheduledVaccines.count) scheduled and \(self.administeredVaccines.count) administered vaccines")
-                    
-                    // Update the UI
+                    print("🔢 UI updated with \(self.scheduledVaccines.count) scheduled and \(self.administeredVaccines.count) administered vaccines (all babies)")
                     self.setupVaccineView()
-                    
-                    if self.scheduledVaccines.isEmpty && self.administeredVaccines.isEmpty {
-                        self.todaysBitesEmptyStateView.isHidden = false
-                        print("⚠️ No vaccines found, showing empty state")
-                    } else {
-                        self.todaysBitesEmptyStateView.isHidden = true
-                        print("✅ Found vaccines, updating UI visibility")
-                    }
-                    
-                    // Force reload of the collection views
+                    self.updateTodaysBitesEmptyState()
                     self.todaysBitesCollectionView.reloadData()
                 }
             } catch {
@@ -667,66 +638,6 @@ class HomeViewController: UIViewController {
         } else {
             todaysBitesCollectionView.isHidden = false
             todaysBitesEmptyStateView.isHidden = true
-        }
-    }
-    
-    // Helper function to add a test vaccine record for debugging
-    private func addTestVaccineRecord() {
-        Task {
-            do {
-                let dateFormatter = DateFormatter()
-                dateFormatter.dateFormat = "MMMM dd, yyyy"
-                
-                // Schedule a vaccine for tomorrow
-                let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date()
-                let tomorrowString = dateFormatter.string(from: tomorrow)
-                
-                // Get hospital data for the test record
-                let hospital = Hospital(
-                    id: UUID(),
-                    babyId: baby.babyID,
-                    name: "Test Hospital",
-                    address: "123 Test Street, City",
-                    distance: 5.0,
-                )
-                
-                // Create a hospital address for the test record
-                let hospitalAddress = "123 Test Street, City, State 12345"
-                
-                // Save the test vaccination schedule
-                try await VaccineScheduleManager.shared.saveSchedule(
-                    babyId: baby.babyID,
-                    vaccineId: UUID(), // Generate a new UUID for test vaccine
-                    hospital: hospital.name,
-                    date: tomorrow,
-                    location: hospitalAddress
-                )
-                
-                // Create a dictionary for local UI update
-                let testDictionary: [String: String] = [
-                    "type": "Test Vaccine",
-                    "date": tomorrowString,
-                    "hospital": "Test Hospital",
-                    "location": "123 Test Street, City"
-                ]
-                
-                // Update UI on main thread
-                await MainActor.run {
-                    self.scheduledVaccines.append(testDictionary)
-                    print("✅ Added test vaccine to local array: \(testDictionary)")
-                    self.setupVaccineView()
-                }
-                
-                print("✅ Successfully added test vaccine")
-                
-                // Reload vaccinations after a short delay
-                try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
-                await MainActor.run {
-                    self.loadVaccinations()
-                }
-            } catch {
-                print("❌ Error adding test vaccine: \(error)")
-            }
         }
     }
     

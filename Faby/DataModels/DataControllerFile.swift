@@ -75,25 +75,13 @@ class VaccineScheduleManager {
                          userInfo: [NSLocalizedDescriptionKey: "Supabase client not available"])
         }
         
-        // Delete schedule method - updated to use the correct table name
-        func deleteSchedule(recordId: UUID) async throws {
-            let response = try await supabase
-                .from("vaccination_schedules")  // Updated table name to match SupabaseVaccineManager
-                .delete()
-                .eq("id", value: recordId.uuidString)
-                .execute()
-        }
-        
-        // Use ISO8601DateFormatter for consistency with SupabaseVaccineManager
-        let scheduledDate = date // You can remove this line entirely if you're not formatting the date for anything else
-
         // Create record with the structure needed for the vaccination_schedules table
         let record = VaccineSchedule(
             id: UUID(),
             babyID: babyId,
             vaccineId: vaccineId,
             hospital: hospital,
-            date: scheduledDate, // ✅ This is now a Date
+            date: date,
             location: location,
             isAdministered: false
         )
@@ -115,21 +103,44 @@ class VaccineScheduleManager {
                          userInfo: [NSLocalizedDescriptionKey: "Supabase client not available"])
         }
         
-        // Update to use correct table name "vaccination_schedules" as used in SupabaseVaccineManager
         let response = try await supabase.from("vaccination_schedules")
             .select()
             .eq("baby_id", value: babyId.uuidString)
             .execute()
         
-        // Process the raw data to convert to VaccineSchedule objects
         let data = response.data
         let rawSchedules = try JSONDecoder().decode([SupabaseVaccineSchedule].self, from: data)
         
-        // Convert to your VaccineSchedule model objects
         return rawSchedules.map { raw in
             let dateFormatter = ISO8601DateFormatter()
             let scheduledDate = dateFormatter.date(from: raw.date) ?? Date()
             
+            return VaccineSchedule(
+                id: UUID(uuidString: raw.id) ?? UUID(),
+                babyID: UUID(uuidString: raw.baby_id) ?? UUID(),
+                vaccineId: UUID(uuidString: raw.vaccine_id) ?? UUID(),
+                hospital: raw.hospital,
+                date: scheduledDate,
+                location: raw.location,
+                isAdministered: raw.is_administered
+            )
+        }
+    }
+
+    /// Fetch all scheduled vaccinations for all babies
+    func fetchAllSchedules() async throws -> [VaccineSchedule] {
+        guard let supabase = getSupabaseClient() else {
+            throw NSError(domain: "VacciAlertError", code: 1,
+                         userInfo: [NSLocalizedDescriptionKey: "Supabase client not available"])
+        }
+        let response = try await supabase.from("vaccination_schedules")
+            .select()
+            .execute()
+        let data = response.data
+        let rawSchedules = try JSONDecoder().decode([SupabaseVaccineSchedule].self, from: data)
+        return rawSchedules.map { raw in
+            let dateFormatter = ISO8601DateFormatter()
+            let scheduledDate = dateFormatter.date(from: raw.date) ?? Date()
             return VaccineSchedule(
                 id: UUID(uuidString: raw.id) ?? UUID(),
                 babyID: UUID(uuidString: raw.baby_id) ?? UUID(),
@@ -156,10 +167,8 @@ class VaccineScheduleManager {
             .single()
             .execute()
         
-        // Decode the response to our intermediate Supabase structure
         var schedule = try JSONDecoder().decode(SupabaseVaccineSchedule.self, from: response.data)
         
-        // Update fields
         let dateFormatter = ISO8601DateFormatter()
         schedule.date = dateFormatter.string(from: newDate)
         
@@ -168,13 +177,11 @@ class VaccineScheduleManager {
             schedule.location = hospital.address
         }
         
-        // Save the updated record
         try await supabase.from("vaccination_schedules")
             .update(schedule)
             .eq("id", value: recordId.uuidString)
             .execute()
         
-        // Notify listeners
         await MainActor.run {
             NotificationCenter.default.post(name: .vaccinesUpdated, object: nil)
         }
@@ -204,11 +211,9 @@ class AdministeredVaccineManager {
                          userInfo: [NSLocalizedDescriptionKey: "Supabase client not available"])
         }
         
-        // Use ISO8601DateFormatter for consistency
         let dateFormatter = ISO8601DateFormatter()
         let administeredDateString = dateFormatter.string(from: date)
         
-        // Create record with the structure needed for administered_vaccines table
         let record = [
             "id": UUID().uuidString,
             "baby_id": babyId.uuidString,
@@ -217,18 +222,15 @@ class AdministeredVaccineManager {
             "administered_date": administeredDateString
         ]
         
-        // Insert into the correct table
         try await supabase.from("administered_vaccines")
             .insert(record)
             .execute()
         
-        // Also update the schedule to mark it as administered
         try await supabase.from("vaccination_schedules")
             .update(["is_administered": true])
             .eq("id", value: scheduleId.uuidString)
             .execute()
         
-        // Notify listeners
         await MainActor.run {
             NotificationCenter.default.post(name: .vaccinesUpdated, object: nil)
         }
@@ -241,21 +243,42 @@ class AdministeredVaccineManager {
                          userInfo: [NSLocalizedDescriptionKey: "Supabase client not available"])
         }
         
-        // Update to use the correct table name
         let response = try await supabase.from("administered_vaccines")
             .select()
             .eq("baby_id", value: babyId.uuidString)
             .execute()
         
-        // Process the raw data to convert to VaccineAdministered objects
         let data = response.data
         let rawAdministered = try JSONDecoder().decode([SupabaseVaccineAdministered].self, from: data)
         
-        // Convert to your VaccineAdministered model objects
         return rawAdministered.map { raw in
             let dateFormatter = ISO8601DateFormatter()
             let administeredDate = dateFormatter.date(from: raw.administered_date) ?? Date()
             
+            return VaccineAdministered(
+                id: UUID(uuidString: raw.id) ?? UUID(),
+                babyId: UUID(uuidString: raw.baby_id) ?? UUID(),
+                vaccineId: UUID(uuidString: raw.vaccine_id) ?? UUID(),
+                scheduleId: UUID(uuidString: raw.schedule_id) ?? UUID(),
+                administeredDate: administeredDate
+            )
+        }
+    }
+
+    /// Fetch all administered vaccines for all babies
+    func fetchAllAdministeredVaccines() async throws -> [VaccineAdministered] {
+        guard let supabase = getSupabaseClient() else {
+            throw NSError(domain: "VacciAlertError", code: 1,
+                         userInfo: [NSLocalizedDescriptionKey: "Supabase client not available"])
+        }
+        let response = try await supabase.from("administered_vaccines")
+            .select()
+            .execute()
+        let data = response.data
+        let rawAdministered = try JSONDecoder().decode([SupabaseVaccineAdministered].self, from: data)
+        return rawAdministered.map { raw in
+            let dateFormatter = ISO8601DateFormatter()
+            let administeredDate = dateFormatter.date(from: raw.administered_date) ?? Date()
             return VaccineAdministered(
                 id: UUID(uuidString: raw.id) ?? UUID(),
                 babyId: UUID(uuidString: raw.baby_id) ?? UUID(),
