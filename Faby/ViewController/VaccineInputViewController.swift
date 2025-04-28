@@ -193,7 +193,7 @@ class VaccineInputViewController: UIViewController, UISearchBarDelegate {
         label.isHidden = true
         return label
     }()
-    
+
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -432,10 +432,18 @@ class VaccineCell: UITableViewCell {
     }()
     
     private let checkmarkButton: UIButton = {
-        let button = UIButton(type: .system)
-        button.setImage(UIImage(systemName: "circle"), for: .normal)
-        button.setImage(UIImage(systemName: "checkmark.circle.fill"), for: .selected)
+        let button = UIButton(type: .custom)
+        
+        // Create a circular configuration with no background for unselected state
+        let normalImage = UIImage(systemName: "circle")?.withRenderingMode(.alwaysTemplate)
+        
+        // Create a circular configuration with checkmark for selected state
+        let selectedImage = UIImage(systemName: "checkmark.circle.fill")?.withRenderingMode(.alwaysTemplate)
+        
+        button.setImage(normalImage, for: .normal)
+        button.setImage(selectedImage, for: .selected)
         button.tintColor = .systemBlue
+        button.backgroundColor = .clear
         button.translatesAutoresizingMaskIntoConstraints = false
         return button
     }()
@@ -495,8 +503,10 @@ class VaccineCell: UITableViewCell {
         timingLabel.text = timing
         descriptionLabel.text = description
         checkmarkButton.isSelected = isSelected
+        
+        // Just change the tint color, not the background
+        checkmarkButton.tintColor = isSelected ? .systemBlue : .systemGray3
     }
-    
     @objc private func checkmarkTapped() {
         checkmarkButton.isSelected.toggle()
         
