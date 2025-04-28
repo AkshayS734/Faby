@@ -40,7 +40,7 @@ struct VaccineCardView: View {
         }
         .buttonStyle(PlainButtonStyle()) // Prevents default button styling
     }
-    
+
     private func formatDateRange(startWeek: Int, endWeek: Int, birthDate: Date) -> String {
         let calendar = Calendar.current
         let startDate = calendar.date(byAdding: .day, value: startWeek * 7, to: birthDate) ?? Date()
@@ -510,8 +510,8 @@ class VacciAlertViewController: UIViewController, TimePeriodCollectionViewDelega
            Date().timeIntervalSince(lastFetch) < cacheDuration {
             print("📦 DEBUG: Using cached vaccines")
             return cached
-        }
-        
+    }
+    
         // Fetch fresh data
         print("🔄 DEBUG: Fetching fresh vaccines data")
         let vaccines = try await FetchingVaccines.shared.fetchAllVaccines()

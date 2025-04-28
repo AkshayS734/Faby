@@ -364,15 +364,15 @@ class HomeViewController: UIViewController {
             
             // Remove any existing hosting controller
             if let oldVaccineViewController = self.children.first(where: { $0 is UIHostingController<VaccineCardsView> }) {
-                oldVaccineViewController.willMove(toParent: nil)
-                oldVaccineViewController.view.removeFromSuperview()
-                oldVaccineViewController.removeFromParent()
-            }
-            
+            oldVaccineViewController.willMove(toParent: nil)
+            oldVaccineViewController.view.removeFromSuperview()
+            oldVaccineViewController.removeFromParent()
+        }
+        
             // Create the vaccine cards view with the callback
-            let vaccineCardsView = UIHostingController(rootView: VaccineCardsView(
+        let vaccineCardsView = UIHostingController(rootView: VaccineCardsView(
                 vaccines: vaccineSchedules,
-                onVaccineCompleted: { [weak self] vaccine in
+            onVaccineCompleted: { [weak self] vaccine in
                     print("📱 Vaccine completion requested for: \(vaccine.vaccineId)")
                     
                     Task {
@@ -418,10 +418,10 @@ class HomeViewController: UIViewController {
                                     // Reload vaccinations
                                     await MainActor.run {
                                         self?.loadVaccinations()
-                                    }
+                    }
                                     break
-                                }
-                            }
+                }
+            }
                         } catch {
                             print("❌ Error completing vaccine: \(error)")
                         }
@@ -431,12 +431,12 @@ class HomeViewController: UIViewController {
             
             // Add the view controller as a child
             self.addChild(vaccineCardsView)
-            vaccineCardsView.view.translatesAutoresizingMaskIntoConstraints = false
-            vaccineCardsView.view.backgroundColor = UIColor(hex: "#f2f2f7")
-            
+        vaccineCardsView.view.translatesAutoresizingMaskIntoConstraints = false
+        vaccineCardsView.view.backgroundColor = UIColor(hex: "#f2f2f7")
+        
             // Add and constrain the view
             self.vaccineContainerView.addSubview(vaccineCardsView.view)
-            NSLayoutConstraint.activate([
+        NSLayoutConstraint.activate([
                 vaccineCardsView.view.topAnchor.constraint(equalTo: self.vaccineContainerView.topAnchor),
                 vaccineCardsView.view.leadingAnchor.constraint(equalTo: self.vaccineContainerView.leadingAnchor),
                 vaccineCardsView.view.trailingAnchor.constraint(equalTo: self.vaccineContainerView.trailingAnchor),
@@ -444,8 +444,8 @@ class HomeViewController: UIViewController {
             ])
             vaccineCardsView.didMove(toParent: self)
             self.vaccineView = vaccineCardsView.view
-        }
-        
+    }
+    
         DispatchQueue.main.async(execute: workItem)
     }
     private func setupDelegates() {
@@ -675,7 +675,7 @@ struct VaccineCardsView: View {
                         .font(.system(size: 24))
                         .foregroundColor(.gray)
                     Text("No upcoming vaccinations")
-                        .font(.system(size: 16))
+                            .font(.system(size: 16))
                         .foregroundColor(.gray)
                 }
                 .frame(height: 100)
