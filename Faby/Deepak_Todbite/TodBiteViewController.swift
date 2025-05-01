@@ -1,6 +1,5 @@
-
 import UIKit
-class TodBiteViewController: UIViewController, UITableViewDelegate, UISearchBarDelegate {
+class TodBiteViewController: UIViewController, UITableViewDelegate, UISearchBarDelegate, HeaderCollectionReusableViewDelegate {
 
     // MARK: - UI Components
     @IBOutlet weak var segmentedControl: UISegmentedControl!
@@ -20,8 +19,10 @@ class TodBiteViewController: UIViewController, UITableViewDelegate, UISearchBarD
 
     // MARK: - Properties
     var selectedCategory: BiteType? = nil
+    var selectedContinent: ContinentType = .asia
+    var selectedCountry: CountryType = .india
     var selectedRegion: RegionType? = nil
-    var selectedAgeGroup: AgeGroup = .months12to18
+    var selectedAgeGroup: AgeGroup = .months12to15
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         
@@ -38,6 +39,8 @@ class TodBiteViewController: UIViewController, UITableViewDelegate, UISearchBarD
         return !(searchController.searchBar.text?.isEmpty ?? true)
     }
    
+    private var lastAppliedContinent: ContinentType?
+    private var lastAppliedCountry: CountryType?
     private var lastAppliedRegion: RegionType?
     private var lastAppliedAgeGroup: AgeGroup?
 
@@ -57,6 +60,40 @@ class TodBiteViewController: UIViewController, UITableViewDelegate, UISearchBarD
     }
     private let searchController = UISearchController(searchResultsController: nil)
 
+    // Add this method to ensure the filter button is added after layout
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        
+        // Only add the filter button if we're on the first tab
+        if segmentedControl.selectedSegmentIndex == 0 {
+            // Add slight delay to ensure search bar is fully loaded
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                self?.updateSearchBarWithFilterButton()
+            }
+        }
+    }
+
+    private func updateSearchBarWithFilterButton() {
+        // Make sure the search text field exists
+        guard let searchTextField = searchController.searchBar.value(forKey: "searchField") as? UITextField else {
+            return
+        }
+        
+        // Create filter button
+        let filterButton = UIButton(type: .system)
+        filterButton.setImage(UIImage(systemName: "line.3.horizontal.decrease.circle"), for: .normal)
+        filterButton.tintColor = .systemBlue
+        filterButton.addTarget(self, action: #selector(openFilterOptions), for: .touchUpInside)
+        
+        // Configure button size and appearance
+        filterButton.frame = CGRect(x: 0, y: 0, width: 30, height: 30)
+        filterButton.contentMode = .scaleAspectFit
+        
+        // Add the button to the search bar
+        searchTextField.rightView = filterButton
+        searchTextField.rightViewMode = .always
+    }
+
     private func setupSearchBar() {
         searchController.searchResultsUpdater = self
         searchController.obscuresBackgroundDuringPresentation = false
@@ -65,17 +102,8 @@ class TodBiteViewController: UIViewController, UITableViewDelegate, UISearchBarD
         navigationItem.searchController = searchController
         definesPresentationContext = true
         navigationItem.hidesSearchBarWhenScrolling = false
-
-        //  Filter Button
-        let filterButton = UIButton(type: .system)
-        filterButton.setImage(UIImage(systemName: "line.3.horizontal.decrease.circle"), for: .normal)
-        filterButton.tintColor = .systemBlue
-        filterButton.translatesAutoresizingMaskIntoConstraints = false
-        filterButton.addTarget(self, action: #selector(openFilterOptions), for: .touchUpInside)
         
-        let filterBarButton = UIBarButtonItem(customView: filterButton)
-
-       
+        // Create history button for navigation bar
         let historyButton = UIButton(type: .system)
         historyButton.setImage(UIImage(systemName: "clock.arrow.circlepath"), for: .normal)
         historyButton.tintColor = .systemBlue
@@ -84,8 +112,8 @@ class TodBiteViewController: UIViewController, UITableViewDelegate, UISearchBarD
         
         let historyBarButton = UIBarButtonItem(customView: historyButton)
 
-        //  Set Both Buttons in the Navigation Bar
-        navigationItem.rightBarButtonItems = [filterBarButton, historyBarButton]
+        // Set only history button in the navigation bar
+        navigationItem.rightBarButtonItems = [historyBarButton]
     }
 
     // Function to Open Filter View
@@ -215,9 +243,26 @@ class TodBiteViewController: UIViewController, UITableViewDelegate, UISearchBarD
             collectionView.isHidden = false
             tableView.isHidden = true
             placeholderLabel.isHidden = true
+            
+            // Create history button for navigation bar
+            let historyButton = UIButton(type: .system)
+            historyButton.setImage(UIImage(systemName: "clock.arrow.circlepath"), for: .normal)
+            historyButton.tintColor = .systemBlue
+            historyButton.translatesAutoresizingMaskIntoConstraints = false
+            historyButton.addTarget(self, action: #selector(openFeedingPlanHistory), for: .touchUpInside)
+            
+            let historyBarButton = UIBarButtonItem(customView: historyButton)
 
-
-            setupSearchBar()
+            // Set only history button in the navigation bar
+            navigationItem.rightBarButtonItems = [historyBarButton]
+            
+            // Ensure search controller is visible
+            navigationItem.searchController = searchController
+            
+            // Add filter button with delay to ensure search bar is fully loaded
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                self?.updateSearchBarWithFilterButton()
+            }
 
         case 1: // MyBowl
             collectionView.isHidden = true
@@ -245,17 +290,7 @@ class TodBiteViewController: UIViewController, UITableViewDelegate, UISearchBarD
             calendarButton.tintColor = .systemBlue
             barButtonItems.append(calendarButton)
 
-            // ✅ Add Feeding Plan History Button (🔄 Fix: Restores on switching back)
-            let historyButton = UIBarButtonItem(
-                image: UIImage(systemName: "clock.arrow.circlepath"),
-                
-                style: .plain,
-                target: self,
-                action: #selector(openFeedingPlanHistory)
-            )
-            historyButton.tintColor = .systemBlue
-            barButtonItems.append(historyButton)
-
+           
             // ✅ Set all buttons
             navigationItem.rightBarButtonItems = barButtonItems
 
@@ -265,12 +300,20 @@ class TodBiteViewController: UIViewController, UITableViewDelegate, UISearchBarD
     }
 
 @objc private func openFeedingPlan() {
+        // Check if MyBowl is empty
+        if myBowlItemsDict.isEmpty {
+            // Show message that MyBowl is empty and prevent navigation
+            MealItemDetails(message: "No items in your bowl. Please add meals first.")
+            return // Return early to prevent navigation
+        }
+        
+        // If we have items, continue with normal flow
         let feedingPlanVC = FeedingPlanViewController()
-
+        
         // Passing Predefined Meals
         feedingPlanVC.myBowlItemsDict = myBowlItemsDict
 
-        //  Extracting Custom Bites from MyBowl
+        // Extracting Custom Bites from MyBowl
         var extractedCustomBites: [String: [FeedingMeal]] = [:]
         for (key, meals) in myBowlItemsDict {
             if case let .custom(name) = key {
@@ -279,10 +322,9 @@ class TodBiteViewController: UIViewController, UITableViewDelegate, UISearchBarD
         }
         feedingPlanVC.customBitesDict = extractedCustomBites  // ✅ Now Passing Correctly
 
-        //  Pass Custom Bite Times
+        // Pass Custom Bite Times
         feedingPlanVC.customBiteTimes = customBiteTimes
 
-     
         print("✅ Opening Feeding Plan")
         print("📌 Extracted Custom Bites: \(extractedCustomBites)")
         print("📌 Custom Bite Times: \(customBiteTimes)")
@@ -332,14 +374,27 @@ class TodBiteViewController: UIViewController, UITableViewDelegate, UISearchBarD
         navigationItem.rightBarButtonItems = barButtonItems
     }
     private func updateFilteredMeals() {
-        print("🔄 Updating Meals for Region: \(selectedRegion?.rawValue ?? "Default"), Age: \(selectedAgeGroup.rawValue)")
+        print("�� Updating Meals for Continent: \(selectedContinent.rawValue), Country: \(selectedCountry.rawValue), Region: \(selectedRegion?.rawValue ?? "Default"), Age: \(selectedAgeGroup.rawValue)")
 
         filteredMeals.removeAll()
         
-
         for category in BiteType.predefinedCases {
-            let meals = BiteSampleData.shared.getItems(for: category, in: selectedRegion ?? .east, for: selectedAgeGroup)
-            filteredMeals[category] = meals
+            // If region is selected, use the full filtering hierarchy
+            if let region = selectedRegion {
+                let meals = BiteSampleData.shared.getItems(for: category, in: selectedContinent, in: selectedCountry, in: region, for: selectedAgeGroup)
+                filteredMeals[category] = meals
+            } else {
+                // If no region selected, get meals for the selected country
+                let allRegions = RegionType.allCases.filter { $0.country == selectedCountry }
+                var meals: [FeedingMeal] = []
+                
+                for region in allRegions {
+                    let regionMeals = BiteSampleData.shared.getItems(for: category, in: selectedContinent, in: selectedCountry, in: region, for: selectedAgeGroup)
+                    meals.append(contentsOf: regionMeals)
+                }
+                
+                filteredMeals[category] = meals
+            }
         }
 
         collectionView.reloadData()
@@ -532,6 +587,31 @@ class TodBiteViewController: UIViewController, UITableViewDelegate, UISearchBarD
         updatePlaceholderVisibility()
         tableView.reloadData()
     }
+
+    // Add this method to implement the HeaderCollectionReusableViewDelegate
+    func didTapSectionHeader(category: String) {
+        // Find the corresponding BiteType
+        guard let biteType = BiteType.predefinedCases.first(where: { $0.rawValue == category }) else {
+            return
+        }
+        
+        // Get all meals for this category
+        let meals = BiteSampleData.shared.getItems(for: biteType, in: selectedRegion ?? .east, for: selectedAgeGroup)
+        
+        // Use the existing MealDetailViewController to show the first meal in the category
+        if let firstMeal = meals.first {
+            let detailVC = MealDetailViewController()
+            detailVC.title = category
+            detailVC.selectedItem = firstMeal
+            detailVC.sectionItems = meals
+            
+            // Navigate to the detail view controller
+            navigationController?.pushViewController(detailVC, animated: true)
+        } else {
+            // Show a message if no meals are found
+            MealItemDetails(message: "No meals available in \(category)")
+        }
+    }
 }
 
 // MARK: - UICollectionViewDataSource
@@ -568,20 +648,18 @@ extension TodBiteViewController: UICollectionViewDataSource {
 
         let category = BiteType.predefinedCases[indexPath.section]
         
-       
-        
         let items: [FeedingMeal]
         
         if isSearching {
             items = filteredMeals[category] ?? []
         } else {
             items = !filteredMeals.isEmpty ? (filteredMeals[category] ?? []) :
-                     BiteSampleData.shared.getItems(for: category, in: selectedRegion ?? .east, for: selectedAgeGroup)
+                     BiteSampleData.shared.getItems(for: category, in: selectedContinent, in: selectedCountry, in: selectedRegion ?? .east, for: selectedAgeGroup)
         }
 
         let item = items[indexPath.row]
 
-        print("🍽️ Displaying Meal: \(item.name) - Category: \(category.rawValue) - Region: \(selectedRegion ?? .east) - Age: \(selectedAgeGroup)")
+        print("🍽️ Displaying Meal: \(item.name) - Category: \(category.rawValue) - Continent: \(selectedContinent.rawValue) - Country: \(selectedCountry.rawValue) - Region: \(item.region.rawValue) - Age: \(selectedAgeGroup.rawValue)")
 
         let isAdded = myBowlItemsDict[category]?.contains(where: { $0.name == item.name }) ?? false
 
@@ -602,7 +680,7 @@ extension TodBiteViewController: UICollectionViewDataSource {
         }
 
         let sectionName = BiteType.predefinedCases[indexPath.section].rawValue
-       let timeIntervals = [
+        let timeIntervals = [
             "7:30 AM - 8:00 AM",
             "10:00 AM - 10:30 AM",
             "12:30 PM - 1:00 PM",
@@ -612,8 +690,8 @@ extension TodBiteViewController: UICollectionViewDataSource {
 
         let intervalText = indexPath.section < timeIntervals.count ? timeIntervals[indexPath.section] : "Other"
 
-   
         headerView.configure(with: sectionName, interval: intervalText)
+        headerView.delegate = self
         return headerView
     }
 }
@@ -624,8 +702,10 @@ extension TodBiteViewController: UICollectionViewDelegate {
         let category = BiteType.predefinedCases[indexPath.section]
         let items = BiteSampleData.shared.getItems(for: category, in: selectedRegion ?? .east, for: selectedAgeGroup)
         let selectedItem = items[indexPath.row]
-
+        
+        // Navigate to detail view with category name in the title
         let detailVC = MealDetailViewController()
+        detailVC.title = category.rawValue  // Use category name as title
         detailVC.selectedItem = selectedItem
         detailVC.sectionItems = items
 
@@ -727,7 +807,7 @@ extension TodBiteViewController: TodBiteCollectionViewCellDelegate {
 
     private func indexPathForItem(_ item: FeedingMeal, in category: BiteType) -> IndexPath? {
         guard let section = BiteType.predefinedCases.firstIndex(of: category),
-              let row = BiteSampleData.shared.getItems(for: category, in: selectedRegion ?? .east, for: selectedAgeGroup).firstIndex(where: { $0.name == item.name }) else {
+              let row = BiteSampleData.shared.getItems(for: category, in: selectedContinent, in: selectedCountry, in: selectedRegion ?? .east, for: selectedAgeGroup).firstIndex(where: { $0.name == item.name }) else {
             return nil
         }
         return IndexPath(row: row, section: section)
@@ -744,29 +824,40 @@ extension TodBiteViewController: UISearchResultsUpdating {
         filteredMeals.removeAll()
 
         for category in BiteType.predefinedCases {
+            // Get meals using the three-level geographical hierarchy
+            var allMeals: [FeedingMeal] = []
             
-            filteredMeals[category] = BiteSampleData.shared.getItems(for: category, in: selectedRegion ?? .east, for: selectedAgeGroup)
-                .filter { $0.name.lowercased().contains(searchText.lowercased()) }
+            if let region = selectedRegion {
+                // If region is selected, get meals for that specific region
+                allMeals = BiteSampleData.shared.getItems(for: category, in: selectedContinent, in: selectedCountry, in: region, for: selectedAgeGroup)
+            } else {
+                // If no region selected, get all meals for the country
+                for region in RegionType.allCases where region.country == selectedCountry {
+                    let regionMeals = BiteSampleData.shared.getItems(for: category, in: selectedContinent, in: selectedCountry, in: region, for: selectedAgeGroup)
+                    allMeals.append(contentsOf: regionMeals)
+                }
+            }
+            
+            // Filter by search text
+            filteredMeals[category] = allMeals.filter { $0.name.lowercased().contains(searchText.lowercased()) }
         }
 
         collectionView.reloadData()
     }
 }
 extension TodBiteViewController: FilterViewControllerDelegate {
-    func didApplyFilters(region: RegionType, ageGroup: AgeGroup) {
-        print("\n✅ Filters Applied - Region: \(region), Age Group: \(ageGroup)")
+    func didApplyFilters(continent: ContinentType, country: CountryType, region: RegionType, ageGroup: AgeGroup) {
+        print("\n✅ Filters Applied - Continent: \(continent.rawValue), Country: \(country.rawValue), Region: \(region.rawValue), Age Group: \(ageGroup.rawValue)")
 
+        self.selectedContinent = continent
+        self.selectedCountry = country
         self.selectedRegion = region
         self.selectedAgeGroup = ageGroup
-
-
         
         filteredMeals = [:]
         for category in BiteType.predefinedCases {
-            let meals = BiteSampleData.shared.getItems(for: category, in: region, for: ageGroup)
+            let meals = BiteSampleData.shared.getItems(for: category, in: continent, in: country, in: region, for: ageGroup)
             filteredMeals[category] = meals
-            
-           
             
             print("🔄 Category: \(category.rawValue) - Meals Count: \(meals.count)")
             for meal in meals {

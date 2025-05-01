@@ -194,6 +194,9 @@ class HomeViewController: UIViewController {
         super.viewWillAppear(animated)
         loadVaccinations()
         updateSpecialMoments()
+        
+        // Always update Today's Bites when returning to this view
+        updateTodaysBites()
     }
     
     override func viewWillDisappear(_ animated: Bool) {
@@ -395,31 +398,56 @@ class HomeViewController: UIViewController {
     @objc private func updateTodaysBites() {
         print("✅ Fetching Today's Bites from UserDefaults...")
         
-        guard let savedMeals = UserDefaults.standard.array(forKey: "todaysBites") as? [[String: String]],
-              let savedDate = UserDefaults.standard.string(forKey: "selectedDay") else {
+        // Force reload the data from UserDefaults
+        let savedMeals = UserDefaults.standard.array(forKey: "todaysBites") as? [[String: String]]
+        let savedDate = UserDefaults.standard.string(forKey: "selectedDay")
+        
+        // Clear existing data
+        todaysBitesData.removeAll()
+        
+        if savedMeals == nil || savedMeals!.isEmpty || savedDate == nil {
             print("⚠️ No saved meals found!")
+            // Update UI on main thread
+            DispatchQueue.main.async {
+                self.todaysBitesCollectionView.reloadData()
+                self.updateTodaysBitesEmptyState()
+            }
             return
         }
-        print("📌 Saved Meals: \(savedMeals)")
-        print("📌 Saved Date: \(savedDate)")
+        
+        print("📌 Saved Meals: \(savedMeals!)")
+        print("📌 Saved Date: \(savedDate!)")
+        
         var updatedBites: [TodayBite] = []
         
-        for meal in savedMeals {
+        for meal in savedMeals! {
             if let title = meal["category"], let time = meal["time"], let imageName = meal["image"] {
                 updatedBites.append(TodayBite(title: title, time: time, imageName: imageName))
             }
         }
+        
         let predefinedOrder: [String] = ["EarlyBite", "NourishBite", "MidDayBite", "SnackBite", "NightBite"]
         updatedBites.sort { (a, b) -> Bool in
             let indexA = predefinedOrder.firstIndex(of: a.title) ?? predefinedOrder.count
             let indexB = predefinedOrder.firstIndex(of: b.title) ?? predefinedOrder.count
             return indexA < indexB
         }
-        todaysBitesData = updatedBites
-        todaysBitesCollectionView.reloadData()
         
-        // Update the empty state
-        updateTodaysBitesEmptyState()
+        todaysBitesData = updatedBites
+        
+        // Ensure UI updates happen on main thread
+        DispatchQueue.main.async {
+            // Force the collection view to reload with animation
+            UIView.transition(with: self.todaysBitesCollectionView,
+                            duration: 0.35,
+                             options: .transitionCrossDissolve,
+                          animations: {
+                              self.todaysBitesCollectionView.reloadData()
+                          })
+            
+            // Update the empty state
+            self.updateTodaysBitesEmptyState()
+        }
     }
     @objc private func handleNewVaccineScheduled(_ notification: Notification) {
         loadVaccinations()

@@ -102,13 +102,45 @@ class CreateCustomBiteViewController: UIViewController {
     }
 
     @objc private func chooseMealTapped() {
-        let mealListVC = MealListViewController()
-        mealListVC.onMealSelected = { [weak self] meal in
-            self?.selectedMeal = meal
-            self?.mealSelectionLabel.text = "Selected: \(meal.name)"
+        // Create a meal selection view controller to show all available meals
+        let mealSelectionVC = MealSelectionViewController()
+        
+        // Get all meals from all categories in the data source
+        var allMeals: [FeedingMeal] = []
+        
+        // Add meals from each bite type
+        for category in BiteType.predefinedCases {
+            // Get meals for all regions and selected age group
+            for region in RegionType.allCases {
+                let meals = BiteSampleData.shared.getItems(for: category, in: region, for: .months12to15)
+                allMeals.append(contentsOf: meals)
+            }
+        }
+        
+        // Add user-added meals if any
+        allMeals.append(contentsOf: BiteSampleData.shared.userAddedMeals)
+        
+        // Remove duplicates (if any meals appear in multiple regions)
+        var uniqueMeals: [FeedingMeal] = []
+        var mealNames = Set<String>()
+        
+        for meal in allMeals {
+            if !mealNames.contains(meal.name) {
+                uniqueMeals.append(meal)
+                mealNames.insert(meal.name)
+            }
+        }
+        
+        // Setup the meal selection view controller
+        mealSelectionVC.allMeals = uniqueMeals
+        mealSelectionVC.onMealSelected = { [weak self] selectedMeal in
+            self?.selectedMeal = selectedMeal
+            self?.mealSelectionLabel.text = "Selected: \(selectedMeal.name)"
             self?.mealSelectionLabel.textColor = .black
         }
-        navigationController?.pushViewController(mealListVC, animated: true)
+        
+        // Present the meal selection view
+        navigationController?.pushViewController(mealSelectionVC, animated: true)
     }
 
     @objc private func saveTapped() {

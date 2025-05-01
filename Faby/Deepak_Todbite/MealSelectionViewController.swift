@@ -1,55 +1,96 @@
 import UIKit
 
-class MealSelectionViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
+class MealSelectionViewController: UIViewController, UITableViewDelegate, UITableViewDataSource, UISearchBarDelegate {
     
     var onMealSelected: ((FeedingMeal) -> Void)?
+    var allMeals: [FeedingMeal] = []
+    private var filteredMeals: [FeedingMeal] = []
+    
     private let tableView = UITableView()
-    private let availableMeals = BiteSampleData.shared.categories 
+    private let searchBar = UISearchBar()
+    private var isSearching = false
     
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "Select Meal"
         view.backgroundColor = .white
         
+        setupSearchBar()
+        setupTableView()
+        
+        // Initially, filtered meals are the same as all meals
+        filteredMeals = allMeals
+    }
+    
+    private func setupSearchBar() {
+        searchBar.delegate = self
+        searchBar.placeholder = "Search meals..."
+        searchBar.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(searchBar)
+        
+        NSLayoutConstraint.activate([
+            searchBar.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            searchBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            searchBar.trailingAnchor.constraint(equalTo: view.trailingAnchor)
+        ])
+    }
+    
+    private func setupTableView() {
         tableView.delegate = self
         tableView.dataSource = self
-        tableView.register(UITableViewCell.self, forCellReuseIdentifier: "MealCell")
+        tableView.register(MealTableViewCell.self, forCellReuseIdentifier: "MealCell")
         
         view.addSubview(tableView)
         tableView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            tableView.topAnchor.constraint(equalTo: searchBar.bottomAnchor),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
     }
     
-    func numberOfSections(in tableView: UITableView) -> Int {
-        return availableMeals.keys.count
-    }
+    // MARK: - UITableViewDataSource
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        let category = Array(availableMeals.keys)[section]
-        return availableMeals[category]?.count ?? 0
+        return filteredMeals.count
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "MealCell", for: indexPath)
-        let category = Array(availableMeals.keys)[indexPath.section]
-        let meal = availableMeals[category]?[indexPath.row]
+        let cell = tableView.dequeueReusableCell(withIdentifier: "MealCell", for: indexPath) as! MealTableViewCell
+        let meal = filteredMeals[indexPath.row]
         
-        cell.textLabel?.text = meal?.name
+        cell.configure(with: meal)
         return cell
     }
     
+    // MARK: - UITableViewDelegate
+    
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        let category = Array(availableMeals.keys)[indexPath.section]
-        let selectedMeal = availableMeals[category]?[indexPath.row]
-        
-        if let meal = selectedMeal {
-            onMealSelected?(meal)
-            navigationController?.popViewController(animated: true)
+        let selectedMeal = filteredMeals[indexPath.row]
+        onMealSelected?(selectedMeal)
+        navigationController?.popViewController(animated: true)
+    }
+    
+    // MARK: - UISearchBarDelegate
+    
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        if searchText.isEmpty {
+            filteredMeals = allMeals
+            isSearching = false
+        } else {
+            isSearching = true
+            filteredMeals = allMeals.filter { $0.name.lowercased().contains(searchText.lowercased()) }
         }
+        
+        tableView.reloadData()
+    }
+    
+    func searchBarCancelButtonClicked(_ searchBar: UISearchBar) {
+        searchBar.text = ""
+        searchBar.resignFirstResponder()
+        filteredMeals = allMeals
+        isSearching = false
+        tableView.reloadData()
     }
 }
