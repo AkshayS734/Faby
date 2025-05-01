@@ -100,37 +100,6 @@ struct FeedingMeal {
     let region: RegionType
     let ageGroup: AgeGroup
     
-    // Optional country-specific properties
-    var countrySpecificNotes: String? = nil
-    var localName: String? = nil
-    var culturalSignificance: String? = nil
-    var dietaryRestrictions: [String]? = nil
-    
-    // Convenience initializer that includes the original parameters
-    init(name: String, description: String, image: String, category: BiteType, region: RegionType, ageGroup: AgeGroup) {
-        self.name = name
-        self.description = description
-        self.image = image
-        self.category = category
-        self.region = region
-        self.ageGroup = ageGroup
-    }
-    
-    // Extended initializer with country-specific fields
-    init(name: String, description: String, image: String, category: BiteType, region: RegionType, ageGroup: AgeGroup, 
-         countrySpecificNotes: String? = nil, localName: String? = nil, culturalSignificance: String? = nil, dietaryRestrictions: [String]? = nil) {
-        self.name = name
-        self.description = description
-        self.image = image
-        self.category = category
-        self.region = region
-        self.ageGroup = ageGroup
-        self.countrySpecificNotes = countrySpecificNotes
-        self.localName = localName
-        self.culturalSignificance = culturalSignificance
-        self.dietaryRestrictions = dietaryRestrictions
-    }
-    
     // Helper computed properties for the geographical hierarchy
     var country: CountryType {
         return region.country
