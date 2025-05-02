@@ -299,6 +299,7 @@ class SelectedVaccinesViewController: UIViewController {
         return content
     }
     
+    // MARK: - Actions
     @objc private func continueButtonTapped() {
         if selectedVaccines.isEmpty {
             let noSelectionAlert = UIAlertController(
@@ -313,15 +314,10 @@ class SelectedVaccinesViewController: UIViewController {
         
         Task {
             do {
-                guard let babyId = UserDefaultsManager.shared.currentBabyId else {
-                    // Show error alert
-                    return
-                }
-                
                 // Save selected vaccines to schedule
                 for vaccine in selectedVaccines {
                     try await VaccineScheduleManager.shared.saveSchedule(
-                        babyId: babyId,
+                        babyId: vaccine.id,
                         vaccineId: vaccine.id,
                         hospital: "To be selected",
                         date: Date(),
@@ -329,13 +325,11 @@ class SelectedVaccinesViewController: UIViewController {
                     )
                 }
                 
-                // Navigate to VacciAlertViewController immediately
+                // Navigate to VacciAlertViewController on the main thread
                 await MainActor.run {
                     let vacciAlertVC = VacciAlertViewController()
-                    // Ensure we're using the root navigation controller
-                    if let navigationController = self.navigationController {
-                        navigationController.pushViewController(vacciAlertVC, animated: true)
-                    }
+                    self.navigationController?.pushViewController(vacciAlertVC, animated: true)
+                    
                     // Post notification to refresh vaccine data
                     NotificationCenter.default.post(name: NSNotification.Name("RefreshVaccineData"), object: nil)
                 }
@@ -353,7 +347,6 @@ class SelectedVaccinesViewController: UIViewController {
             }
         }
     }
-    
     @objc private func vaccineCardTapped(_ sender: UITapGestureRecognizer) {
         guard let cardView = sender.view,
               let index = stackView.arrangedSubviews.firstIndex(of: cardView),
