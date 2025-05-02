@@ -7,9 +7,9 @@
 
 import Foundation
 
-struct Topics {
+struct Topics: Codable {
+    let id: String
     let title: String
-    let subtitle: String
     let imageView: String
 }
 

@@ -9,7 +9,7 @@ class BabyDataModel {
             dateOfBirth: "28092024",
             gender: .male,
             parent: Parent(
-                id: UUID(), // Provide a unique ID
+                id: String(), // Provide a unique ID
                 name: "Adarsh",
                 email: "example@gmail.com",
                 gender: .male,
