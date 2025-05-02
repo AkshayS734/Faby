@@ -482,7 +482,7 @@ extension VaccineInputViewController: VaccineCellDelegate {
         guard let selectedVaccine = selectedVaccineObjects.first else { return }
         
         // Create date picker alert
-        let alertController = UIAlertController(title: "Schedule Vaccination", message: "Select a date for \(vaccine)", preferredStyle: .actionSheet)
+        let alertController = UIAlertController(title: "", message: "Select a date for \(vaccine)", preferredStyle: .actionSheet)
         
         // Create custom view for date picker
         let customView = UIView(frame: CGRect(x: 0, y: 0, width: alertController.view.bounds.width - 16, height: 300))

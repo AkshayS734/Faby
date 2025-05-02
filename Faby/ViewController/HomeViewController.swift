@@ -319,9 +319,9 @@ class HomeViewController: UIViewController {
     private func setupVaccineView() {
         print("🔄 Setting up vaccine view with \(scheduledVaccines.count) vaccines")
         
-        // Convert dictionary vaccines to VaccineSchedule objects
-        let vaccineSchedules = scheduledVaccines.compactMap { dict -> VaccineSchedule? in
-            guard let type = dict["type"],
+        // Convert dictionary vaccines to VaccineSchedule objects and keep vaccine names
+        let vaccineSchedulesWithNames: [(VaccineSchedule, String)] = scheduledVaccines.compactMap { dict in
+            guard let vaccineName = dict["type"],
                   let dateString = dict["date"],
                   let hospital = dict["hospital"] else {
                 return nil
@@ -335,21 +335,23 @@ class HomeViewController: UIViewController {
                 return nil
             }
             
-            return VaccineSchedule(
+            let schedule = VaccineSchedule(
                 id: UUID(),
                 babyID: BabyDataModel.shared.babyList[0].babyID,
-                vaccineId: UUID(), // We'll need to fetch or store the actual vaccine ID
+                vaccineId: UUID(), // This is not used for display
                 hospital: hospital,
                 date: date,
                 location: dict["address"] ?? "",
                 isAdministered: false
             )
+            return (schedule, vaccineName)
         }
         
         // Debug the content of scheduled vaccines
-        for (i, vaccine) in vaccineSchedules.enumerated() {
+        for (i, tuple) in vaccineSchedulesWithNames.enumerated() {
+            let (vaccine, vaccineName) = tuple
             print("📊 Scheduled vaccine \(i):")
-            print("   - Type: \(vaccine.vaccineId)")
+            print("   - Name: \(vaccineName)")
             print("   - Date: \(vaccine.date)")
             print("   - Hospital: \(vaccine.hospital)")
             print("   - Record type: VaccineSchedule")
@@ -364,23 +366,22 @@ class HomeViewController: UIViewController {
             
             // Remove any existing hosting controller
             if let oldVaccineViewController = self.children.first(where: { $0 is UIHostingController<VaccineCardsView> }) {
-            oldVaccineViewController.willMove(toParent: nil)
-            oldVaccineViewController.view.removeFromSuperview()
-            oldVaccineViewController.removeFromParent()
-        }
-        
+                oldVaccineViewController.willMove(toParent: nil)
+                oldVaccineViewController.view.removeFromSuperview()
+                oldVaccineViewController.removeFromParent()
+            }
+            
             // Create the vaccine cards view with the callback
-        let vaccineCardsView = UIHostingController(rootView: VaccineCardsView(
-                vaccines: vaccineSchedules,
-            onVaccineCompleted: { [weak self] vaccine in
+            let vaccineCardsView = UIHostingController(rootView: VaccineCardsView(
+                vaccines: vaccineSchedulesWithNames,
+                onVaccineCompleted: { [weak self] tuple in
+                    let (vaccine, _) = tuple
                     print("📱 Vaccine completion requested for: \(vaccine.vaccineId)")
-                    
                     Task {
                         do {
                             // Get all scheduled records for this baby
                             let schedules = try await VaccineScheduleManager.shared.fetchSchedules(forBaby: BabyDataModel.shared.babyList[0].babyID)
                             print("✅ Successfully fetched \(schedules.count) scheduled vaccination records")
-                            
                             // Find and delete the matching schedule
                             for record in schedules {
                                 if record.id == vaccine.id {
@@ -396,7 +397,6 @@ class HomeViewController: UIViewController {
                                         )
                                     )
                                     print("✅ Deleted original scheduled record with ID: \(record.id)")
-                                    
                                     // Create administered record
                                     let administered = VaccineAdministered(
                                         id: UUID(),
@@ -405,7 +405,6 @@ class HomeViewController: UIViewController {
                                         scheduleId: record.id,
                                         administeredDate: Date()
                                     )
-                                    
                                     try await AdministeredVaccineManager.shared.addAdministeredVaccine(
                                         babyId: administered.babyId,
                                         vaccineId: administered.vaccineId,
@@ -414,29 +413,26 @@ class HomeViewController: UIViewController {
                                         location: record.location
                                     )
                                     print("✅ Saved administered vaccine record")
-                                    
                                     // Reload vaccinations
                                     await MainActor.run {
                                         self?.loadVaccinations()
-                    }
+                                    }
                                     break
-                }
-            }
+                                }
+                            }
                         } catch {
                             print("❌ Error completing vaccine: \(error)")
                         }
                     }
                 }
             ))
-            
             // Add the view controller as a child
             self.addChild(vaccineCardsView)
-        vaccineCardsView.view.translatesAutoresizingMaskIntoConstraints = false
-        vaccineCardsView.view.backgroundColor = UIColor(hex: "#f2f2f7")
-        
+            vaccineCardsView.view.translatesAutoresizingMaskIntoConstraints = false
+            vaccineCardsView.view.backgroundColor = UIColor(hex: "#f2f2f7")
             // Add and constrain the view
             self.vaccineContainerView.addSubview(vaccineCardsView.view)
-        NSLayoutConstraint.activate([
+            NSLayoutConstraint.activate([
                 vaccineCardsView.view.topAnchor.constraint(equalTo: self.vaccineContainerView.topAnchor),
                 vaccineCardsView.view.leadingAnchor.constraint(equalTo: self.vaccineContainerView.leadingAnchor),
                 vaccineCardsView.view.trailingAnchor.constraint(equalTo: self.vaccineContainerView.trailingAnchor),
@@ -444,10 +440,10 @@ class HomeViewController: UIViewController {
             ])
             vaccineCardsView.didMove(toParent: self)
             self.vaccineView = vaccineCardsView.view
-    }
-    
+        }
         DispatchQueue.main.async(execute: workItem)
     }
+    
     private func setupDelegates() {
         todaysBitesCollectionView.delegate = self
         todaysBitesCollectionView.dataSource = self
@@ -664,8 +660,8 @@ extension HomeViewController: UICollectionViewDelegate, UICollectionViewDataSour
 
 
 struct VaccineCardsView: View {
-    let vaccines: [VaccineSchedule]
-    var onVaccineCompleted: (VaccineSchedule) -> Void
+    let vaccines: [(VaccineSchedule, String)]
+    var onVaccineCompleted: ((VaccineSchedule, String)) -> Void
     
     var body: some View {
         VStack {
@@ -675,7 +671,7 @@ struct VaccineCardsView: View {
                         .font(.system(size: 24))
                         .foregroundColor(.gray)
                     Text("No upcoming vaccinations")
-                            .font(.system(size: 16))
+                        .font(.system(size: 16))
                         .foregroundColor(.gray)
                 }
                 .frame(height: 100)
@@ -683,12 +679,14 @@ struct VaccineCardsView: View {
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(spacing: 12) {
-                        ForEach(vaccines, id: \.id) { vaccine in
+                        ForEach(Array(vaccines.enumerated()), id: \.element.0.id) { index, tuple in
+                            let (vaccine, vaccineName) = tuple
                             VaccineCard(
                                 vaccine: vaccine,
+                                vaccineName: vaccineName,
                                 onComplete: {
                                     print("📱 Vaccine card tapped for completion: \(vaccine.vaccineId)")
-                                    onVaccineCompleted(vaccine)
+                                    onVaccineCompleted(tuple)
                                 }
                             )
                         }
@@ -706,27 +704,26 @@ struct VaccineCardsView: View {
 
 struct VaccineCard: View {
     let vaccine: VaccineSchedule
+    let vaccineName: String
     let onComplete: () -> Void
     @State private var isCompleted = false
     @State private var opacity = 1.0
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Header with Type and Completion Button
+            // Header with Vaccine Name and Completion Button
             HStack {
-                Text(vaccine.vaccineId.uuidString.prefix(8))
+                Text(vaccineName)
                     .font(.headline)
                     .fontWeight(.semibold)
-                
+                    .lineLimit(1)
+                    .truncationMode(.tail)
                 Spacer()
-                
                 Button(action: {
                     withAnimation(.easeOut(duration: 0.3)) {
                         isCompleted = true
                         opacity = 0
                     }
-                    
-                    // Use a simpler approach with a delay
                     DispatchQueue.main.asyncAfter(wallDeadline: .now() + 0.3) {
                         onComplete()
                     }
@@ -737,7 +734,6 @@ struct VaccineCard: View {
                 }
                 .disabled(isCompleted)
             }
-            
             // Date and Hospital Info
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 6) {
@@ -748,7 +744,6 @@ struct VaccineCard: View {
                         .font(.subheadline)
                         .foregroundColor(Color(.systemGray))
                 }
-                
                 HStack(spacing: 6) {
                     Image(systemName: "building.2")
                         .foregroundColor(Color(.systemBlue))

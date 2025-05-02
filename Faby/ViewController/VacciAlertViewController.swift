@@ -26,7 +26,7 @@ struct VaccineCardView: View {
                         .foregroundColor(.secondary)
                 }
                 Spacer()
-                Image(systemName: "plus.circle.fill")
+                Image(systemName: "chevron.right")
                     .font(.title3)
                     .foregroundColor(Color.accentColor)
                     .frame(width: 44, height: 44) // Optimal tap target size

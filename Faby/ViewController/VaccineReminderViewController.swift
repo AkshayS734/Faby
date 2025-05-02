@@ -32,8 +32,8 @@ class CalendarWithIndicators: UIDatePicker {
         
         let calendar = Calendar.current
         for date in dates {
-                if let normalizedDate = calendar.date(from: calendar.dateComponents([.year, .month, .day], from: date)) {
-                    scheduledDates.insert(normalizedDate)
+            if let normalizedDate = calendar.date(from: calendar.dateComponents([.year, .month, .day], from: date)) {
+                scheduledDates.insert(normalizedDate)
                 print("✅ Successfully added date indicator for: \(date)")
             }
         }
@@ -107,88 +107,70 @@ class CalendarWithIndicators: UIDatePicker {
     private func findDateLabel(in cell: UIView) -> UILabel? {
         return cell.subviews.first { $0 is UILabel } as? UILabel
     }
-    
-    private func extractDate(from text: String) -> Date? {
-        guard let day = Int(text) else { return nil }
-        
-        let calendar = Calendar.current
-        let components = calendar.dateComponents([.year, .month], from: self.date)
-        
-        return calendar.date(from: DateComponents(year: components.year,
-                                                  month: components.month,
-                                                  day: day))
-    }
-    
-    private func addDotIndicator(to cell: UIView) {
-        let dotLayer = CALayer()
-        let dotSize: CGFloat = 6
-        
-        // Position the dot at the bottom center of the cell
-        dotLayer.frame = CGRect(x: (cell.bounds.width - dotSize) / 2,
-                                y: cell.bounds.height - dotSize - 4,
-                                width: dotSize,
-                                height: dotSize)
-        
-        dotLayer.cornerRadius = dotSize / 2
-        dotLayer.backgroundColor = UIColor.systemBlue.cgColor
-        
-        // Add the dot with higher z-index
-        dotLayer.zPosition = 1000
-        cell.layer.addSublayer(dotLayer)
-        dotLayers.append(dotLayer)
-    }
 }
 
-    // MARK: - Main View Controller
-class VaccineReminderViewController: UIViewController, UISearchBarDelegate {
-        
-        // MARK: - Properties
-        private let scrollView = UIScrollView()
-        private let contentView = UIView()
-        private let calendarView = UIView()
-        private let scheduledVaccinationsLabel = UILabel()
-        private let vaccinationsStackView = UIStackView()
-    private let vaccinationsTableView = UITableView()
+// MARK: - Main View Controller
+class VaccineReminderViewController: UIViewController, UISearchBarDelegate, UIScrollViewDelegate {
+    
+    // MARK: - Properties
+    private let scrollView = UIScrollView()
+    private let contentView = UIView()
+    private let calendarContainer = UIView()
+    private let vaccineListContainer = UIView()
     private let emptyStateView = UIView()
     private let activityIndicator = UIActivityIndicatorView(style: .large)
-        
-        private var calendarWithIndicators: CalendarWithIndicators?
-        private var vaccinations: [VaccineSchedule] = []
-        private var filteredVaccinations: [VaccineSchedule] = []
+    
+    private var calendarWithIndicators: CalendarWithIndicators?
+    private var vaccinations: [VaccineSchedule] = []
+    private var filteredVaccinations: [VaccineSchedule] = []
+    
+    // Header views
+    private let headerView = UIView()
+    private let scheduledVaccinationsLabel = UILabel()
+    private let seeAllButton = UIButton(type: .system)
+    
+    // Animation properties
+    private var calendarHeightConstraint: NSLayoutConstraint?
+    private var calendarTopConstraint: NSLayoutConstraint?
+    private var calendarMinimizedHeight: CGFloat = 120
+    private var calendarFullHeight: CGFloat = 350
+    private var lastContentOffset: CGFloat = 0
+    private var isCalendarMinimized = false
+    
     private var currentBabyId: UUID {
         return UserDefaultsManager.shared.currentBabyId ?? UUID()
     }
-        
-        private let dateFormatter: DateFormatter = {
-            let formatter = DateFormatter()
-            formatter.dateStyle = .medium
-            return formatter
-        }()
     
-    private var vaccinationListHostingController: UIHostingController<VaccinationListView>?
-        
-        // MARK: - Lifecycle Methods
-        override func viewDidLoad() {
-            super.viewDidLoad()
+    private let dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        return formatter
+    }()
+    
+    private var vaccinationListHostingController: UIHostingController<VaccineScheduleListView>?
+    
+    // MARK: - Lifecycle Methods
+    override func viewDidLoad() {
+        super.viewDidLoad()
         print("DEBUG: VaccineReminderViewController viewDidLoad called")
-            setupUI()
+        setupUI()
         setupActivityIndicator()
-            loadVaccinations()
-        }
-        
-        override func viewWillAppear(_ animated: Bool) {
-            super.viewWillAppear(animated)
-            loadVaccinations()
-        }
-        
-        // MARK: - UI Setup
-        private func setupUI() {
-            view.backgroundColor = UIColor(hex: "#f2f2f7")
-            setupNavigationBar()
-            setupScrollView()
-            setupCalendarView()
-            setupScheduledVaccinations()
-        setupTableView()
+        loadVaccinations()
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        loadVaccinations()
+    }
+    
+    // MARK: - UI Setup
+    private func setupUI() {
+        view.backgroundColor = .systemGroupedBackground
+        setupNavigationBar()
+        setupScrollView()
+        setupCalendarView()
+        setupHeaderView()
+        setupVaccineListContainer()
         setupEmptyStateView()
     }
     
@@ -200,80 +182,122 @@ class VaccineReminderViewController: UIViewController, UISearchBarDelegate {
             activityIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             activityIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor)
         ])
-        }
-        
-        private func setupNavigationBar() {
-            title = "Vaccine Reminders"
-            navigationItem.rightBarButtonItem = UIBarButtonItem(
-                barButtonSystemItem: .search,
-                target: self,
-                action: #selector(didTapSearch)
-            )
-        }
-        
-        private func setupScrollView() {
-            scrollView.translatesAutoresizingMaskIntoConstraints = false
-            contentView.translatesAutoresizingMaskIntoConstraints = false
-            
-            view.addSubview(scrollView)
-            scrollView.addSubview(contentView)
-            
-            NSLayoutConstraint.activate([
-                scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-                scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-                scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-                scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-                
-                contentView.topAnchor.constraint(equalTo: scrollView.topAnchor),
-                contentView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
-                contentView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
-                contentView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
-                contentView.widthAnchor.constraint(equalTo: view.widthAnchor)
-            ])
-        }
-        
-        private func setupCalendarView() {
-            calendarView.translatesAutoresizingMaskIntoConstraints = false
-            calendarView.backgroundColor = .systemBackground
-            calendarView.layer.cornerRadius = 12
-            contentView.addSubview(calendarView)
-            
-            let datePicker = CalendarWithIndicators(frame: .zero)
-            datePicker.translatesAutoresizingMaskIntoConstraints = false
-            datePicker.addTarget(self, action: #selector(didSelectDate(_:)), for: .valueChanged)
-            calendarView.addSubview(datePicker)
-            
-            self.calendarWithIndicators = datePicker
-            
-            NSLayoutConstraint.activate([
-                calendarView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 16),
-                calendarView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-                calendarView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-                calendarView.heightAnchor.constraint(equalToConstant: 350),
-                
-                datePicker.topAnchor.constraint(equalTo: calendarView.topAnchor),
-                datePicker.leadingAnchor.constraint(equalTo: calendarView.leadingAnchor),
-                datePicker.trailingAnchor.constraint(equalTo: calendarView.trailingAnchor),
-                datePicker.bottomAnchor.constraint(equalTo: calendarView.bottomAnchor)
-            ])
-        }
+    }
     
-    private func setupTableView() {
-        vaccinationsTableView.translatesAutoresizingMaskIntoConstraints = false
-        vaccinationsTableView.register(UITableViewCell.self, forCellReuseIdentifier: "VaccineCell")
-        vaccinationsTableView.delegate = self
-        vaccinationsTableView.dataSource = self
-        vaccinationsTableView.backgroundColor = .clear
-        vaccinationsTableView.separatorStyle = .none
-        vaccinationsTableView.showsVerticalScrollIndicator = false
-        contentView.addSubview(vaccinationsTableView)
+    private func setupNavigationBar() {
+        title = "Vaccine Reminders"
+        navigationController?.navigationBar.prefersLargeTitles = true
+        
+        let searchButton = UIBarButtonItem(
+            barButtonSystemItem: .search,
+            target: self,
+            action: #selector(didTapSearch)
+        )
+        navigationItem.rightBarButtonItem = searchButton
+    }
+    
+    private func setupScrollView() {
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        contentView.translatesAutoresizingMaskIntoConstraints = false
+        
+        scrollView.delegate = self
+        scrollView.contentInsetAdjustmentBehavior = .never
+        
+        view.addSubview(scrollView)
+        scrollView.addSubview(contentView)
         
         NSLayoutConstraint.activate([
-            vaccinationsTableView.topAnchor.constraint(equalTo: vaccinationsStackView.bottomAnchor, constant: 8),
-            vaccinationsTableView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-            vaccinationsTableView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-            vaccinationsTableView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -20),
-            vaccinationsTableView.heightAnchor.constraint(greaterThanOrEqualToConstant: 200)
+            scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            
+            contentView.topAnchor.constraint(equalTo: scrollView.topAnchor),
+            contentView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
+            contentView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
+            contentView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
+            contentView.widthAnchor.constraint(equalTo: view.widthAnchor)
+        ])
+        
+        // Add tap gesture to dismiss calendar when tapping outside
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleTapOutsideCalendar))
+        contentView.addGestureRecognizer(tapGesture)
+    }
+    
+    private func setupCalendarView() {
+        calendarContainer.translatesAutoresizingMaskIntoConstraints = false
+        calendarContainer.backgroundColor = .systemBackground
+        calendarContainer.layer.cornerRadius = 12
+        calendarContainer.clipsToBounds = true
+        calendarContainer.layer.shadowColor = UIColor.black.cgColor
+        calendarContainer.layer.shadowOffset = CGSize(width: 0, height: 2)
+        calendarContainer.layer.shadowRadius = 4
+        calendarContainer.layer.shadowOpacity = 0.1
+        calendarContainer.layer.masksToBounds = false
+        contentView.addSubview(calendarContainer)
+        
+        let datePicker = CalendarWithIndicators(frame: .zero)
+        datePicker.translatesAutoresizingMaskIntoConstraints = false
+        datePicker.addTarget(self, action: #selector(didSelectDate(_:)), for: .valueChanged)
+        calendarContainer.addSubview(datePicker)
+        
+        self.calendarWithIndicators = datePicker
+        
+        calendarTopConstraint = calendarContainer.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 16)
+        calendarHeightConstraint = calendarContainer.heightAnchor.constraint(equalToConstant: calendarFullHeight)
+        
+        NSLayoutConstraint.activate([
+            calendarTopConstraint!,
+            calendarContainer.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            calendarContainer.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+            calendarHeightConstraint!,
+            
+            datePicker.topAnchor.constraint(equalTo: calendarContainer.topAnchor),
+            datePicker.leadingAnchor.constraint(equalTo: calendarContainer.leadingAnchor),
+            datePicker.trailingAnchor.constraint(equalTo: calendarContainer.trailingAnchor),
+            datePicker.bottomAnchor.constraint(equalTo: calendarContainer.bottomAnchor)
+        ])
+    }
+    
+    private func setupHeaderView() {
+        headerView.translatesAutoresizingMaskIntoConstraints = false
+        contentView.addSubview(headerView)
+        
+        scheduledVaccinationsLabel.translatesAutoresizingMaskIntoConstraints = false
+        scheduledVaccinationsLabel.text = "Scheduled Vaccinations"
+        scheduledVaccinationsLabel.font = .systemFont(ofSize: 20, weight: .bold)
+        headerView.addSubview(scheduledVaccinationsLabel)
+        
+        seeAllButton.translatesAutoresizingMaskIntoConstraints = false
+        seeAllButton.setTitle("See All", for: .normal)
+        seeAllButton.titleLabel?.font = .systemFont(ofSize: 16)
+        seeAllButton.addTarget(self, action: #selector(seeAllButtonTapped), for: .touchUpInside)
+        headerView.addSubview(seeAllButton)
+        
+        NSLayoutConstraint.activate([
+            headerView.topAnchor.constraint(equalTo: calendarContainer.bottomAnchor, constant: 24),
+            headerView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            headerView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+            headerView.heightAnchor.constraint(equalToConstant: 30),
+            
+            scheduledVaccinationsLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor),
+            scheduledVaccinationsLabel.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
+            
+            seeAllButton.trailingAnchor.constraint(equalTo: headerView.trailingAnchor),
+            seeAllButton.centerYAnchor.constraint(equalTo: headerView.centerYAnchor)
+        ])
+    }
+    
+    private func setupVaccineListContainer() {
+        vaccineListContainer.translatesAutoresizingMaskIntoConstraints = false
+        contentView.addSubview(vaccineListContainer)
+        
+        NSLayoutConstraint.activate([
+            vaccineListContainer.topAnchor.constraint(equalTo: headerView.bottomAnchor, constant: 8),
+            vaccineListContainer.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
+            vaccineListContainer.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
+            vaccineListContainer.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -20),
+            vaccineListContainer.heightAnchor.constraint(greaterThanOrEqualToConstant: 500) // Ensure enough space for content
         ])
     }
     
@@ -290,68 +314,86 @@ class VaccineReminderViewController: UIViewController, UISearchBarDelegate {
         emptyStateView.addSubview(emptyLabel)
         
         NSLayoutConstraint.activate([
-            emptyStateView.topAnchor.constraint(equalTo: vaccinationsStackView.bottomAnchor, constant: 40),
+            emptyStateView.topAnchor.constraint(equalTo: headerView.bottomAnchor, constant: 40),
             emptyStateView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
             emptyStateView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-            emptyStateView.heightAnchor.constraint(equalToConstant: 100),
+            emptyStateView.heightAnchor.constraint(equalToConstant: 200),
             
             emptyLabel.centerXAnchor.constraint(equalTo: emptyStateView.centerXAnchor),
             emptyLabel.centerYAnchor.constraint(equalTo: emptyStateView.centerYAnchor)
         ])
     }
+    
+    // MARK: - Calendar Animation
+    private func toggleCalendarSize(minimize: Bool, animated: Bool = true) {
+        if isCalendarMinimized == minimize { return }
         
-        @objc private func seeAllButtonTapped() {
-            // Reset any date filters
-            filteredVaccinations = vaccinations
-            displayVaccinations(filteredVaccinations)
-            scheduledVaccinationsLabel.text = "All Scheduled Vaccinations"
+        isCalendarMinimized = minimize
+        
+        let targetHeight = minimize ? calendarMinimizedHeight : calendarFullHeight
+        
+        if animated {
+            UIView.animate(withDuration: 0.3, delay: 0, options: .curveEaseInOut) {
+                self.calendarHeightConstraint?.constant = targetHeight
+                self.view.layoutIfNeeded()
+            }
+        } else {
+            calendarHeightConstraint?.constant = targetHeight
+            view.layoutIfNeeded()
         }
-        
-        private func setupScheduledVaccinations() {
-            // Create a container view for the header
-            let headerView = UIView()
-            headerView.translatesAutoresizingMaskIntoConstraints = false
-            contentView.addSubview(headerView)
-            
-            scheduledVaccinationsLabel.translatesAutoresizingMaskIntoConstraints = false
-            scheduledVaccinationsLabel.text = "Scheduled Vaccinations"
-            scheduledVaccinationsLabel.font = .systemFont(ofSize: 20, weight: .bold)
-            headerView.addSubview(scheduledVaccinationsLabel)
-            
-            // Add "See All" button
-            let seeAllButton = UIButton(type: .system)
-            seeAllButton.translatesAutoresizingMaskIntoConstraints = false
-            seeAllButton.setTitle("See All", for: .normal)
-            seeAllButton.titleLabel?.font = .systemFont(ofSize: 16)
-            seeAllButton.addTarget(self, action: #selector(seeAllButtonTapped), for: .touchUpInside)
-            headerView.addSubview(seeAllButton)
-            
-            vaccinationsStackView.translatesAutoresizingMaskIntoConstraints = false
-            vaccinationsStackView.axis = .vertical
-            vaccinationsStackView.spacing = 10
-            contentView.addSubview(vaccinationsStackView)
-            
-            NSLayoutConstraint.activate([
-                headerView.topAnchor.constraint(equalTo: calendarView.bottomAnchor, constant: 24),
-                headerView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-                headerView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-                headerView.heightAnchor.constraint(equalToConstant: 30),
-                
-                scheduledVaccinationsLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor),
-                scheduledVaccinationsLabel.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
-                
-                seeAllButton.trailingAnchor.constraint(equalTo: headerView.trailingAnchor),
-                seeAllButton.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
-                
-                vaccinationsStackView.topAnchor.constraint(equalTo: headerView.bottomAnchor, constant: 16),
-                vaccinationsStackView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-                vaccinationsStackView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-            vaccinationsStackView.heightAnchor.constraint(equalToConstant: 40)
-            ])
+    }
+    
+    @objc private func handleTapOutsideCalendar(_ sender: UITapGestureRecognizer) {
+        let location = sender.location(in: contentView)
+        if !calendarContainer.frame.contains(location) && isCalendarMinimized == false {
+            toggleCalendarSize(minimize: true)
         }
-        
-        // MARK: - Data Loading and Display
-        private func loadVaccinations() {
+    }
+    
+    // MARK: - Action Handlers
+    @objc private func seeAllButtonTapped() {
+        // Reset any date filters
+        filteredVaccinations = vaccinations
+        displayVaccinations(filteredVaccinations)
+        scheduledVaccinationsLabel.text = "All Scheduled Vaccinations"
+    }
+    
+    // MARK: - Helper methods for vaccine name resolution
+    private func getVaccineName(for vaccineId: UUID) async -> String {
+        print("🔍 Getting vaccine name for ID: \(vaccineId)")
+        do {
+            // Use SupabaseVaccineManager to fetch all vaccines
+            let allVaccines = try await SupabaseVaccineManager.shared.fetchAllVaccines()
+            
+            // Find the matching vaccine by ID
+            if let vaccine = allVaccines.first(where: { $0.id == vaccineId }) {
+                print("✅ Found vaccine name from database: \(vaccine.name)")
+                return vaccine.name
+            }
+            
+            // Fallback to VaccineManager's static data if needed
+            for stage in VaccineManager.shared.vaccineData {
+                for vaccineName in stage.vaccines {
+                    // This is a simple check - in practice you'd want to match more precisely
+                    if vaccineName.contains(vaccineId.uuidString.prefix(8)) {
+                        print("✅ Found vaccine name from static data: \(vaccineName)")
+                        return vaccineName
+                    }
+                }
+            }
+            
+            print("⚠️ Could not find name for vaccine ID: \(vaccineId)")
+            return "Unknown Vaccine"
+        } catch {
+            print("❌ Error fetching vaccine name: \(error)")
+            
+            // Fallback to shortened UUID
+            return "Vaccine \(vaccineId.uuidString.prefix(8))"
+        }
+    }
+    
+    // MARK: - Data Loading and Display
+    private func loadVaccinations() {
         print("📋 Loading vaccinations for all babies")
         activityIndicator.startAnimating()
         
@@ -361,13 +403,10 @@ class VaccineReminderViewController: UIViewController, UISearchBarDelegate {
                 let scheduledVaccines = try await VaccineScheduleManager.shared.fetchAllSchedules()
                 print("✅ Fetched \(scheduledVaccines.count) scheduled vaccines (all babies)")
                 
-                // Get administered vaccines (optional, can be filtered if needed)
-                let administeredVaccines: [VaccineAdministered] = []
-                
                 // Process and combine records
                 let combinedRecords = processVaccinationRecords(
                     scheduledVaccines: scheduledVaccines,
-                    administeredVaccines: administeredVaccines
+                    administeredVaccines: []
                 )
                 
                 // Update calendar with vaccine dates
@@ -391,10 +430,10 @@ class VaccineReminderViewController: UIViewController, UISearchBarDelegate {
                     self.filteredVaccinations = []
                     self.displayVaccinations([])
                 }
-                }
             }
         }
-        
+    }
+    
     private func showErrorAlert(message: String) {
         let alert = UIAlertController(title: "Error", message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "OK", style: .default))
@@ -430,7 +469,7 @@ class VaccineReminderViewController: UIViewController, UISearchBarDelegate {
         
         // Sort by date (newest first)
         result.sort { (a, b) -> Bool in
-            return a.date > b.date
+            return a.date < b.date // Changed to date ascending (upcoming first)
         }
         
         return result
@@ -439,146 +478,251 @@ class VaccineReminderViewController: UIViewController, UISearchBarDelegate {
     private func displayVaccinations(_ vaccinationsToDisplay: [VaccineSchedule]? = nil) {
         let vaccines = vaccinationsToDisplay ?? filteredVaccinations
         
-        // Remove any existing vaccination list view
-        vaccinationListHostingController?.view.removeFromSuperview()
-        vaccinationListHostingController?.removeFromParent()
+        // Create vaccine schedule tuples with names
+        var vaccinesWithNames: [(VaccineSchedule, String)] = []
         
-        // Create and add the new SwiftUI vaccination list view
-        let vaccinationListView = VaccinationListView(vaccinations: vaccines)
-        let hostingController = UIHostingController(rootView: vaccinationListView)
-        addChild(hostingController)
-        view.addSubview(hostingController.view)
-        
-        // Setup constraints for the hosting controller
-        hostingController.view.translatesAutoresizingMaskIntoConstraints = false
-            NSLayoutConstraint.activate([
-            hostingController.view.topAnchor.constraint(equalTo: calendarView.bottomAnchor),
-            hostingController.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            hostingController.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            hostingController.view.bottomAnchor.constraint(equalTo: view.bottomAnchor)
-        ])
-        
-        hostingController.didMove(toParent: self)
-        vaccinationListHostingController = hostingController
-        }
-        
-        // MARK: - Date Selection
-        @objc private func didSelectDate(_ sender: UIDatePicker) {
-        let selectedDate = sender.date
-            filterVaccinationsForDate(selectedDate)
-        }
-        
-    private func filterVaccinationsForDate(_ selectedDate: Date) {
-            let calendar = Calendar.current
-        let selectedComponents = calendar.dateComponents([.year, .month, .day], from: selectedDate)
-            
-            filteredVaccinations = vaccinations.filter { vaccination in
-            let vaccinationComponents = calendar.dateComponents([.year, .month, .day], from: vaccination.date)
-                
-                return selectedComponents.year == vaccinationComponents.year &&
-                selectedComponents.month == vaccinationComponents.month &&
-                selectedComponents.day == vaccinationComponents.day
+        // Create a task group to fetch all vaccine names asynchronously
+        Task {
+            for vaccine in vaccines {
+                // Get the vaccine name using the getVaccineName method
+                let vaccineName = await getVaccineName(for: vaccine.vaccineId)
+                vaccinesWithNames.append((vaccine, vaccineName))
             }
             
-            displayVaccinations(filteredVaccinations)
-        scheduledVaccinationsLabel.text = "Vaccinations for \(dateFormatter.string(from: selectedDate))"
-        }
-        
-        // MARK: - Search
-        @objc private func didTapSearch() {
-            let searchController = UISearchController(searchResultsController: nil)
-            searchController.searchBar.delegate = self
-            searchController.obscuresBackgroundDuringPresentation = false
-            searchController.searchBar.placeholder = "Search vaccinations..."
-            navigationItem.searchController = searchController
-            searchController.isActive = true
-        }
-        
-        // MARK: - UISearchBarDelegate
-        func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
-            if searchText.isEmpty {
-                filteredVaccinations = vaccinations
-                displayVaccinations(filteredVaccinations)
-            } else {
-                filteredVaccinations = vaccinations.filter {
-                // Get vaccine name from VaccineScheduleManager
-                let vaccineName = "Vaccine" // Replace with actual logic to get vaccine name
+            // Update UI on the main thread once all names are retrieved
+            await MainActor.run {
+                // Remove any existing vaccination list view
+                vaccinationListHostingController?.view.removeFromSuperview()
+                vaccinationListHostingController?.removeFromParent()
                 
-                return vaccineName.lowercased().contains(searchText.lowercased()) ||
-                    $0.hospital.lowercased().contains(searchText.lowercased()) ||
-                    $0.location.lowercased().contains(searchText.lowercased()) ||
-                dateFormatter.string(from: $0.date).lowercased().contains(searchText.lowercased())
+                // Create and add the new SwiftUI vaccination list view with vaccine names
+                let vaccinationListView = VaccineScheduleListView(vaccinations: vaccinesWithNames)
+                let hostingController = UIHostingController(rootView: vaccinationListView)
+                addChild(hostingController)
+                hostingController.view.backgroundColor = .systemGroupedBackground
+                vaccineListContainer.addSubview(hostingController.view)
+                
+                // Setup constraints for the hosting controller
+                hostingController.view.translatesAutoresizingMaskIntoConstraints = false
+                NSLayoutConstraint.activate([
+                    hostingController.view.topAnchor.constraint(equalTo: vaccineListContainer.topAnchor),
+                    hostingController.view.leadingAnchor.constraint(equalTo: vaccineListContainer.leadingAnchor),
+                    hostingController.view.trailingAnchor.constraint(equalTo: vaccineListContainer.trailingAnchor),
+                    hostingController.view.bottomAnchor.constraint(equalTo: vaccineListContainer.bottomAnchor)
+                ])
+                
+                hostingController.didMove(toParent: self)
+                vaccinationListHostingController = hostingController
+                
+                // Update empty state visibility
+                emptyStateView.isHidden = !vaccines.isEmpty
+                vaccineListContainer.isHidden = vaccines.isEmpty
+                
+                // Minimize calendar if vaccines are found
+                if !vaccines.isEmpty && !isCalendarMinimized {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        self.toggleCalendarSize(minimize: true)
+                    }
                 }
-                displayVaccinations(filteredVaccinations)
             }
         }
+    }
+    
+    // MARK: - Date Selection
+    @objc private func didSelectDate(_ sender: UIDatePicker) {
+        let selectedDate = sender.date
+        filterVaccinationsForDate(selectedDate)
         
-        func searchBarCancelButtonClicked(_ searchBar: UISearchBar) {
+        // Expand calendar when date is selected
+        toggleCalendarSize(minimize: true, animated: true)
+    }
+    
+    private func filterVaccinationsForDate(_ selectedDate: Date) {
+        let calendar = Calendar.current
+        let selectedComponents = calendar.dateComponents([.year, .month, .day], from: selectedDate)
+        
+        filteredVaccinations = vaccinations.filter { vaccination in
+            let vaccinationComponents = calendar.dateComponents([.year, .month, .day], from: vaccination.date)
+            
+            return selectedComponents.year == vaccinationComponents.year &&
+            selectedComponents.month == vaccinationComponents.month &&
+            selectedComponents.day == vaccinationComponents.day
+        }
+        
+        displayVaccinations(filteredVaccinations)
+        scheduledVaccinationsLabel.text = "Vaccinations for \(dateFormatter.string(from: selectedDate))"
+    }
+    
+    // MARK: - Search
+    @objc private func didTapSearch() {
+        let searchController = UISearchController(searchResultsController: nil)
+        searchController.searchBar.delegate = self
+        searchController.obscuresBackgroundDuringPresentation = false
+        searchController.searchBar.placeholder = "Search vaccinations..."
+        navigationItem.searchController = searchController
+        searchController.isActive = true
+    }
+    
+    // MARK: - UISearchBarDelegate
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        if searchText.isEmpty {
             filteredVaccinations = vaccinations
             displayVaccinations(filteredVaccinations)
-        }
-    }
-
-// MARK: - UITableViewDelegate, UITableViewDataSource
-extension VaccineReminderViewController: UITableViewDelegate, UITableViewDataSource {
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return filteredVaccinations.count
-    }
-    
-    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "VaccineCell", for: indexPath)
-        let vaccination = filteredVaccinations[indexPath.row]
-        
-        // Configure cell
-        var content = cell.defaultContentConfiguration()
-        
-        // Get vaccine name - hardcoded for now until we have proper database alignment
-        let vaccineName = getVaccineName(for: vaccination.vaccineId)
-        
-        content.text = vaccineName
-        
-        // Format date
-        let dateString = dateFormatter.string(from: vaccination.date)
-        
-        // Add status indicator
-        if vaccination.isAdministered {
-            content.secondaryAttributedText = NSAttributedString(
-                string: "Administered • \(vaccination.hospital) • \(dateString)",
-                attributes: [NSAttributedString.Key.foregroundColor: UIColor.systemGreen]
-            )
         } else {
-            content.secondaryText = "Scheduled • \(vaccination.hospital) • \(dateString)"
+            // We need to handle search differently since we need to get vaccine names first
+            Task {
+                var searchResults: [VaccineSchedule] = []
+                
+                for vaccine in vaccinations {
+                    // Get current vaccine name
+                    let vaccineName = await getVaccineName(for: vaccine.vaccineId)
+                    
+                    if vaccineName.lowercased().contains(searchText.lowercased()) ||
+                       vaccine.hospital.lowercased().contains(searchText.lowercased()) ||
+                       vaccine.location.lowercased().contains(searchText.lowercased()) ||
+                       dateFormatter.string(from: vaccine.date).lowercased().contains(searchText.lowercased()) {
+                        searchResults.append(vaccine)
+                    }
+                }
+                
+                // Update on main thread
+                await MainActor.run {
+                    self.filteredVaccinations = searchResults
+                    self.displayVaccinations(searchResults)
+                }
+            }
         }
-        
-        cell.contentConfiguration = content
-        cell.backgroundColor = .secondarySystemBackground
-        cell.layer.cornerRadius = 8
-        cell.clipsToBounds = true
-        
-        return cell
     }
     
-    // Helper method to get vaccine name
-    private func getVaccineName(for vaccineId: UUID) -> String {
-        // This is a hardcoded solution since we can't fetch from the database right now
-        // In a real implementation, you would fetch this from your database
-        let vaccineNames = [
-            "DTaP (Dose 1)",
-            "Hepatitis B (Dose 1)",
-            "Rotavirus",
-            "Polio (Dose 1)",
-            "Hib (Dose 1)",
-            "Pneumococcal (Dose 1)"
-        ]
+    func searchBarCancelButtonClicked(_ searchBar: UISearchBar) {
+        filteredVaccinations = vaccinations
+        displayVaccinations(filteredVaccinations)
+    }
+    
+    // MARK: - UIScrollViewDelegate
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        // Detect scroll direction
+        let currentOffset = scrollView.contentOffset.y
+        let contentHeight = scrollView.contentSize.height
+        let frameHeight = scrollView.frame.size.height
         
-        // Use the last 1 digit of the UUID as an index to select a vaccine name
-        if let lastChar = vaccineId.uuidString.last, 
-           let index = Int(String(lastChar), radix: 16) {
-            return vaccineNames[index % vaccineNames.count]
+        // Automatically minimize calendar when scrolling down
+        if currentOffset > lastContentOffset && currentOffset > 50 {
+            // Scrolling down
+            if !isCalendarMinimized {
+                toggleCalendarSize(minimize: true)
+            }
+        } else if currentOffset < lastContentOffset && currentOffset < 20 {
+            // Scrolling up to top - consider expanding calendar
+            if isCalendarMinimized {
+                toggleCalendarSize(minimize: false)
+            }
         }
         
-        return "Vaccine"
+        // Update for next comparison
+        lastContentOffset = currentOffset
+    }
+    
+    // Handle tap on calendar to expand/collapse
+    @objc private func calendarContainerTapped() {
+        toggleCalendarSize(minimize: !isCalendarMinimized)
     }
 }
 
+// MARK: - SwiftUI Views
+struct VaccineScheduleListView: View {
+    let vaccinations: [(VaccineSchedule, String)]
+    
+    var body: some View {
+        if vaccinations.isEmpty {
+            VStack {
+                Spacer()
+                Text("No vaccinations found")
+                    .font(.headline)
+                    .foregroundColor(.secondary)
+                Spacer()
+            }
+        } else {
+            ScrollView {
+                LazyVStack(spacing: 12) {
+                    ForEach(vaccinations, id: \.0.id) { tuple in
+                        let (vaccination, vaccineName) = tuple
+                        VaccinationCard(vaccination: vaccination, vaccineName: vaccineName)
+                            .padding(.horizontal)
+                    }
+                }
+                .padding(.vertical)
+            }
+            .background(Color(.systemGroupedBackground))
+        }
+    }
+}
+
+struct VaccinationCard: View {
+    let vaccination: VaccineSchedule
+    let vaccineName: String
+    
+    private let dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        return formatter
+    }()
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text(vaccineName)
+                    .font(.headline)
+                    .foregroundColor(.primary)
+                
+                Spacer()
+                
+                Text(vaccination.isAdministered ? "Administered" : "Scheduled")
+                    .font(.subheadline)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(vaccination.isAdministered ? Color.green.opacity(0.2) : Color.blue.opacity(0.2))
+                    )
+                    .foregroundColor(vaccination.isAdministered ? .green : .blue)
+            }
+            
+            Divider()
+            
+            HStack(spacing: 12) {
+                Image(systemName: "calendar")
+                    .foregroundColor(.blue)
+                    .frame(width: 20)
+                Text(dateFormatter.string(from: vaccination.date))
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
+            
+            HStack(spacing: 12) {
+                Image(systemName: "building.2")
+                    .foregroundColor(.blue)
+                    .frame(width: 20)
+                Text(vaccination.hospital)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
+            
+            if !vaccination.location.isEmpty {
+                HStack(spacing: 12) {
+                    Image(systemName: "mappin.and.ellipse")
+                        .foregroundColor(.blue)
+                        .frame(width: 20)
+                    Text(vaccination.location)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+        .padding(16)
+        .background(Color(.systemBackground))
+        .cornerRadius(12)
+        .shadow(color: Color.black.opacity(0.05), radius: 3, x: 0, y: 2)
+    }
+}
 

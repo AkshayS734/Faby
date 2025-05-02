@@ -75,6 +75,19 @@ class VaccineScheduleManager {
                          userInfo: [NSLocalizedDescriptionKey: "Supabase client not available"])
         }
         
+        // Validate required fields
+        guard !hospital.isEmpty, !location.isEmpty else {
+            throw NSError(domain: "VacciAlertError", code: 2,
+                         userInfo: [NSLocalizedDescriptionKey: "Hospital and location are required"])
+        }
+        
+        // Check for existing schedule to prevent duplicates
+        let existingSchedules = try await fetchSchedules(forBaby: babyId)
+        if existingSchedules.contains(where: { $0.vaccineId == vaccineId && !$0.isAdministered }) {
+            throw NSError(domain: "VacciAlertError", code: 3,
+                         userInfo: [NSLocalizedDescriptionKey: "This vaccine is already scheduled"])
+        }
+        
         // Create record with the structure needed for the vaccination_schedules table
         let record = VaccineSchedule(
             id: UUID(),
@@ -90,7 +103,7 @@ class VaccineScheduleManager {
             .insert(record)
             .execute()
         
-        // Notify listeners
+        // Notify listeners only after successful save
         await MainActor.run {
             NotificationCenter.default.post(name: .newVaccineScheduled, object: nil)
         }
