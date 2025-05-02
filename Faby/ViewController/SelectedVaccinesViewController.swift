@@ -4,6 +4,7 @@ class SelectedVaccinesViewController: UIViewController {
     
     // MARK: - Properties
     private var selectedVaccines: [Vaccine] = []
+    private var selectedDates: [String: Date] = [:]
     
     // MARK: - UI Components
     private let scrollView: UIScrollView = {
@@ -19,47 +20,12 @@ class SelectedVaccinesViewController: UIViewController {
         return view
     }()
     
-    private let titleLabel: UILabel = {
-        let label = UILabel()
-//        label.text = "Your Selected Vaccines"
-        label.font = .systemFont(ofSize: 24, weight: .bold)
-        label.translatesAutoresizingMaskIntoConstraints = false
-        return label
-    }()
-    
-    private let subtitleLabel: UILabel = {
-        let label = UILabel()
-        label.text = "Review your selections below"
-        label.font = .systemFont(ofSize: 16)
-        label.textColor = .secondaryLabel
-        label.translatesAutoresizingMaskIntoConstraints = false
-        return label
-    }()
-    
     private let stackView: UIStackView = {
         let stack = UIStackView()
         stack.axis = .vertical
         stack.spacing = 12
         stack.translatesAutoresizingMaskIntoConstraints = false
         return stack
-    }()
-    
-    private let infoView: UIView = {
-        let view = UIView()
-        view.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.1)
-        view.layer.cornerRadius = 12
-        view.translatesAutoresizingMaskIntoConstraints = false
-        return view
-    }()
-    
-    private let infoLabel: UILabel = {
-        let label = UILabel()
-        label.numberOfLines = 0
-        label.textAlignment = .center
-        label.font = .systemFont(ofSize: 15)
-        label.textColor = .systemBlue
-        label.translatesAutoresizingMaskIntoConstraints = false
-        return label
     }()
     
     private let continueButton: UIButton = {
@@ -74,8 +40,9 @@ class SelectedVaccinesViewController: UIViewController {
     }()
     
     // MARK: - Initialization
-    init(selectedVaccines: [Vaccine]) {
+    init(selectedVaccines: [Vaccine], selectedDates: [String: Date]) {
         self.selectedVaccines = selectedVaccines
+        self.selectedDates = selectedDates
         super.init(nibName: nil, bundle: nil)
     }
     
@@ -100,16 +67,12 @@ class SelectedVaccinesViewController: UIViewController {
         view.addSubview(scrollView)
         scrollView.addSubview(contentView)
         
-        [titleLabel, subtitleLabel, stackView, infoView, continueButton].forEach {
+        [stackView, continueButton].forEach {
             contentView.addSubview($0)
         }
         
-        infoView.addSubview(infoLabel)
-        
-
-        
         NSLayoutConstraint.activate([
-            scrollView.topAnchor.constraint(equalTo: view.topAnchor),
+            scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
@@ -120,28 +83,11 @@ class SelectedVaccinesViewController: UIViewController {
             contentView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
             contentView.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
             
-            titleLabel.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 24),
-            titleLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
-            titleLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
-            
-            subtitleLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 8),
-            subtitleLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
-            subtitleLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
-            
-            stackView.topAnchor.constraint(equalTo: subtitleLabel.bottomAnchor, constant: 24),
+            stackView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 20),
             stackView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
             stackView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
             
-            infoView.topAnchor.constraint(equalTo: stackView.bottomAnchor, constant: 24),
-            infoView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
-            infoView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
-            
-            infoLabel.topAnchor.constraint(equalTo: infoView.topAnchor, constant: 16),
-            infoLabel.leadingAnchor.constraint(equalTo: infoView.leadingAnchor, constant: 16),
-            infoLabel.trailingAnchor.constraint(equalTo: infoView.trailingAnchor, constant: -16),
-            infoLabel.bottomAnchor.constraint(equalTo: infoView.bottomAnchor, constant: -16),
-            
-            continueButton.topAnchor.constraint(equalTo: infoView.bottomAnchor, constant: 24),
+            continueButton.topAnchor.constraint(equalTo: stackView.bottomAnchor, constant: 24),
             continueButton.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
             continueButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
             continueButton.heightAnchor.constraint(equalToConstant: 52),
@@ -180,9 +126,6 @@ class SelectedVaccinesViewController: UIViewController {
             let cardView = createVaccineCardView(for: vaccine)
             stackView.addArrangedSubview(cardView)
         }
-        
-        // Update info label
-        infoLabel.text = "You have selected \(selectedVaccines.count) vaccines. Please review the schedule and requirements for each vaccine carefully."
     }
     
     private func createVaccineCardView(for vaccine: Vaccine) -> UIView {
@@ -204,24 +147,35 @@ class SelectedVaccinesViewController: UIViewController {
         nameLabel.font = .systemFont(ofSize: 17, weight: .semibold)
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
         
-        let ageLabel = UILabel()
-        ageLabel.text = "Age: \(getAgeText(for: vaccine))"
-        ageLabel.font = .systemFont(ofSize: 15)
-        ageLabel.textColor = .secondaryLabel
-        ageLabel.translatesAutoresizingMaskIntoConstraints = false
+        // Create date components
+        let calendarIcon = UIImageView(image: UIImage(systemName: "calendar.badge.clock"))
+        calendarIcon.tintColor = .systemGreen
+        calendarIcon.contentMode = .scaleAspectFit
+        calendarIcon.translatesAutoresizingMaskIntoConstraints = false
         
-        let chevronImageView = UIImageView(image: UIImage(systemName: "chevron.right"))
-        chevronImageView.tintColor = .systemGray3
-        chevronImageView.contentMode = .scaleAspectFit
-        chevronImageView.translatesAutoresizingMaskIntoConstraints = false
+        let dateLabel = UILabel()
+        
+        // Check if there's a selected date for this vaccine
+        if let selectedDate = selectedDates[vaccine.name] {
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateStyle = .medium
+            dateLabel.text = "Scheduled: \(dateFormatter.string(from: selectedDate))"
+            dateLabel.textColor = .systemGreen
+        } else {
+            dateLabel.text = "Not scheduled"
+            dateLabel.textColor = .secondaryLabel
+        }
+        
+        dateLabel.font = .systemFont(ofSize: 14)
+        dateLabel.translatesAutoresizingMaskIntoConstraints = false
         
         cardView.addSubview(iconView)
         cardView.addSubview(nameLabel)
-        cardView.addSubview(ageLabel)
-        cardView.addSubview(chevronImageView)
+        cardView.addSubview(calendarIcon)
+        cardView.addSubview(dateLabel)
         
         NSLayoutConstraint.activate([
-            cardView.heightAnchor.constraint(equalToConstant: 80),
+            cardView.heightAnchor.constraint(equalToConstant: 70),
             
             iconView.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 16),
             iconView.centerYAnchor.constraint(equalTo: cardView.centerYAnchor),
@@ -230,35 +184,26 @@ class SelectedVaccinesViewController: UIViewController {
             
             nameLabel.topAnchor.constraint(equalTo: cardView.topAnchor, constant: 16),
             nameLabel.leadingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: 16),
-            nameLabel.trailingAnchor.constraint(equalTo: chevronImageView.leadingAnchor, constant: -16),
+            nameLabel.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -16),
             
-            ageLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 4),
-            ageLabel.leadingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: 16),
-            ageLabel.trailingAnchor.constraint(equalTo: chevronImageView.leadingAnchor, constant: -16),
+            calendarIcon.leadingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: 16),
+            calendarIcon.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 8),
+            calendarIcon.widthAnchor.constraint(equalToConstant: 18),
+            calendarIcon.heightAnchor.constraint(equalToConstant: 18),
             
-            chevronImageView.centerYAnchor.constraint(equalTo: cardView.centerYAnchor),
-            chevronImageView.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -16),
-            chevronImageView.widthAnchor.constraint(equalToConstant: 12),
-            chevronImageView.heightAnchor.constraint(equalToConstant: 20)
+            dateLabel.centerYAnchor.constraint(equalTo: calendarIcon.centerYAnchor),
+            dateLabel.leadingAnchor.constraint(equalTo: calendarIcon.trailingAnchor, constant: 8),
+            dateLabel.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -16)
         ])
         
-        // Add tap gesture
-        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(vaccineCardTapped(_:)))
-        cardView.addGestureRecognizer(tapGesture)
-        cardView.isUserInteractionEnabled = true
+        // Add tap gesture only if there's no scheduled date
+        if selectedDates[vaccine.name] == nil {
+            let tapGesture = UITapGestureRecognizer(target: self, action: #selector(vaccineCardTapped(_:)))
+            cardView.addGestureRecognizer(tapGesture)
+            cardView.isUserInteractionEnabled = true
+        }
         
         return cardView
-    }
-    
-    private func getAgeText(for vaccine: Vaccine) -> String {
-        if vaccine.startWeek == 0 {
-            return "At birth"
-        } else if vaccine.startWeek < 52 {
-            return "\(vaccine.startWeek/4) months"
-        } else {
-            let years = vaccine.startWeek / 52
-            return "\(years) years"
-        }
     }
     
     // MARK: - Actions
@@ -291,69 +236,69 @@ class SelectedVaccinesViewController: UIViewController {
         for vaccine in selectedVaccines {
             content += "<div style='margin: 10px 0;'>"
             content += "<h3>\(vaccine.name)</h3>"
-            content += "<p>Age: \(getAgeText(for: vaccine))</p>"
+            
+            // Add scheduled date if available
+            if let scheduledDate = selectedDates[vaccine.name] {
+                let dateFormatter = DateFormatter()
+                dateFormatter.dateStyle = .long
+                content += "<p><strong>Scheduled: \(dateFormatter.string(from: scheduledDate))</strong></p>"
+            } else {
+                content += "<p>Not scheduled</p>"
+            }
+            
             content += "<p>\(vaccine.description)</p>"
             content += "</div>"
         }
         
         return content
     }
-    
     @objc private func continueButtonTapped() {
-        if selectedVaccines.isEmpty {
-            let noSelectionAlert = UIAlertController(
-                title: "No Vaccines Selected",
-                message: "Please select at least one vaccine to continue.",
-                preferredStyle: .alert
-            )
-            noSelectionAlert.addAction(UIAlertAction(title: "OK", style: .default))
-            present(noSelectionAlert, animated: true)
-            return
-        }
-        
-        Task {
-            do {
-                guard let babyId = UserDefaultsManager.shared.currentBabyId else {
-                    // Show error alert
-                    return
-                }
-                
-                // Save selected vaccines to schedule
-                for vaccine in selectedVaccines {
-                    try await VaccineScheduleManager.shared.saveSchedule(
-                        babyId: babyId,
-                        vaccineId: vaccine.id,
-                        hospital: "To be selected",
-                        date: Date(),
-                        location: "To be selected"
-                    )
-                }
-                
-                // Navigate to VacciAlertViewController immediately
-                await MainActor.run {
-                    let vacciAlertVC = VacciAlertViewController()
-                    // Ensure we're using the root navigation controller
-                    if let navigationController = self.navigationController {
-                        navigationController.pushViewController(vacciAlertVC, animated: true)
+            if selectedVaccines.isEmpty {
+                let noSelectionAlert = UIAlertController(
+                    title: "No Vaccines Selected",
+                    message: "Please select at least one vaccine to continue.",
+                    preferredStyle: .alert
+                )
+                noSelectionAlert.addAction(UIAlertAction(title: "OK", style: .default))
+                present(noSelectionAlert, animated: true)
+                return
+            }
+            
+            Task {
+                do {
+                    // Save selected vaccines to schedule
+                    for vaccine in selectedVaccines {
+                        try await VaccineScheduleManager.shared.saveSchedule(
+                            babyId: vaccine.id,
+                            vaccineId: vaccine.id,
+                            hospital: "To be selected",
+                            date: Date(),
+                            location: "To be selected"
+                        )
                     }
-                    // Post notification to refresh vaccine data
-                    NotificationCenter.default.post(name: NSNotification.Name("RefreshVaccineData"), object: nil)
-                }
-            } catch {
-                print("Error saving vaccine schedules: \(error)")
-                await MainActor.run {
-                    let alert = UIAlertController(
-                        title: "Error",
-                        message: "Failed to save vaccine schedules. Please try again.",
-                        preferredStyle: .alert
-                    )
-                    alert.addAction(UIAlertAction(title: "OK", style: .default))
-                    self.present(alert, animated: true)
+                    
+                    // Navigate to VacciAlertViewController on the main thread
+                    await MainActor.run {
+                        let vacciAlertVC = VacciAlertViewController()
+                        self.navigationController?.pushViewController(vacciAlertVC, animated: true)
+                        
+                        // Post notification to refresh vaccine data
+                        NotificationCenter.default.post(name: NSNotification.Name("RefreshVaccineData"), object: nil)
+                    }
+                } catch {
+                    print("Error saving vaccine schedules: \(error)")
+                    await MainActor.run {
+                        let alert = UIAlertController(
+                            title: "Error",
+                            message: "Failed to save vaccine schedules. Please try again.",
+                            preferredStyle: .alert
+                        )
+                        alert.addAction(UIAlertAction(title: "OK", style: .default))
+                        self.present(alert, animated: true)
+                    }
                 }
             }
         }
-    }
-    
     @objc private func vaccineCardTapped(_ sender: UITapGestureRecognizer) {
         guard let cardView = sender.view,
               let index = stackView.arrangedSubviews.firstIndex(of: cardView),
@@ -362,6 +307,6 @@ class SelectedVaccinesViewController: UIViewController {
         }
         
         let vaccine = selectedVaccines[index]
-        // Implement vaccine detail view navigation
+        // Implement vaccine detail view navigation if needed
     }
 }

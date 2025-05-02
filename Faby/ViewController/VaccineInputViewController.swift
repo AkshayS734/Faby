@@ -367,28 +367,25 @@ class VaccineInputViewController: UIViewController, UISearchBarDelegate {
     }
 
     // 1. Simplified saveButtonTapped method without baby ID check
+    // Update the saveButtonTapped method in VaccineInputViewController to pass selected dates to the SelectedVaccinesViewController
+
     @objc private func saveButtonTapped() {
         // Check if any vaccines are selected
-        if selectedVaccines.isEmpty {
-            showAlert(title: "No Vaccines Selected", message: "Please select at least one vaccine before saving.")
-            return
-        }
+//        if selectedVaccines.isEmpty {
+//            showAlert(title: "No Vaccines Selected", message: "Please select at least one vaccine before saving.")
+//            return
+//        }
         
         // Get selected vaccine objects
         let selectedVaccineObjects = vaccineData.filter { selectedVaccines.contains($0.name) }
         
-        // Navigate to selected vaccines review screen
-        let selectedVaccinesVC = SelectedVaccinesViewController(selectedVaccines: selectedVaccineObjects)
+        // Navigate to selected vaccines review screen with selected dates
+        let selectedVaccinesVC = SelectedVaccinesViewController(
+            selectedVaccines: selectedVaccineObjects,
+            selectedDates: selectedDates // Pass the dictionary of selected dates
+        )
         navigationController?.pushViewController(selectedVaccinesVC, animated: true)
     }
-
-    // 2. Add a helper method to show alerts
-    private func showAlert(title: String, message: String) {
-        let alertController = UIAlertController(title: title, message: message, preferredStyle: .alert)
-        alertController.addAction(UIAlertAction(title: "OK", style: .default))
-        present(alertController, animated: true)
-    }
-
     // 3. Ensure the navigation bar is correctly set up and the button is visible
 //    private func configureNavigationBar() {
 //        navigationController?.navigationBar.prefersLargeTitles = true
