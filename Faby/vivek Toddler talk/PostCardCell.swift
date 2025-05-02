@@ -5,7 +5,6 @@ class PostCardCell: UITableViewCell {
     enum CardStyle {
         case simple
         case withImage
-       // case highlight
         
         var backgroundColor: UIColor {
             switch self {
@@ -13,8 +12,6 @@ class PostCardCell: UITableViewCell {
                 return .white
             case .withImage:
                 return .white
-        //    case .highlight:
-         //       return .white
             }
         }
         
@@ -151,6 +148,13 @@ class PostCardCell: UITableViewCell {
         return label
     }()
     
+//    private let shareButton: UIButton = {
+//        let button = UIButton()
+//        button.translatesAutoresizingMaskIntoConstraints = false
+//        button.setImage(UIImage(systemName: "square.and.arrow.up"), for: .normal)
+//        button.tintColor = .systemGray
+//        return button
+//    }()
     
     private var postImagesStackViewHeightConstraint: NSLayoutConstraint?
     private var isLiked = false {
@@ -409,12 +413,11 @@ class PostCardCell: UITableViewCell {
             postImagesStackViewHeightConstraint?.constant = 0
         }
         
-        // Fetch like counts
-        SupabaseManager.shared.fetchPostsLikedByUsers(postId: post.postId) { [weak self] likes, error in
+        // Fetch like counts - using new optimized method
+        SupabaseManager.shared.fetchPostLikeCount(postId: post.postId) { [weak self] count, error in
             DispatchQueue.main.async {
-                let likeCount = likes?.count ?? 0
-                self?.likeCountLabel.text = "\(likeCount)"
-                self?.likeCountLabel.isHidden = likeCount == 0
+                self?.likeCountLabel.text = "\(count)"
+                self?.likeCountLabel.isHidden = count == 0
             }
         }
         

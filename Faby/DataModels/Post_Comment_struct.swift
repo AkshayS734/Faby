@@ -13,6 +13,7 @@ struct Comment: Codable, Identifiable {
     let content: String
     let createdAt: String?
     let parentName: String?
+    let commentId: Int?
     
     enum CodingKeys: String, CodingKey {
         case postId = "post_id"
@@ -20,6 +21,7 @@ struct Comment: Codable, Identifiable {
         case content = "Comment_content"
         case createdAt = "created_at"
         case parentName = "parents"
+        case commentId = "Comment_id"
     }
     
     // Implement Identifiable protocol requirement
@@ -32,6 +34,7 @@ struct Comment: Codable, Identifiable {
         userId = try container.decode(String.self, forKey: .userId)
         content = try container.decode(String.self, forKey: .content)
         createdAt = try container.decodeIfPresent(String.self, forKey: .createdAt)
+        commentId = try container.decodeIfPresent(Int.self, forKey: .commentId)
         
         // Handle nested parent name
         if let parentContainer = try? container.nestedContainer(keyedBy: ParentCodingKeys.self, forKey: .parentName),

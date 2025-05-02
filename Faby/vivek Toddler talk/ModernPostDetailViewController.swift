@@ -52,6 +52,15 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
         return view
     }()
     
+    // Add drag handle for fullscreen expansion
+    private lazy var dragHandleView: UIView = {
+        let view = UIView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        view.backgroundColor = .systemGray3
+        view.layer.cornerRadius = 2.5
+        return view
+    }()
+    
     private lazy var commentInputView: UIView = {
         let view = UIView()
         view.translatesAutoresizingMaskIntoConstraints = false
@@ -60,6 +69,16 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
         view.layer.shadowOpacity = 0.1
         view.layer.shadowOffset = CGSize(width: 0, height: -2)
         view.layer.shadowRadius = 4
+        view.layoutMargins = .zero
+        return view
+    }()
+    
+    // Add spacer view to fill gap between keyboard and input
+    private lazy var keyboardSpacerView: UIView = {
+        let view = UIView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        view.backgroundColor = .systemBackground
+        view.isHidden = true
         return view
     }()
     
@@ -69,10 +88,10 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
         textField.placeholder = "Write a comment..."
         textField.font = .systemFont(ofSize: 16)
         textField.backgroundColor = .systemGray6
-        textField.layer.cornerRadius = 18
-        textField.leftView = UIView(frame: CGRect(x: 0, y: 0, width: 12, height: 0))
+        textField.layer.cornerRadius = 16
+        textField.leftView = UIView(frame: CGRect(x: 0, y: 0, width: 10, height: 0))
         textField.leftViewMode = .always
-        textField.rightView = UIView(frame: CGRect(x: 0, y: 0, width: 12, height: 0))
+        textField.rightView = UIView(frame: CGRect(x: 0, y: 0, width: 10, height: 0))
         textField.rightViewMode = .always
         return textField
     }()
@@ -119,6 +138,9 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
         return button
     }()
     
+    private var commentsOverlayHeightConstraint: NSLayoutConstraint?
+    private var isCommentsFullscreen = false
+    
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -139,8 +161,10 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
         view.addSubview(tableView)
         view.addSubview(loadingIndicator)
         view.addSubview(commentsOverlayView)
+        view.addSubview(keyboardSpacerView)
         
         // Add subviews to comments overlay
+        commentsOverlayView.addSubview(dragHandleView)
         commentsOverlayView.addSubview(overlayDismissButton)
         commentsOverlayView.addSubview(commentsCountLabel)
         commentsOverlayView.addSubview(commentsTableView)
@@ -152,6 +176,7 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
         
         // Initialize bottom constraint
         commentInputBottomConstraint = commentInputView.bottomAnchor.constraint(equalTo: commentsOverlayView.safeAreaLayoutGuide.bottomAnchor)
+        commentsOverlayHeightConstraint = commentsOverlayView.heightAnchor.constraint(equalTo: view.heightAnchor, multiplier: 0.7)
         
         NSLayoutConstraint.activate([
             // Main table view (posts)
@@ -168,7 +193,13 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
             commentsOverlayView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             commentsOverlayView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             commentsOverlayView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            commentsOverlayView.heightAnchor.constraint(equalTo: view.heightAnchor, multiplier: 0.7),
+            commentsOverlayHeightConstraint!,
+            
+            // Drag handle
+            dragHandleView.topAnchor.constraint(equalTo: commentsOverlayView.topAnchor, constant: 8),
+            dragHandleView.centerXAnchor.constraint(equalTo: commentsOverlayView.centerXAnchor),
+            dragHandleView.widthAnchor.constraint(equalToConstant: 40),
+            dragHandleView.heightAnchor.constraint(equalToConstant: 5),
             
             // Dismiss button
             overlayDismissButton.topAnchor.constraint(equalTo: commentsOverlayView.topAnchor, constant: 16),
@@ -190,20 +221,26 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
             // Comment input view
             commentInputView.leadingAnchor.constraint(equalTo: commentsOverlayView.leadingAnchor),
             commentInputView.trailingAnchor.constraint(equalTo: commentsOverlayView.trailingAnchor),
-            commentInputView.heightAnchor.constraint(equalToConstant: 60),
+            commentInputView.heightAnchor.constraint(equalToConstant: 50),
             commentInputBottomConstraint!,
             
             // Comment text field
             commentTextField.leadingAnchor.constraint(equalTo: commentInputView.leadingAnchor, constant: 16),
             commentTextField.trailingAnchor.constraint(equalTo: sendButton.leadingAnchor, constant: -8),
             commentTextField.centerYAnchor.constraint(equalTo: commentInputView.centerYAnchor),
-            commentTextField.heightAnchor.constraint(equalToConstant: 36),
+            commentTextField.heightAnchor.constraint(equalToConstant: 32),
             
             // Send button
             sendButton.trailingAnchor.constraint(equalTo: commentInputView.trailingAnchor, constant: -16),
             sendButton.centerYAnchor.constraint(equalTo: commentInputView.centerYAnchor),
             sendButton.widthAnchor.constraint(equalToConstant: 32),
-            sendButton.heightAnchor.constraint(equalToConstant: 32)
+            sendButton.heightAnchor.constraint(equalToConstant: 32),
+            
+            // Keyboard spacer view
+            keyboardSpacerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            keyboardSpacerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            keyboardSpacerView.topAnchor.constraint(equalTo: commentsOverlayView.bottomAnchor),
+            keyboardSpacerView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
         
         // Set initial state
@@ -220,14 +257,17 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
         commentInputView.layer.shadowOffset = CGSize(width: 0, height: -2)
         commentInputView.layer.shadowRadius = 4
         
-        commentTextField.backgroundColor = .systemGray6
-        commentTextField.layer.cornerRadius = 18
-        commentTextField.leftView = UIView(frame: CGRect(x: 0, y: 0, width: 12, height: 0))
-        commentTextField.leftViewMode = .always
-        commentTextField.placeholder = "Write a comment..."
-        
         commentsCountLabel.font = .systemFont(ofSize: 16, weight: .semibold)
         commentsCountLabel.textColor = .label
+        
+        // Add pan gesture to drag handle for expanding/collapsing comments view
+        let panGesture = UIPanGestureRecognizer(target: self, action: #selector(handleDragGesture(_:)))
+        dragHandleView.addGestureRecognizer(panGesture)
+        dragHandleView.isUserInteractionEnabled = true
+        
+        // Add tap gesture to expand/collapse
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleDragHandleTap(_:)))
+        dragHandleView.addGestureRecognizer(tapGesture)
     }
     
     private func setupNavigationBar() {
@@ -273,15 +313,90 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
         guard let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return }
         keyboardHeight = keyboardFrame.height
         
-        UIView.animate(withDuration: 0.3) {
-            self.commentInputBottomConstraint?.constant = -self.keyboardHeight
+        // Calculate the safe area bottom inset
+        let safeAreaBottomInset = view.safeAreaInsets.bottom
+        
+        // Only show the keyboard spacer when needed
+        keyboardSpacerView.isHidden = false
+        
+        // Get animation duration from notification
+        let duration = notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double ?? 0.3
+        
+        UIView.animate(withDuration: duration) {
+            // Use a more aggressive adjustment to minimize the gap
+            // Subtracting both safe area and a small additional offset
+            self.commentInputBottomConstraint?.constant = -(self.keyboardHeight - safeAreaBottomInset) + 5
             self.view.layoutIfNeeded()
         }
     }
     
     @objc private func keyboardWillHide(_ notification: Notification) {
+        keyboardSpacerView.isHidden = true
+        
         UIView.animate(withDuration: 0.3) {
             self.commentInputBottomConstraint?.constant = 0
+            self.view.layoutIfNeeded()
+        }
+    }
+    
+    @objc private func handleDragGesture(_ gesture: UIPanGestureRecognizer) {
+        let translation = gesture.translation(in: view)
+        let velocity = gesture.velocity(in: view)
+        
+        switch gesture.state {
+        case .changed:
+            // Limit drag to only moving up/down
+            commentsOverlayHeightConstraint?.constant = translation.y
+            view.layoutIfNeeded()
+            
+        case .ended, .cancelled:
+            let shouldExpand = velocity.y < 0 || (translation.y < 0 && abs(translation.y) > view.bounds.height * 0.1)
+            
+            toggleCommentsFullscreen(expand: shouldExpand)
+            
+        default:
+            break
+        }
+    }
+    
+    @objc private func handleDragHandleTap(_ gesture: UITapGestureRecognizer) {
+        toggleCommentsFullscreen(expand: !isCommentsFullscreen)
+    }
+    
+    private func toggleCommentsFullscreen(expand: Bool) {
+        isCommentsFullscreen = expand
+        
+        // First deactivate any conflicting constraints
+        if expand {
+            commentsOverlayHeightConstraint?.isActive = false
+            
+            // Make sure any existing top constraints are removed
+            for constraint in view.constraints {
+                if let firstItem = constraint.firstItem as? NSObject,
+                   firstItem == commentsOverlayView,
+                   constraint.firstAttribute == .top {
+                    constraint.isActive = false
+                }
+            }
+            
+            // Add top constraint to expand to full screen
+            let topConstraint = commentsOverlayView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor)
+            topConstraint.isActive = true
+        } else {
+            // Remove any top constraints first
+            for constraint in view.constraints {
+                if let firstItem = constraint.firstItem as? NSObject,
+                   firstItem == commentsOverlayView,
+                   constraint.firstAttribute == .top {
+                    constraint.isActive = false
+                }
+            }
+            
+            // Reactivate height constraint
+            commentsOverlayHeightConstraint?.isActive = true
+        }
+        
+        UIView.animate(withDuration: 0.3, delay: 0, usingSpringWithDamping: 0.8, initialSpringVelocity: 0.5) {
             self.view.layoutIfNeeded()
         }
     }
@@ -316,6 +431,20 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
         // Reset transform and show overlay
         commentsOverlayView.transform = CGAffineTransform(translationX: 0, y: view.bounds.height)
         commentsOverlayView.isHidden = false
+        isCommentsFullscreen = false
+        
+        // Make sure we reset to default height by removing any top constraints
+        for constraint in view.constraints {
+            if let firstItem = constraint.firstItem as? NSObject,
+               firstItem == commentsOverlayView,
+               constraint.firstAttribute == .top {
+                constraint.isActive = false
+            }
+        }
+        
+        // Activate the height constraint
+        commentsOverlayHeightConstraint?.isActive = true
+        
         view.layoutIfNeeded()
         
         // Animate the overlay sliding up
@@ -556,7 +685,7 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
     func didTapReport(for post: Post) {
         reportPost(post)
     }
-    
+
 
     func sharePost(_ post: Post, from viewController: UIViewController) {
         var items: [Any] = [post.postTitle, post.postContent]
@@ -636,14 +765,4 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
     }
 }
 
-// Add DateFormatter extension if not already present
-private extension DateFormatter {
-    static let iso8601Full: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSZZZZZ"
-        formatter.calendar = Calendar(identifier: .iso8601)
-        formatter.timeZone = TimeZone(secondsFromGMT: 0)
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        return formatter
-    }()
-}
+//

@@ -295,16 +295,18 @@ class MyPostCardCell: UITableViewCell {
     }
     
     // MARK: - Configuration
-    func configure(with post: Post, isLiked: Bool) {
+    func configure(with post: Post, isLiked: Bool = false) {
         self.post = post
         self.isLiked = isLiked
         
         titleLabel.text = post.postTitle
         previewLabel.text = post.postContent
         
-        // Format and set timestamp
-        if let createdAt = post.createdAt {
-            timestampLabel.text = DateFormatter.formatPostDate(createdAt)
+        // Format date
+        if let dateString = post.createdAt, let formattedDate = DateFormatter.formatPostDate(dateString) {
+            timestampLabel.text = formattedDate
+        } else {
+            timestampLabel.text = "Recently"
         }
         
         // Update the like button appearance based on isLiked
@@ -326,12 +328,11 @@ class MyPostCardCell: UITableViewCell {
             categoryLabel.text = "Unknown Category"
         }
         
-        // Fetch like counts
-        SupabaseManager.shared.fetchPostsLikedByUsers(postId: post.postId) { [weak self] likes, error in
+        // Fetch like counts using new optimized method
+        SupabaseManager.shared.fetchPostLikeCount(postId: post.postId) { [weak self] count, error in
             DispatchQueue.main.async {
-                let likeCount = likes?.count ?? 0
-                self?.likeCountLabel.text = "\(likeCount)"
-                self?.likeCountLabel.isHidden = likeCount == 0
+                self?.likeCountLabel.text = "\(count)"
+                self?.likeCountLabel.isHidden = count == 0
             }
         }
         

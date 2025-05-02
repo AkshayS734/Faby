@@ -301,39 +301,62 @@ class SupabaseManager {
         }
     }
     
-    // Fetch Posts Liked by Users (Filtered by Likes)
-    func fetchPostsLikedByUsers(postId: String, completion: @escaping ([Likes]?, Error?) -> Void) {
-        print("📢 fetchPostsLikedByUsers() called for post: \(postId)")
+    // Fetch Post Like Count
+    func fetchPostLikeCount(postId: String, completion: @escaping (Int, Error?) -> Void) {
+        print("📢 fetchPostLikeCount() called for post: \(postId)")
         
         Task {
             do {
-                // Query Likes table to get likes for the specific postId
+                // Query Likes table to get likes count for the specific postId
                 let response = try await client.database
                     .from("Likes")
-                    .select("user_id, post_id") // Fetch user_id and post_id from Likes
-                    .eq("post_id", value: postId) // Filter by the specific post ID
+                    .select("user_id")
+                    .eq("post_id", value: postId)
                     .execute()
                 
-                // Check if Likes table has any entries
-                guard let rawData = String(data: response.data, encoding: .utf8), !rawData.isEmpty else {
-                    print("⚠️ No likes found")
-                    completion([], nil) // Return empty array if no likes found
-                    return
-                }
-                
-                // Decode the list of likes
-                let likes = try JSONDecoder().decode([Likes].self, from: response.data)
-                print("🔍 Found \(likes.count) likes for this post")
-                
-                DispatchQueue.main.async {
-                    completion(likes, nil)
+                // Parse the JSON array to count likes
+                if let jsonArray = try? JSONSerialization.jsonObject(with: response.data, options: []) as? [[String: Any]] {
+                    let likeCount = jsonArray.count
+                    print("✅ Post \(postId) has \(likeCount) likes")
+                    
+                    DispatchQueue.main.async {
+                        completion(likeCount, nil)
+                    }
+                } else {
+                    print("⚠️ Failed to parse post likes response, returning 0")
+                    DispatchQueue.main.async {
+                        completion(0, nil)
+                    }
                 }
             } catch {
                 DispatchQueue.main.async {
-                    print("❌ Error fetching liked posts: \(error.localizedDescription)")
-                    completion(nil, error)
+                    print("❌ Error fetching post like count: \(error.localizedDescription)")
+                    completion(0, error)
                 }
             }
+        }
+    }
+    
+    // Fetch Posts Liked by Users (Filtered by Likes)
+    // This function is being kept for backward compatibility
+    func fetchPostsLikedByUsers(postId: String, completion: @escaping ([Likes]?, Error?) -> Void) {
+        print("📢 fetchPostsLikedByUsers() called for post: \(postId)")
+        
+        // For performance, we'll use the streamlined fetchPostLikeCount function
+        // and return empty likes array with the count
+        fetchPostLikeCount(postId: postId) { count, error in
+            if let error = error {
+                completion(nil, error)
+                return
+            }
+            
+            // Create dummy likes objects - most callers only use the count
+            var likes: [Likes] = []
+            for _ in 0..<count {
+                likes.append(Likes(Like_id: nil, user_id: "", post_id: postId, created_at: nil))
+            }
+            
+            completion(likes, nil)
         }
     }
     
@@ -625,6 +648,7 @@ class SupabaseManager {
                 let response = try await client.database
                     .from("Comments")
                     .select("""
+                        Comment_id,
                         post_id, 
                         user_id, 
                         Comment_content, 
@@ -661,66 +685,56 @@ class SupabaseManager {
     func addCommentLike(commentId: String, userId: String, completion: @escaping (Bool, Error?) -> Void) {
         print("📢 addCommentLike() called for comment: \(commentId) by user: \(userId)")
         
-        // First fetch the numeric ID of the comment
+        // Convert string commentId to Int
+        guard let commentNumericId = Int(commentId) else {
+            print("❌ Invalid comment ID format: \(commentId)")
+            completion(false, NSError(domain: "CommentLikeError", code: 104, userInfo: [NSLocalizedDescriptionKey: "Invalid comment ID format"]))
+            return
+        }
+        
         Task {
             do {
-                // Get the comment's numeric ID
-                let comment = try await client.database
-                    .from("Comments")
-                    .select("Comment_id")
-                    .eq("post_id", value: commentId)
-                    .limit(1)
+                // Create a new CommentLike object with numeric ID
+                let newCommentLike = CommentLikeRequest(
+                    user_id: userId,
+                    comment_id: commentNumericId,
+                    created_at: ISO8601DateFormatter().string(from: Date())
+                )
+                
+                print("📤 Inserting comment like with data: \(newCommentLike)")
+                
+                // Insert into CommentLikes table
+                let insertResponse = try await client.database
+                    .from("CommentLikes")
+                    .insert(newCommentLike)
+                    .select()
                     .execute()
                 
-                if let commentData = try? JSONSerialization.jsonObject(with: comment.data, options: []) as? [[String: Any]],
-                   let firstComment = commentData.first,
-                   let commentNumericId = firstComment["Comment_id"] as? Int {
-                    
-                    print("✅ Retrieved comment numeric ID: \(commentNumericId)")
-                    
-                    // Create a new CommentLike object with numeric ID
-                    let newCommentLike = CommentLikeRequest(
-                        user_id: userId,
-                        comment_id: String(commentNumericId),
-                        created_at: ISO8601DateFormatter().string(from: Date())
-                    )
-                    
-                    print("📤 Inserting comment like with data: \(newCommentLike)")
-                    
-                    // Insert into CommentLikes table
-                    let insertResponse = try await client.database
-                        .from("CommentLikes")
-                        .insert(newCommentLike)
-                        .select()
-                        .execute()
-                    
-                    if let rawString = String(data: insertResponse.data, encoding: .utf8) {
-                        print("📦 Insert response: \(rawString)")
-                    }
-                    
-                    // Verify the like was added
-                    let verifyResponse = try await client.database
-                        .from("CommentLikes")
-                        .select("id")
-                        .eq("comment_id", value: String(commentNumericId))
-                        .eq("user_id", value: userId)
-                        .execute()
-                    
-                    if !verifyResponse.data.isEmpty {
-                        print("✅ Comment like verified in database")
-                        DispatchQueue.main.async {
-                            completion(true, nil)
-                        }
-                    } else {
-                        print("❌ Failed to verify comment like in database")
-                        DispatchQueue.main.async {
-                            completion(false, NSError(domain: "CommentLikeError", code: 100, userInfo: [NSLocalizedDescriptionKey: "Failed to verify comment like was added"]))
-                        }
+                if let rawString = String(data: insertResponse.data, encoding: .utf8) {
+                    print("📦 Insert response: \(rawString)")
+                }
+                
+                // Verify the like was added
+                let verifyResponse = try await client.database
+                    .from("CommentLikes")
+                    .select("id")
+                    .eq("comment_id", value: commentNumericId)
+                    .eq("user_id", value: userId)
+                    .execute()
+                
+                if let rawString = String(data: verifyResponse.data, encoding: .utf8) {
+                    print("📦 Verify response: \(rawString)")
+                }
+                
+                if !verifyResponse.data.isEmpty {
+                    print("✅ Comment like verified in database")
+                    DispatchQueue.main.async {
+                        completion(true, nil)
                     }
                 } else {
-                    print("❌ Failed to retrieve numeric ID for comment")
+                    print("❌ Failed to verify comment like in database")
                     DispatchQueue.main.async {
-                        completion(false, NSError(domain: "CommentLikeError", code: 102, userInfo: [NSLocalizedDescriptionKey: "Failed to retrieve numeric ID for comment"]))
+                        completion(false, NSError(domain: "CommentLikeError", code: 100, userInfo: [NSLocalizedDescriptionKey: "Failed to verify comment like was added"]))
                     }
                 }
             } catch {
@@ -736,58 +750,65 @@ class SupabaseManager {
     func removeCommentLike(commentId: String, userId: String, completion: @escaping (Bool, Error?) -> Void) {
         print("📢 removeCommentLike() called for comment: \(commentId) by user: \(userId)")
         
-        // First fetch the numeric ID of the comment
+        // Convert string commentId to Int
+        guard let commentNumericId = Int(commentId) else {
+            print("❌ Invalid comment ID format: \(commentId)")
+            completion(false, NSError(domain: "CommentLikeError", code: 104, userInfo: [NSLocalizedDescriptionKey: "Invalid comment ID format"]))
+            return
+        }
+        
         Task {
             do {
-                // Get the comment's numeric ID
-                let commentQuery = try await client.database
-                    .from("Comments")
-                    .select("Comment_id")
-                    .eq("post_id", value: commentId)
-                    .limit(1)
+                // Add extra check to see if like exists before attempting to delete
+                let checkResponse = try await client.database
+                    .from("CommentLikes")
+                    .select("id")
+                    .eq("comment_id", value: commentNumericId)
+                    .eq("user_id", value: userId)
                     .execute()
                 
-                if let commentData = try? JSONSerialization.jsonObject(with: commentQuery.data, options: []) as? [[String: Any]],
-                   let firstComment = commentData.first,
-                   let commentNumericId = firstComment["Comment_id"] as? Int {
-                    
-                    print("✅ Retrieved comment numeric ID: \(commentNumericId)")
-                    
-                    // Convert to string for the query
-                    let commentIdStr = String(commentNumericId)
-                    
-                    // Delete the comment like
-                    let deleteResponse = try await client.database
-                        .from("CommentLikes")
-                        .delete()
-                        .eq("comment_id", value: commentIdStr)
-                        .eq("user_id", value: userId)
-                        .execute()
-                    
-                    if let rawString = String(data: deleteResponse.data, encoding: .utf8) {
-                        print("📦 Delete response: \(rawString)")
+                if let rawString = String(data: checkResponse.data, encoding: .utf8) {
+                    print("📦 Check existing like response: \(rawString)")
+                }
+                
+                let likesExist = !checkResponse.data.isEmpty
+                print(likesExist ? "✅ Found existing like to delete" : "⚠️ No existing like found")
+                
+                // Delete the comment like
+                let deleteResponse = try await client.database
+                    .from("CommentLikes")
+                    .delete()
+                    .eq("comment_id", value: commentNumericId)
+                    .eq("user_id", value: userId)
+                    .execute()
+                
+                if let rawString = String(data: deleteResponse.data, encoding: .utf8) {
+                    print("📦 Delete response: \(rawString)")
+                }
+                
+                // Parse the response to determine success
+                if let jsonArray = try? JSONSerialization.jsonObject(with: deleteResponse.data, options: []) as? [[String: Any]], !jsonArray.isEmpty {
+                    print("✅ Comment like successfully removed")
+                    DispatchQueue.main.async {
+                        completion(true, nil)
                     }
-                    
-                    // If we got a response with data, it means the delete was successful
-                    if !deleteResponse.data.isEmpty {
-                        print("✅ Comment like successfully removed")
+                } else {
+                    // If we didn't find any likes to begin with, still return success
+                    if !likesExist {
+                        print("⚠️ No comment like found to remove, but that's ok")
                         DispatchQueue.main.async {
                             completion(true, nil)
                         }
                     } else {
-                        print("⚠️ No comment like found to remove")
+                        print("❌ Failed to remove comment like")
                         DispatchQueue.main.async {
-                            completion(false, NSError(domain: "CommentLikeError", code: 101, userInfo: [NSLocalizedDescriptionKey: "No comment like found to remove"]))
+                            completion(false, NSError(domain: "CommentLikeError", code: 101, userInfo: [NSLocalizedDescriptionKey: "Failed to remove existing like"]))
                         }
-                    }
-                } else {
-                    print("❌ Failed to retrieve numeric ID for comment")
-                    DispatchQueue.main.async {
-                        completion(false, NSError(domain: "CommentLikeError", code: 102, userInfo: [NSLocalizedDescriptionKey: "Failed to retrieve numeric ID for comment"]))
                     }
                 }
             } catch {
                 print("❌ Error removing comment like: \(error.localizedDescription)")
+                print("❌ Detailed error: \(error)")
                 DispatchQueue.main.async {
                     completion(false, error)
                 }
@@ -798,47 +819,38 @@ class SupabaseManager {
     func checkIfUserLikedComment(commentId: String, userId: String, completion: @escaping (Bool, Error?) -> Void) {
         print("📢 checkIfUserLikedComment() called for comment: \(commentId) by user: \(userId)")
         
-        // First fetch the numeric ID of the comment
+        // Convert string commentId to Int
+        guard let commentNumericId = Int(commentId) else {
+            print("❌ Invalid comment ID format: \(commentId)")
+            completion(false, NSError(domain: "CommentLikeError", code: 104, userInfo: [NSLocalizedDescriptionKey: "Invalid comment ID format"]))
+            return
+        }
+        
         Task {
             do {
-                // Get the comment's numeric ID
-                let commentQuery = try await client.database
-                    .from("Comments")
-                    .select("Comment_id")
-                    .eq("post_id", value: commentId)
-                    .limit(1)
+                let response = try await client.database
+                    .from("CommentLikes")
+                    .select("id")
+                    .eq("comment_id", value: commentNumericId)
+                    .eq("user_id", value: userId)
                     .execute()
                 
-                if let commentData = try? JSONSerialization.jsonObject(with: commentQuery.data, options: []) as? [[String: Any]],
-                   let firstComment = commentData.first,
-                   let commentNumericId = firstComment["Comment_id"] as? Int {
-                    
-                    print("✅ Retrieved comment numeric ID: \(commentNumericId)")
-                    
-                    // Convert to string for the query
-                    let commentIdStr = String(commentNumericId)
-                    
-                    let response = try await client.database
-                        .from("CommentLikes")
-                        .select("id")
-                        .eq("comment_id", value: commentIdStr)
-                        .eq("user_id", value: userId)
-                        .execute()
-                    
-                    if let rawString = String(data: response.data, encoding: .utf8) {
-                        print("📦 Check response: \(rawString)")
-                    }
-                    
-                    let isLiked = !response.data.isEmpty
-                    print(isLiked ? "✅ User has liked the comment" : "⚠️ User has not liked the comment")
+                if let rawString = String(data: response.data, encoding: .utf8) {
+                    print("📦 Check response: \(rawString)")
+                }
+                
+                // Parse JSON to determine if liked
+                if let jsonArray = try? JSONSerialization.jsonObject(with: response.data, options: []) as? [[String: Any]] {
+                    let isLiked = !jsonArray.isEmpty
+                    print(isLiked ? "✅ User has liked comment \(commentId)" : "⚠️ User has not liked comment \(commentId)")
                     
                     DispatchQueue.main.async {
                         completion(isLiked, nil)
                     }
                 } else {
-                    print("❌ Failed to retrieve numeric ID for comment")
+                    print("⚠️ Failed to parse like check response, assuming not liked")
                     DispatchQueue.main.async {
-                        completion(false, NSError(domain: "CommentLikeError", code: 102, userInfo: [NSLocalizedDescriptionKey: "Failed to retrieve numeric ID for comment"]))
+                        completion(false, nil)
                     }
                 }
             } catch {
@@ -853,62 +865,81 @@ class SupabaseManager {
     func fetchCommentLikes(commentId: String, completion: @escaping (Int, Error?) -> Void) {
         print("📢 fetchCommentLikes() called for comment: \(commentId)")
         
-        // First fetch the numeric ID of the comment
+        // Convert string commentId to Int
+        guard let commentNumericId = Int(commentId) else {
+            print("❌ Invalid comment ID format: \(commentId)")
+            completion(0, NSError(domain: "CommentLikeError", code: 104, userInfo: [NSLocalizedDescriptionKey: "Invalid comment ID format"]))
+            return
+        }
+        
         Task {
             do {
-                // Get the comment's numeric ID
-                let commentQuery = try await client.database
-                    .from("Comments")
-                    .select("Comment_id")
-                    .eq("post_id", value: commentId)
-                    .limit(1)
+                // Get all likes for this specific comment ID
+                let response = try await client.database
+                    .from("CommentLikes")
+                    .select("id")
+                    .eq("comment_id", value: commentNumericId)
                     .execute()
                 
-                if let commentData = try? JSONSerialization.jsonObject(with: commentQuery.data, options: []) as? [[String: Any]],
-                   let firstComment = commentData.first,
-                   let commentNumericId = firstComment["Comment_id"] as? Int {
+                if let rawString = String(data: response.data, encoding: .utf8) {
+                    print("📦 Likes count response for comment \(commentNumericId): \(rawString)")
+                }
+                
+                // Parse the JSON array to count likes
+                if let jsonArray = try? JSONSerialization.jsonObject(with: response.data, options: []) as? [[String: Any]] {
+                    let likeCount = jsonArray.count
+                    print("✅ Comment \(commentNumericId) has \(likeCount) likes")
                     
-                    print("✅ Retrieved comment numeric ID: \(commentNumericId)")
-                    
-                    // Convert to string for the query
-                    let commentIdStr = String(commentNumericId)
-                    
-                    let response = try await client.database
-                        .from("CommentLikes")
-                        .select("id")
-                        .eq("comment_id", value: commentIdStr)
-                        .execute()
-                    
-                    if let rawString = String(data: response.data, encoding: .utf8) {
-                        print("📦 Likes count response: \(rawString)")
-                    }
-                    
-                    // Count the number of likes from the JSON array
-                    if let jsonArray = try? JSONSerialization.jsonObject(with: response.data, options: []) as? [[String: Any]] {
-                        let likeCount = jsonArray.count
-                        print("✅ Comment has \(likeCount) likes")
-                        
-                        DispatchQueue.main.async {
-                            completion(likeCount, nil)
-                        }
-                    } else {
-                        print("⚠️ Failed to parse comment likes response")
-                        DispatchQueue.main.async {
-                            completion(0, nil)
-                        }
+                    DispatchQueue.main.async {
+                        completion(likeCount, nil)
                     }
                 } else {
-                    print("❌ Failed to retrieve numeric ID for comment")
+                    print("⚠️ Failed to parse comment likes response, returning 0")
                     DispatchQueue.main.async {
-                        completion(0, NSError(domain: "CommentLikeError", code: 102, userInfo: [NSLocalizedDescriptionKey: "Failed to retrieve numeric ID for comment"]))
+                        completion(0, nil)
                     }
                 }
             } catch {
                 print("❌ Error fetching comment likes: \(error.localizedDescription)")
+                print("❌ Detailed error: \(error)")
                 DispatchQueue.main.async {
                     completion(0, error)
                 }
             }
+        }
+    }
+}
+
+extension DateFormatter {
+    static let iso8601Full: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ssXXX"
+        formatter.calendar = Calendar(identifier: .iso8601)
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        return formatter
+    }()
+    
+    static func formatPostDate(_ dateString: String?) -> String? {
+        guard let dateString = dateString else { return nil }
+        
+        if let date = iso8601Full.date(from: dateString) {
+            // Calculate time difference
+            let now = Date()
+            let components = Calendar.current.dateComponents([.day, .hour, .minute], from: date, to: now)
+            
+            if let days = components.day, days > 0 {
+                return "\(days) \(days == 1 ? "day" : "days") ago"
+            } else if let hours = components.hour, hours > 0 {
+                return "\(hours) \(hours == 1 ? "hour" : "hours") ago"
+            } else if let minutes = components.minute, minutes > 0 {
+                return "\(minutes) \(minutes == 1 ? "minute" : "minutes") ago"
+            } else {
+                return "Just now"
+            }
+        } else {
+            print("❌ Failed to parse date from string: \(dateString)")
+            return "Recently"
         }
     }
 }

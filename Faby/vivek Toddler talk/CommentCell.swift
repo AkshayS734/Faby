@@ -170,7 +170,6 @@ class CommentCell: UITableViewCell {
     // MARK: - Configuration
     func configure(with comment: Comment, isLiked: Bool) {
         self.comment = comment
-        self.isLiked = isLiked
         
         userNameLabel.text = comment.parentName ?? "Unknown User"
         contentLabel.text = comment.content
@@ -180,13 +179,37 @@ class CommentCell: UITableViewCell {
         userImageView.image = UIImage(systemName: "person.circle.fill")
         userImageView.tintColor = .systemBlue
         
+        // Check if this comment is liked by the current user
+        if let userId = SupabaseManager.shared.userID, let commentId = comment.commentId {
+            // Use the actual Comment_id from the database instead of postId
+            SupabaseManager.shared.checkIfUserLikedComment(commentId: String(commentId), userId: userId) { [weak self] isCommentLiked, error in
+                guard let self = self else { return }
+                
+                DispatchQueue.main.async {
+                    self.isLiked = isCommentLiked
+                    print("\(isCommentLiked ? "❤️" : "🤍") Comment \(commentId) like status: \(isCommentLiked)")
+                }
+            }
+        } else {
+            self.isLiked = false
+        }
+        
         // Fetch and update like count
-        updateLikeCount(for: comment.postId)
+        if let commentId = comment.commentId {
+            updateLikeCount(for: String(commentId))
+        } else {
+            likeCountLabel.text = "0"
+            likeCountLabel.isHidden = true
+        }
     }
     
     // MARK: - Actions
     @objc private func handleLikeButton() {
         guard let comment = comment else { return }
+        guard let commentId = comment.commentId else {
+            print("❌ Comment doesn't have a valid commentId")
+            return
+        }
         
         guard let userId = SupabaseManager.shared.userID else {
             print("❌ User not logged in")
@@ -217,7 +240,8 @@ class CommentCell: UITableViewCell {
         isLiked = !isLiked
         
         // Check if already liked before adding/removing like
-        SupabaseManager.shared.checkIfUserLikedComment(commentId: comment.postId, userId: userId) { [weak self] alreadyLiked, error in
+        let commentIdString = String(commentId)
+        SupabaseManager.shared.checkIfUserLikedComment(commentId: commentIdString, userId: userId) { [weak self] alreadyLiked, error in
             guard let self = self else { return }
             
             if let error = error {
@@ -231,7 +255,7 @@ class CommentCell: UITableViewCell {
             
             if alreadyLiked {
                 // Remove like
-                SupabaseManager.shared.removeCommentLike(commentId: comment.postId, userId: userId) { success, error in
+                SupabaseManager.shared.removeCommentLike(commentId: commentIdString, userId: userId) { success, error in
                     if let error = error {
                         print("❌ Failed to remove comment like: \(error.localizedDescription)")
                         // Revert UI state
@@ -240,12 +264,12 @@ class CommentCell: UITableViewCell {
                         }
                     } else {
                         // Update like count
-                        self.updateLikeCount(for: comment.postId)
+                        self.updateLikeCount(for: commentIdString)
                     }
                 }
             } else {
                 // Add like
-                SupabaseManager.shared.addCommentLike(commentId: comment.postId, userId: userId) { success, error in
+                SupabaseManager.shared.addCommentLike(commentId: commentIdString, userId: userId) { success, error in
                     if let error = error {
                         print("❌ Failed to add comment like: \(error.localizedDescription)")
                         // Revert UI state
@@ -254,7 +278,7 @@ class CommentCell: UITableViewCell {
                         }
                     } else {
                         // Update like count
-                        self.updateLikeCount(for: comment.postId)
+                        self.updateLikeCount(for: commentIdString)
                     }
                 }
             }

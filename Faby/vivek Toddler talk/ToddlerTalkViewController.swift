@@ -101,6 +101,7 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
         collectionView.dataSource = self
         searchBar.delegate = self
         searchBar.placeholder = "Search Topics ...."
+        searchBar.showsCancelButton = false  // Initially hide cancel button
 
         let layout = createCompositionalLayout()
         collectionView.collectionViewLayout = layout
@@ -454,9 +455,31 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
     }
 
     // MARK: - UISearchBarDelegate Methods
+    func searchBarTextDidBeginEditing(_ searchBar: UISearchBar) {
+        // Show cancel button with animation when user starts editing
+        searchBar.setShowsCancelButton(true, animated: true)
+    }
+
+    func searchBarTextDidEndEditing(_ searchBar: UISearchBar) {
+        // Hide cancel button when editing ends
+        searchBar.setShowsCancelButton(false, animated: true)
+    }
+
     func searchBarCancelButtonClicked(_ searchBar: UISearchBar) {
-        fetchTopicsFromSupabase() // Reload full list
+        // Clear search text
+        searchBar.text = ""
+        
+        // Reset filtered data to show all topics
+        filteredCardData = allTopics
         collectionView.reloadData()
+        
+        // End editing which will also hide the cancel button
+        searchBar.endEditing(true)
+    }
+
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        // Dismiss keyboard when search button is tapped
+        searchBar.resignFirstResponder()
     }
 
     // MARK: - Create Compositional Layout

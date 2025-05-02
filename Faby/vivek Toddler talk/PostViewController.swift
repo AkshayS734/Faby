@@ -21,14 +21,14 @@ class PostViewController: UIViewController, UITextViewDelegate, UIImagePickerCon
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.showsVerticalScrollIndicator = true
         scrollView.alwaysBounceVertical = true
-        scrollView.backgroundColor = .systemGray6
+        scrollView.backgroundColor = .systemBackground
         return scrollView
     }()
     
     private lazy var contentView: UIView = {
         let view = UIView()
         view.translatesAutoresizingMaskIntoConstraints = false
-        view.backgroundColor = .systemGray6
+        view.backgroundColor = .clear
         return view
     }()
     
@@ -77,30 +77,19 @@ class PostViewController: UIViewController, UITextViewDelegate, UIImagePickerCon
         let textField = UITextField()
         textField.translatesAutoresizingMaskIntoConstraints = false
         textField.placeholder = "What's on your mind?"
-        textField.font = .systemFont(ofSize: 20, weight: .bold);
-        textField.textColor = .black
-        textField.layer.shadowColor = UIColor.black.cgColor
-        textField.layer.shadowOpacity = 0.1
-        textField.layer.shadowOffset = CGSize(width: 0, height: 2)
-        textField.layer.shadowRadius = 8
-        textField.layer.cornerRadius = 12
-        textField.backgroundColor = .white
+        textField.font = .systemFont(ofSize: 24, weight: .bold)
+        textField.textColor = .label
+        textField.backgroundColor = .clear
         textField.returnKeyType = .next
         return textField
     }()
-
     
     private lazy var contentTextView: UITextView = {
         let textView = UITextView()
         textView.translatesAutoresizingMaskIntoConstraints = false
         textView.font = .systemFont(ofSize: 16)
         textView.textColor = .secondaryLabel
-        textView.backgroundColor = .white
-        textView.layer.shadowColor = UIColor.black.cgColor
-        textView.layer.shadowOpacity = 0.1
-        textView.layer.shadowOffset = CGSize(width: 0, height: 2)
-        textView.layer.shadowRadius = 8
-        textView.layer.cornerRadius = 30
+        textView.backgroundColor = .clear
         textView.isScrollEnabled = true
         textView.layer.cornerRadius = 12
         textView.textContainerInset = UIEdgeInsets(top: 12, left: 8, bottom: 12, right: 8)
@@ -113,8 +102,7 @@ class PostViewController: UIViewController, UITextViewDelegate, UIImagePickerCon
         button.setTitle("Add Photo", for: .normal)
         button.setImage(UIImage(systemName: "photo.fill"), for: .normal)
         button.titleLabel?.font = .systemFont(ofSize: 16, weight: .medium)
-        button.backgroundColor = .white
-        button.layer.shadowColor = UIColor.black.cgColor
+        button.backgroundColor = .systemGray6
         button.tintColor = .systemBlue
         button.layer.cornerRadius = 12
         button.imageEdgeInsets = UIEdgeInsets(top: 0, left: -8, bottom: 0, right: 0)
@@ -143,8 +131,7 @@ class PostViewController: UIViewController, UITextViewDelegate, UIImagePickerCon
     private lazy var categoryView: UIView = {
         let view = UIView()
         view.translatesAutoresizingMaskIntoConstraints = false
-        view.backgroundColor = .white
-        view.layer.shadowColor = UIColor.black.cgColor
+        view.backgroundColor = .systemGray6
         view.layer.cornerRadius = 12
         view.alpha = 1
         return view
@@ -172,13 +159,22 @@ class PostViewController: UIViewController, UITextViewDelegate, UIImagePickerCon
         label.translatesAutoresizingMaskIntoConstraints = false
         label.text = "0/500"
         label.font = .systemFont(ofSize: 12)
-        label.layer.shadowColor = UIColor.black.cgColor
         label.textColor = .secondaryLabel
-        label.backgroundColor = .white
         label.textAlignment = .right
         return label
     }()
     
+    private lazy var postButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.setTitle("Post", for: .normal)
+        button.titleLabel?.font = .systemFont(ofSize: 16, weight: .semibold)
+        button.backgroundColor = .systemBlue
+        button.tintColor = .white
+        button.layer.cornerRadius = 12
+        button.addTarget(self, action: #selector(postComment), for: .touchUpInside)
+        return button
+    }()
 
     let placeholderLabel = UILabel()
     weak var delegate: PostViewDelegate?
@@ -204,6 +200,7 @@ class PostViewController: UIViewController, UITextViewDelegate, UIImagePickerCon
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
+        setupNavigationBar()
         setupDelegates()
         setupInitialState()
     }
@@ -214,8 +211,8 @@ class PostViewController: UIViewController, UITextViewDelegate, UIImagePickerCon
         view.addSubview(containerScrollView)
         containerScrollView.addSubview(contentView)
         
-        [headerView, titleTextField, contentTextView, characterCountLabel, imagePickerButton,
-         selectedImageView, categoryView].forEach {
+        [headerView, titleTextField, contentTextView, imagePickerButton,
+         selectedImageView, categoryView, characterCountLabel].forEach {
             contentView.addSubview($0)
         }
         
@@ -261,21 +258,16 @@ class PostViewController: UIViewController, UITextViewDelegate, UIImagePickerCon
             titleTextField.topAnchor.constraint(equalTo: headerView.bottomAnchor, constant: 24),
             titleTextField.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
             titleTextField.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
-            titleTextField.heightAnchor.constraint(equalToConstant: 50),
             
             contentTextView.topAnchor.constraint(equalTo: titleTextField.bottomAnchor, constant: 16),
             contentTextView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
             contentTextView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
             contentTextView.heightAnchor.constraint(equalToConstant: 180),
             
-            characterCountLabel.topAnchor.constraint(equalTo: categoryView.bottomAnchor, constant: 8),
-            characterCountLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
-            characterCountLabel.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -24),
-            
             imagePickerButton.topAnchor.constraint(equalTo: contentTextView.bottomAnchor, constant: 16),
             imagePickerButton.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
             imagePickerButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-            imagePickerButton.heightAnchor.constraint(equalToConstant: 50),
+            imagePickerButton.heightAnchor.constraint(equalToConstant: 44),
             
             selectedImageView.topAnchor.constraint(equalTo: imagePickerButton.bottomAnchor, constant: 16),
             selectedImageView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
@@ -291,8 +283,25 @@ class PostViewController: UIViewController, UITextViewDelegate, UIImagePickerCon
             selectedCategoryLabel.leadingAnchor.constraint(equalTo: categoryLabel.trailingAnchor, constant: 8),
             selectedCategoryLabel.centerYAnchor.constraint(equalTo: categoryView.centerYAnchor),
             
-            
+            characterCountLabel.topAnchor.constraint(equalTo: categoryView.bottomAnchor, constant: 8),
+            characterCountLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
+            characterCountLabel.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -24)
         ])
+    }
+    
+    private func setupNavigationBar() {
+        title = "Create Post"
+        navigationController?.navigationBar.prefersLargeTitles = false
+        
+        navigationItem.leftBarButtonItem = UIBarButtonItem(title: "Cancel",
+                                                         style: .plain,
+                                                         target: self,
+                                                         action: #selector(handleBack))
+        
+        navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Post",
+                                                          style: .done,
+                                                          target: self,
+                                                          action: #selector(postComment))
     }
     
     private func setupDelegates() {
@@ -326,6 +335,14 @@ class PostViewController: UIViewController, UITextViewDelegate, UIImagePickerCon
             UIView.animate(withDuration: 0.3) {
                 self.imagePickerButton.alpha = 1
             }
+        }
+    }
+    
+    // MARK: - UITextViewDelegate
+    func textViewDidBeginEditing(_ textView: UITextView) {
+        if textView.textColor == .secondaryLabel {
+            textView.text = ""
+            textView.textColor = .label
         }
     }
     

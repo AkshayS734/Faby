@@ -8,7 +8,7 @@ import Foundation
 
 struct CommentLikeRequest: Codable {
     let user_id: String
-    let comment_id: String
+    let comment_id: Int
     let created_at: String
 
 }
