@@ -6,6 +6,17 @@ class VaccineInputViewController: UIViewController, UISearchBarDelegate {
     private let vaccineManager = VaccineManager.shared
     private var selectedVaccines: [String] = []
     private var vaccineData: [Vaccine] = []
+    private var filteredVaccineData: [Vaccine] = []
+    private var cachedVaccines: [String: [Vaccine]] = [:] // Cache for each time period
+    private var searchText: String = "" {
+        didSet {
+            filterVaccines()
+        }
+    }
+    
+    // Dictionary to store selected dates for vaccines
+    private var selectedDates: [String: Date] = [:]
+    
     private var currentPeriod: String = "Birth" {
         didSet {
             loadVaccinesForPeriod(currentPeriod)
@@ -37,61 +48,48 @@ class VaccineInputViewController: UIViewController, UISearchBarDelegate {
         Task {
             do {
                 print("🔍 Loading vaccines for period: \(period)")
-                // Show loading state
+                
                 await MainActor.run {
                     self.tableView.isHidden = true
                     self.emptyStateLabel.text = "Loading vaccines..."
                     self.emptyStateLabel.isHidden = false
                 }
 
-                // Get current baby ID
-                guard let currentBabyId = UserDefaultsManager.shared.currentBabyId else {
-                    print("❌ No baby selected")
+                // Check cache first
+                if let cachedData = cachedVaccines[period] {
+                    print("✅ Using cached data for period: \(period)")
                     await MainActor.run {
-                        self.emptyStateLabel.text = "No baby selected"
-                        self.emptyStateLabel.isHidden = false
+                        self.vaccineData = cachedData
+                        self.filterVaccines()
+                        self.updateUI()
                     }
                     return
                 }
 
-                // Fetch all vaccines and scheduled vaccines
+                // Fetch all vaccines if not cached
                 let allVaccines = try await FetchingVaccines.shared.fetchAllVaccines()
                 print("✅ Fetched \(allVaccines.count) total vaccines")
-                let scheduledVaccines = try await VaccineScheduleManager.shared.fetchSchedules(forBaby: currentBabyId)
-                print("✅ Fetched \(scheduledVaccines.count) scheduled vaccines")
-                let scheduledVaccineIds = scheduledVaccines.map { $0.vaccineId }
 
                 // Filter vaccines based on period
                 let weekRange = getWeekRange(for: period)
                 let filteredVaccines = allVaccines.filter { vaccine in
-                    // For exact week matching
                     if period == "Birth" || period == "6 weeks" || period == "10 weeks" || period == "14 weeks" {
-                        return vaccine.startWeek == weekRange.start && !scheduledVaccineIds.contains(vaccine.id)
+                        return vaccine.startWeek == weekRange.start
                     } else {
-                        // For month ranges (9-12 months and 16-24 months)
                         return vaccine.startWeek >= weekRange.start &&
-                               vaccine.startWeek <= weekRange.end &&
-                               !scheduledVaccineIds.contains(vaccine.id)
+                               vaccine.startWeek <= weekRange.end
                     }
                 }
 
-                print("✅ Filtered \(filteredVaccines.count) vaccines for period \(period)")
+                // Cache the results
+                cachedVaccines[period] = filteredVaccines
+                print("✅ Cached \(filteredVaccines.count) vaccines for period \(period)")
                 
                 // Update UI on main thread
                 await MainActor.run {
                     self.vaccineData = filteredVaccines
-                    self.tableView.reloadData()
-                    
-                    if filteredVaccines.isEmpty {
-                        print("ℹ️ No vaccines available for \(period)")
-                        self.emptyStateLabel.text = "No vaccines available for \(period)"
-                        self.emptyStateLabel.isHidden = false
-                        self.tableView.isHidden = true
-                    } else {
-                        print("🎉 Displaying \(filteredVaccines.count) vaccines for \(period)")
-                        self.emptyStateLabel.isHidden = true
-                        self.tableView.isHidden = false
-                    }
+                    self.filterVaccines()
+                    self.updateUI()
                 }
             } catch {
                 print("❌ Error loading vaccines: \(error)")
@@ -102,6 +100,35 @@ class VaccineInputViewController: UIViewController, UISearchBarDelegate {
                 }
             }
         }
+    }
+
+    private func filterVaccines() {
+        let searchQuery = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        
+        if searchQuery.isEmpty {
+            filteredVaccineData = vaccineData
+        } else {
+            filteredVaccineData = vaccineData.filter { vaccine in
+                vaccine.name.lowercased().contains(searchQuery) ||
+                vaccine.description.lowercased().contains(searchQuery)
+            }
+        }
+        
+        updateUI()
+    }
+    
+    private func updateUI() {
+        if filteredVaccineData.isEmpty {
+            emptyStateLabel.text = searchText.isEmpty ?
+                "No vaccines available for \(currentPeriod)" :
+                "No vaccines found for '\(searchText)'"
+            emptyStateLabel.isHidden = false
+            tableView.isHidden = true
+        } else {
+            emptyStateLabel.isHidden = true
+            tableView.isHidden = false
+        }
+        tableView.reloadData()
     }
 
     private func getWeekRange(for period: String) -> (start: Int, end: Int) {
@@ -153,8 +180,7 @@ class VaccineInputViewController: UIViewController, UISearchBarDelegate {
         searchBar.placeholder = "Search vaccines..."
         searchBar.searchBarStyle = .minimal
         searchBar.backgroundColor = .clear
-        searchBar.backgroundImage = UIImage()
-        searchBar.barTintColor = .clear
+        searchBar.searchTextField.backgroundColor = .secondarySystemBackground
         searchBar.translatesAutoresizingMaskIntoConstraints = false
         return searchBar
     }()
@@ -203,6 +229,9 @@ class VaccineInputViewController: UIViewController, UISearchBarDelegate {
         setupCategoryButtons()
         setupTableView()
         
+        // Set search bar delegate
+        searchBar.delegate = self
+        
         // Set background colors
         view.backgroundColor = UIColor.systemGroupedBackground
         
@@ -236,7 +265,6 @@ class VaccineInputViewController: UIViewController, UISearchBarDelegate {
             contentView.addSubview($0)
         }
         categoryScrollView.addSubview(categoryStackView)
-        searchBar.delegate = self;
     }
     
     private func setupConstraints() {
@@ -280,13 +308,21 @@ class VaccineInputViewController: UIViewController, UISearchBarDelegate {
         timePeriods.enumerated().forEach { index, title in
             let button = UIButton(type: .system)
             button.setTitle(title, for: .normal)
-            button.titleLabel?.font = .systemFont(ofSize: 16, weight: .medium)
-            button.backgroundColor = index == 0 ? .systemBlue : UIColor.secondarySystemGroupedBackground
-            button.setTitleColor(index == 0 ? .white : .systemGray, for: .normal)
-            button.layer.cornerRadius = 20
+            button.titleLabel?.font = .systemFont(ofSize: UIFont.preferredFont(forTextStyle: .callout).pointSize, weight: .medium)
+            button.backgroundColor = index == 0 ? .systemBlue : .secondarySystemBackground
+            button.setTitleColor(index == 0 ? .white : .secondaryLabel, for: .normal)
+            button.layer.cornerRadius = 16
             button.contentEdgeInsets = UIEdgeInsets(top: 8, left: 16, bottom: 8, right: 16)
             button.tag = index
             button.addTarget(self, action: #selector(categoryButtonTapped(_:)), for: .touchUpInside)
+            
+            // Add shadow for selected state
+            if index == 0 {
+                button.layer.shadowColor = UIColor.systemBlue.cgColor
+                button.layer.shadowOpacity = 0.3
+                button.layer.shadowOffset = CGSize(width: 0, height: 2)
+                button.layer.shadowRadius = 4
+            }
             
             categoryStackView.addArrangedSubview(button)
         }
@@ -308,37 +344,93 @@ class VaccineInputViewController: UIViewController, UISearchBarDelegate {
         categoryStackView.arrangedSubviews.forEach { view in
             if let button = view as? UIButton {
                 let isSelected = button.tag == sender.tag
-                button.backgroundColor = isSelected ? .systemBlue : UIColor.secondarySystemGroupedBackground
-                button.setTitleColor(isSelected ? .white : .systemGray, for: .normal)
+                button.backgroundColor = isSelected ? .systemBlue : .secondarySystemBackground
+                button.setTitleColor(isSelected ? .white : .secondaryLabel, for: .normal)
+                
+                // Update shadow
+                button.layer.shadowOpacity = isSelected ? 0.3 : 0
+                if isSelected {
+                    button.layer.shadowColor = UIColor.systemBlue.cgColor
+                    button.layer.shadowOffset = CGSize(width: 0, height: 2)
+                    button.layer.shadowRadius = 4
+                }
             }
         }
+        
+        // Add haptic feedback
+        let generator = UISelectionFeedbackGenerator()
+        generator.selectionChanged()
         
         // Load vaccines for selected period
         let period = timePeriods[sender.tag]
         currentPeriod = period
     }
 
+    // 1. Simplified saveButtonTapped method without baby ID check
     @objc private func saveButtonTapped() {
-        Task {
-            do {
-                guard let babyId = UserDefaultsManager.shared.currentBabyId else {
-                    // Show error alert
-                    return
-                }
-                
-                // Get selected vaccine objects
-                let selectedVaccineObjects = vaccineData.filter { selectedVaccines.contains($0.name) }
-                
-                // Navigate to selected vaccines review screen
-                await MainActor.run {
-                    let selectedVaccinesVC = SelectedVaccinesViewController(selectedVaccines: selectedVaccineObjects)
-                    navigationController?.pushViewController(selectedVaccinesVC, animated: true)
-                }
-            } catch {
-                print("Error preparing selected vaccines: \(error)")
-                // Show error alert
-            }
+        // Check if any vaccines are selected
+        if selectedVaccines.isEmpty {
+            showAlert(title: "No Vaccines Selected", message: "Please select at least one vaccine before saving.")
+            return
         }
+        
+        // Get selected vaccine objects
+        let selectedVaccineObjects = vaccineData.filter { selectedVaccines.contains($0.name) }
+        
+        // Navigate to selected vaccines review screen
+        let selectedVaccinesVC = SelectedVaccinesViewController(selectedVaccines: selectedVaccineObjects)
+        navigationController?.pushViewController(selectedVaccinesVC, animated: true)
+    }
+
+    // 2. Add a helper method to show alerts
+    private func showAlert(title: String, message: String) {
+        let alertController = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        alertController.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alertController, animated: true)
+    }
+
+    // 3. Ensure the navigation bar is correctly set up and the button is visible
+//    private func configureNavigationBar() {
+//        navigationController?.navigationBar.prefersLargeTitles = true
+//        navigationItem.title = "VacciTime"
+//        
+//        // Make sure the saveButton is more prominent
+//        let saveButton = UIBarButtonItem(
+//            title: "Save",
+//            style: .done,
+//            target: self,
+//            action: #selector(saveButtonTapped)
+//        )
+//        // Set a more visible color
+//        saveButton.tintColor = .systemBlue
+//        navigationItem.rightBarButtonItem = saveButton
+//        
+//        if #available(iOS 13.0, *) {
+//            let appearance = UINavigationBarAppearance()
+//            appearance.configureWithDefaultBackground() // Use default background instead of transparent
+//            appearance.backgroundColor = .systemBackground
+//            appearance.shadowColor = .systemGray5  // Add a subtle shadow for better visibility
+//            appearance.largeTitleTextAttributes = [.foregroundColor: UIColor.label]
+//            appearance.titleTextAttributes = [.foregroundColor: UIColor.label]
+//            navigationController?.navigationBar.standardAppearance = appearance
+//            navigationController?.navigationBar.compactAppearance = appearance
+//            navigationController?.navigationBar.scrollEdgeAppearance = appearance
+//        }
+//    }
+    // MARK: - UISearchBarDelegate
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        self.searchText = searchText
+    }
+    
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        searchBar.resignFirstResponder()
+    }
+
+    // MARK: - Memory Management
+    override func didReceiveMemoryWarning() {
+        super.didReceiveMemoryWarning()
+        // Clear cache if memory is low
+        cachedVaccines.removeAll()
     }
 }
 
@@ -349,7 +441,7 @@ extension VaccineInputViewController: UITableViewDelegate, UITableViewDataSource
     }
 
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        let count = vaccineData.count
+        let count = filteredVaccineData.count
         emptyStateLabel.isHidden = count > 0
         return count
     }
@@ -359,12 +451,17 @@ extension VaccineInputViewController: UITableViewDelegate, UITableViewDataSource
             return UITableViewCell()
         }
         
-        let vaccine = vaccineData[indexPath.row]
+        let vaccine = filteredVaccineData[indexPath.row]
+        
+        // Check if we have a scheduled date for this vaccine
+        let scheduledDate = selectedDates[vaccine.name]
+        
         cell.configure(
             with: vaccine.name,
             timing: getTimingText(startWeek: vaccine.startWeek),
             description: vaccine.description,
-            isSelected: selectedVaccines.contains(vaccine.name)
+            isSelected: selectedVaccines.contains(vaccine.name),
+            scheduledDate: scheduledDate
         )
         cell.delegate = self
         
@@ -382,11 +479,100 @@ extension VaccineInputViewController: VaccineCellDelegate {
         }
         tableView.reloadData()
     }
+    
+    func didTapScheduleButton(for vaccine: String) {
+        let selectedVaccineObjects = vaccineData.filter { $0.name == vaccine }
+        guard let selectedVaccine = selectedVaccineObjects.first else { return }
+        
+        // Create date picker alert
+        let alertController = UIAlertController(title: "Schedule Vaccination", message: "Select a date for \(vaccine)", preferredStyle: .actionSheet)
+        
+        // Create custom view for date picker
+        let customView = UIView(frame: CGRect(x: 0, y: 0, width: alertController.view.bounds.width - 16, height: 300))
+        
+        // Create and configure date picker
+        let datePicker = UIDatePicker()
+        datePicker.datePickerMode = .date
+        datePicker.preferredDatePickerStyle = .inline
+        datePicker.minimumDate = Date() // Can't schedule in the past
+        datePicker.maximumDate = Calendar.current.date(byAdding: .year, value: 2, to: Date()) // Max 2 years in future
+        datePicker.frame = customView.bounds
+        customView.addSubview(datePicker)
+        
+        // Add custom view to alert
+        alertController.view.addSubview(customView)
+        
+        // Adjust alert height to accommodate date picker
+        let heightConstraint = NSLayoutConstraint(
+            item: alertController.view!,
+            attribute: .height,
+            relatedBy: .equal,
+            toItem: nil,
+            attribute: .notAnAttribute,
+            multiplier: 1,
+            constant: 500
+        )
+        alertController.view.addConstraint(heightConstraint)
+        
+        // Add actions
+        let scheduleAction = UIAlertAction(title: "Schedule", style: .default) { [weak self] _ in
+            self?.handleDateSelection(date: datePicker.date, for: selectedVaccine)
+        }
+        
+        // Add a remove action if a date is already scheduled
+        if selectedDates[vaccine] != nil {
+            let removeAction = UIAlertAction(title: "Remove Date", style: .destructive) { [weak self] _ in
+                self?.selectedDates.removeValue(forKey: vaccine)
+                self?.tableView.reloadData()
+            }
+            alertController.addAction(removeAction)
+        }
+        
+        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
+        
+        alertController.addAction(scheduleAction)
+        alertController.addAction(cancelAction)
+        
+        // For iPad support
+        if let popoverController = alertController.popoverPresentationController {
+            popoverController.sourceView = view
+            popoverController.sourceRect = CGRect(x: view.bounds.midX, y: view.bounds.midY, width: 0, height: 0)
+            popoverController.permittedArrowDirections = []
+        }
+        
+        present(alertController, animated: true)
+    }
+    
+    private func handleDateSelection(date: Date, for vaccine: Vaccine) {
+        // Store the selected date for the vaccine
+        selectedDates[vaccine.name] = date
+        
+        // Reload the table to show the selected date
+        tableView.reloadData()
+        
+        // Show success message
+        showSuccessAlert(for: vaccine.name, on: date)
+    }
+    
+    private func showSuccessAlert(for vaccineName: String, on date: Date) {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateStyle = .medium
+        
+        let alert = UIAlertController(
+            title: "Vaccination Scheduled",
+            message: "\(vaccineName) has been scheduled for \(dateFormatter.string(from: date))",
+            preferredStyle: .alert
+        )
+
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
+    }
 }
 
 // MARK: - VaccineCell
 protocol VaccineCellDelegate: AnyObject {
     func didTapCheckbox(for vaccine: String)
+    func didTapScheduleButton(for vaccine: String)
 }
 
 class VaccineCell: UITableViewCell {
@@ -396,54 +582,67 @@ class VaccineCell: UITableViewCell {
     // Container view with iOS-style design
     private let containerView: UIView = {
         let view = UIView()
-        view.backgroundColor = .white
-        view.layer.cornerRadius = 10
+        view.backgroundColor = .systemBackground
+        view.layer.cornerRadius = 12
         view.layer.shadowColor = UIColor.black.cgColor
-        view.layer.shadowOpacity = 0.1
-        view.layer.shadowOffset = CGSize(width: 0, height: 1)
-        view.layer.shadowRadius = 2
+        view.layer.shadowOpacity = 0.05
+        view.layer.shadowOffset = CGSize(width: 0, height: 2)
+        view.layer.shadowRadius = 3
         view.translatesAutoresizingMaskIntoConstraints = false
         return view
     }()
     
     private let titleLabel: UILabel = {
         let label = UILabel()
-        label.font = .systemFont(ofSize: 17, weight: .semibold)
+        label.font = .systemFont(ofSize: UIFont.preferredFont(forTextStyle: .headline).pointSize, weight: .semibold)
         label.textColor = .label
+        label.adjustsFontForContentSizeCategory = true
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
     }()
     
     private let timingLabel: UILabel = {
         let label = UILabel()
-        label.font = .systemFont(ofSize: 15)
+        label.font = .systemFont(ofSize: UIFont.preferredFont(forTextStyle: .subheadline).pointSize)
         label.textColor = .secondaryLabel
+        label.adjustsFontForContentSizeCategory = true
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
     }()
     
     private let descriptionLabel: UILabel = {
         let label = UILabel()
-        label.font = .systemFont(ofSize: 15)
+        label.font = .systemFont(ofSize: UIFont.preferredFont(forTextStyle: .footnote).pointSize)
         label.textColor = .secondaryLabel
         label.numberOfLines = 2
+        label.adjustsFontForContentSizeCategory = true
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
     }()
     
     private let checkmarkButton: UIButton = {
         let button = UIButton(type: .custom)
-        
-        // Create a circular configuration with no background for unselected state
-        let normalImage = UIImage(systemName: "circle")?.withRenderingMode(.alwaysTemplate)
-        
-        // Create a circular configuration with checkmark for selected state
-        let selectedImage = UIImage(systemName: "checkmark.circle.fill")?.withRenderingMode(.alwaysTemplate)
+        let config = UIImage.SymbolConfiguration(pointSize: 24, weight: .regular)
+        let normalImage = UIImage(systemName: "circle", withConfiguration: config)?.withRenderingMode(.alwaysTemplate)
+        let selectedImage = UIImage(systemName: "checkmark.circle.fill", withConfiguration: config)?.withRenderingMode(.alwaysTemplate)
         
         button.setImage(normalImage, for: .normal)
         button.setImage(selectedImage, for: .selected)
         button.tintColor = .systemBlue
-        button.backgroundColor = .clear
+        button.translatesAutoresizingMaskIntoConstraints = false
+        return button
+    }()
+    
+    private lazy var scheduleButton: UIButton = {
+        let button = UIButton(type: .system)
+        let config = UIImage.SymbolConfiguration(pointSize: 14, weight: .regular)
+        let calendarImage = UIImage(systemName: "calendar", withConfiguration: config)
+        
+        button.setImage(calendarImage, for: .normal)
+        button.setTitle(" Add vaccination date", for: .normal)
+        button.titleLabel?.font = .systemFont(ofSize: UIFont.preferredFont(forTextStyle: .footnote).pointSize)
+        button.tintColor = .systemBlue
+        button.contentHorizontalAlignment = .leading
         button.translatesAutoresizingMaskIntoConstraints = false
         return button
     }()
@@ -463,11 +662,22 @@ class VaccineCell: UITableViewCell {
         
         contentView.addSubview(containerView)
         
-        [titleLabel, timingLabel, descriptionLabel, checkmarkButton].forEach {
-            containerView.addSubview($0)
-        }
+        let stackView = UIStackView(arrangedSubviews: [
+            titleLabel,
+            timingLabel,
+            descriptionLabel,
+            scheduleButton
+        ])
+        stackView.axis = .vertical
+        stackView.spacing = 4
+        stackView.alignment = .leading
+        stackView.translatesAutoresizingMaskIntoConstraints = false
+        
+        containerView.addSubview(stackView)
+        containerView.addSubview(checkmarkButton)
         
         checkmarkButton.addTarget(self, action: #selector(checkmarkTapped), for: .touchUpInside)
+        scheduleButton.addTarget(self, action: #selector(scheduleButtonTapped), for: .touchUpInside)
         
         NSLayoutConstraint.activate([
             containerView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 6),
@@ -475,53 +685,65 @@ class VaccineCell: UITableViewCell {
             containerView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
             containerView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -6),
             
-            // iOS-style checkbox on the trailing side
-            checkmarkButton.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
+            checkmarkButton.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 16),
             checkmarkButton.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
             checkmarkButton.widthAnchor.constraint(equalToConstant: 30),
             checkmarkButton.heightAnchor.constraint(equalToConstant: 30),
             
-            // Content aligned to the left
-            titleLabel.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 16),
-            titleLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 16),
-            titleLabel.trailingAnchor.constraint(equalTo: checkmarkButton.leadingAnchor, constant: -12),
-            
-            timingLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 4),
-            timingLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 16),
-            timingLabel.trailingAnchor.constraint(equalTo: checkmarkButton.leadingAnchor, constant: -12),
-            
-            descriptionLabel.topAnchor.constraint(equalTo: timingLabel.bottomAnchor, constant: 4),
-            descriptionLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 16),
-            descriptionLabel.trailingAnchor.constraint(equalTo: checkmarkButton.leadingAnchor, constant: -12),
-            descriptionLabel.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -16)
+            stackView.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 16),
+            stackView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 16),
+            stackView.trailingAnchor.constraint(equalTo: checkmarkButton.leadingAnchor, constant: -12),
+            stackView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -16)
         ])
     }
     
-    func configure(with vaccine: String, timing: String, description: String, isSelected: Bool) {
+    func configure(with vaccine: String, timing: String, description: String, isSelected: Bool, scheduledDate: Date? = nil) {
         vaccineName = vaccine
         titleLabel.text = vaccine
         timingLabel.text = timing
         descriptionLabel.text = description
         checkmarkButton.isSelected = isSelected
-        
-        // Just change the tint color, not the background
         checkmarkButton.tintColor = isSelected ? .systemBlue : .systemGray3
+        
+        // Update schedule button based on whether a date is selected
+        if let date = scheduledDate {
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateStyle = .medium
+            let dateString = dateFormatter.string(from: date)
+            
+            // Show the date instead of "Add vaccination date"
+            let calendarConfig = UIImage.SymbolConfiguration(pointSize: 14, weight: .regular)
+            let calendarImage = UIImage(systemName: "calendar.badge.clock", withConfiguration: calendarConfig)
+            scheduleButton.setImage(calendarImage, for: .normal)
+            scheduleButton.setTitle(" \(dateString)", for: .normal)
+            scheduleButton.tintColor = .systemGreen
+        } else {
+            // Reset to default state
+            let calendarConfig = UIImage.SymbolConfiguration(pointSize: 14, weight: .regular)
+            let calendarImage = UIImage(systemName: "calendar", withConfiguration: calendarConfig)
+            scheduleButton.setImage(calendarImage, for: .normal)
+            scheduleButton.setTitle(" Add vaccination date", for: .normal)
+            scheduleButton.tintColor = .systemBlue
+        }
     }
+    
+    @objc private func scheduleButtonTapped() {
+        delegate?.didTapScheduleButton(for: vaccineName)
+    }
+    
+    
     @objc private func checkmarkTapped() {
         checkmarkButton.isSelected.toggle()
+        checkmarkButton.tintColor = checkmarkButton.isSelected ? .systemBlue : .systemGray3
         
         // Add haptic feedback
-        let generator = UIImpactFeedbackGenerator(style: .medium)
+        let generator = UIImpactFeedbackGenerator(style: .light)
         generator.impactOccurred()
         
         delegate?.didTapCheckbox(for: vaccineName)
     }
     
-    override func prepareForReuse() {
-        super.prepareForReuse()
-        titleLabel.text = nil
-        timingLabel.text = nil
-        descriptionLabel.text = nil
-        checkmarkButton.isSelected = false
-    }
+//    @objc private func removeScheduleButtonTapped() {
+//        delegate?.didTapRemoveScheduleButton(for: vaccineName)
+//    }
 }

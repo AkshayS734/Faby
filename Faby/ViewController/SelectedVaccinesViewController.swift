@@ -364,6 +364,4 @@ class SelectedVaccinesViewController: UIViewController {
         let vaccine = selectedVaccines[index]
         // Implement vaccine detail view navigation
     }
-} 
- 
-
+}

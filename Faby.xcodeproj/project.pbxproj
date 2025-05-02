@@ -169,9 +169,12 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = KMAJ4QDR89;
+				DEVELOPMENT_TEAM = QTVJ65M7K6;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Faby/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Allow to click special moments";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We need your location to suggest nearby hospitals for your baby care needs.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Allow to access microphone";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
@@ -182,7 +185,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.Faby;
+				PRODUCT_BUNDLE_IDENTIFIER = com.adarsh12.fabyapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -197,9 +200,12 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = KMAJ4QDR89;
+				DEVELOPMENT_TEAM = QTVJ65M7K6;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Faby/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Allow to click special moments";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We need your location to suggest nearby hospitals for your baby care needs.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Allow to access microphone";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
@@ -210,7 +216,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.Faby;
+				PRODUCT_BUNDLE_IDENTIFIER = com.adarsh12.fabyapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
