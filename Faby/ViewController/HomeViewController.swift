@@ -3,9 +3,9 @@ import SwiftUI
 
 class HomeViewController: UIViewController {
     
-    private let storageManager = VaccinationStorageManager.shared
+    private let storageManager = SupabaseVaccineManager.shared
     var scheduledVaccines: [[String: String]] = []
-    private var completedVaccinesStorage: [[String: String]] = []
+    private var administeredVaccines: [[String: String]] = []
     var vaccineView: UIView?
     var baby = BabyDataModel.shared.babyList[0]
     
@@ -94,6 +94,12 @@ class HomeViewController: UIViewController {
         return stackView
     }()
     
+    // Add missing vaccineContainerView
+    private let vaccineContainerView: UIView = {
+        let view = UIView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        return view
+    }()
     
     var todaysBitesData: [TodayBite] = []
     
@@ -151,6 +157,7 @@ class HomeViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        print("🚀 HomeViewController viewDidLoad")
         view.backgroundColor = .systemGray6
         navigationController?.navigationBar.prefersLargeTitles = false
         navigationItem.rightBarButtonItem = UIBarButtonItem(
@@ -184,7 +191,7 @@ class HomeViewController: UIViewController {
         
         setupUI()
         setupDelegates()
-        loadVaccinations()
+        loadVaccinations() // Initial load of vaccinations
         updateNameLabel()
         updateDateLabel()
         updateTodaysBites()
@@ -192,8 +199,10 @@ class HomeViewController: UIViewController {
     }
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        loadVaccinations()
+        print("🚀 HomeViewController viewWillAppear")
+        loadVaccinations() // Reload vaccinations when view appears
         updateSpecialMoments()
+        updateTodaysBites()
     }
     
     override func viewWillDisappear(_ animated: Bool) {
@@ -221,6 +230,10 @@ class HomeViewController: UIViewController {
         contentView.addSubview(specialMomentsContainerView)
         contentView.addSubview(todaysBitesLabel)
         contentView.addSubview(todaysBitesCollectionView)
+        
+        // Add the vaccination container view
+        contentView.addSubview(upcomingVaccinationLabel)
+        contentView.addSubview(vaccineContainerView)
         
         // Add empty state views with proper hierarchy
         contentView.addSubview(todaysBitesEmptyStateView)
@@ -268,6 +281,16 @@ class HomeViewController: UIViewController {
             todaysBitesCollectionView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
             todaysBitesCollectionView.heightAnchor.constraint(equalToConstant: 225),
             
+            // Add constraints for the vaccination container
+            upcomingVaccinationLabel.topAnchor.constraint(equalTo: todaysBitesCollectionView.bottomAnchor, constant: 24),
+            upcomingVaccinationLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            
+            vaccineContainerView.topAnchor.constraint(equalTo: upcomingVaccinationLabel.bottomAnchor, constant: 10),
+            vaccineContainerView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
+            vaccineContainerView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
+            vaccineContainerView.heightAnchor.constraint(equalToConstant: 160),
+            vaccineContainerView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -20),
+            
             // Card constraints
             todaysBitesEmptyStateView.topAnchor.constraint(equalTo: todaysBitesLabel.bottomAnchor, constant: 12),
             todaysBitesEmptyStateView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
@@ -293,67 +316,132 @@ class HomeViewController: UIViewController {
         // Update the empty state visibility
         updateTodaysBitesEmptyState()
     }
-    
     private func setupVaccineView() {
-        vaccineView?.removeFromSuperview()
+        print("🔄 Setting up vaccine view with \(scheduledVaccines.count) vaccines")
         
-        if let oldVaccineViewController = children.first(where: { $0 is UIHostingController<VaccineCardsView> }) {
-            oldVaccineViewController.willMove(toParent: nil)
-            oldVaccineViewController.view.removeFromSuperview()
-            oldVaccineViewController.removeFromParent()
+        // Convert dictionary vaccines to VaccineSchedule objects and keep vaccine names
+        let vaccineSchedulesWithNames: [(VaccineSchedule, String)] = scheduledVaccines.compactMap { dict in
+            guard let vaccineName = dict["type"],
+                  let dateString = dict["date"],
+                  let hospital = dict["hospital"] else {
+                return nil
+            }
+            
+            // Create a date from the string
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateStyle = .medium
+            guard let date = dateFormatter.date(from: dateString) else {
+                print("❌ Could not parse date: \(dateString)")
+                return nil
+            }
+            
+            let schedule = VaccineSchedule(
+                id: UUID(),
+                babyID: BabyDataModel.shared.babyList[0].babyID,
+                vaccineId: UUID(), // This is not used for display
+                hospital: hospital,
+                date: date,
+                location: dict["address"] ?? "",
+                isAdministered: false
+            )
+            return (schedule, vaccineName)
         }
         
-        let vaccineCardsView = UIHostingController(rootView: VaccineCardsView(
-            vaccines: scheduledVaccines,
-            onVaccineCompleted: { [weak self] vaccine in
-                guard let self = self else { return }
-                
-                if let index = self.scheduledVaccines.firstIndex(where: { $0 == vaccine }) {
-                    self.scheduledVaccines.remove(at: index)
-                    self.completedVaccinesStorage.append(vaccine)
-                    
-                    if let scheduleToRemove = self.storageManager.getAllSchedules().first(where: {
-                        $0.type == vaccine["type"] &&
-                        $0.scheduledDate == vaccine["date"] &&
-                        $0.hospitalName == vaccine["hospital"]
-                    }) {
-                        self.storageManager.deleteSchedule(id: scheduleToRemove.id)
-                    }
-                    
-                    DispatchQueue.main.async {
-                        self.loadVaccinations()
+        // Debug the content of scheduled vaccines
+        for (i, tuple) in vaccineSchedulesWithNames.enumerated() {
+            let (vaccine, vaccineName) = tuple
+            print("📊 Scheduled vaccine \(i):")
+            print("   - Name: \(vaccineName)")
+            print("   - Date: \(vaccine.date)")
+            print("   - Hospital: \(vaccine.hospital)")
+            print("   - Record type: VaccineSchedule")
+        }
+        
+        let workItem = DispatchWorkItem {
+            // Remove any existing vaccine view
+            if let existingVaccineView = self.vaccineView {
+                existingVaccineView.removeFromSuperview()
+                self.vaccineView = nil
+            }
+            
+            // Remove any existing hosting controller
+            if let oldVaccineViewController = self.children.first(where: { $0 is UIHostingController<VaccineCardsView> }) {
+                oldVaccineViewController.willMove(toParent: nil)
+                oldVaccineViewController.view.removeFromSuperview()
+                oldVaccineViewController.removeFromParent()
+            }
+            
+            // Create the vaccine cards view with the callback
+            let vaccineCardsView = UIHostingController(rootView: VaccineCardsView(
+                vaccines: vaccineSchedulesWithNames,
+                onVaccineCompleted: { [weak self] tuple in
+                    let (vaccine, _) = tuple
+                    print("📱 Vaccine completion requested for: \(vaccine.vaccineId)")
+                    Task {
+                        do {
+                            // Get all scheduled records for this baby
+                            let schedules = try await VaccineScheduleManager.shared.fetchSchedules(forBaby: BabyDataModel.shared.babyList[0].babyID)
+                            print("✅ Successfully fetched \(schedules.count) scheduled vaccination records")
+                            // Find and delete the matching schedule
+                            for record in schedules {
+                                if record.id == vaccine.id {
+                                    try await VaccineScheduleManager.shared.updateSchedule(
+                                        recordId: record.id,
+                                        newDate: record.date,
+                                        newHospital: Hospital(
+                                            id: UUID(),
+                                            babyId: record.babyID,
+                                            name: record.hospital,
+                                            address: record.location,
+                                            distance: 0.0
+                                        )
+                                    )
+                                    print("✅ Deleted original scheduled record with ID: \(record.id)")
+                                    // Create administered record
+                                    let administered = VaccineAdministered(
+                                        id: UUID(),
+                                        babyId: record.babyID,
+                                        vaccineId: record.vaccineId,
+                                        scheduleId: record.id,
+                                        administeredDate: Date()
+                                    )
+                                    try await AdministeredVaccineManager.shared.addAdministeredVaccine(
+                                        babyId: administered.babyId,
+                                        vaccineId: administered.vaccineId,
+                                        scheduleId: administered.scheduleId,
+                                        date: administered.administeredDate,
+                                        location: record.location
+                                    )
+                                    print("✅ Saved administered vaccine record")
+                                    // Reload vaccinations
+                                    await MainActor.run {
+                                        self?.loadVaccinations()
+                                    }
+                                    break
+                                }
+                            }
+                        } catch {
+                            print("❌ Error completing vaccine: \(error)")
+                        }
                     }
                 }
-            }
-        )
-        )
-        
-        addChild(vaccineCardsView)
-        vaccineCardsView.view.translatesAutoresizingMaskIntoConstraints = false
-        vaccineCardsView.view.backgroundColor = UIColor(hex: "#f2f2f7")
-        
-        if let index = contentView.subviews.firstIndex(of: todaysBitesCollectionView) {
-            contentView.insertSubview(vaccineCardsView.view, at: index + 1)
-        } else {
-            contentView.addSubview(vaccineCardsView.view)
+            ))
+            // Add the view controller as a child
+            self.addChild(vaccineCardsView)
+            vaccineCardsView.view.translatesAutoresizingMaskIntoConstraints = false
+            vaccineCardsView.view.backgroundColor = UIColor(hex: "#f2f2f7")
+            // Add and constrain the view
+            self.vaccineContainerView.addSubview(vaccineCardsView.view)
+            NSLayoutConstraint.activate([
+                vaccineCardsView.view.topAnchor.constraint(equalTo: self.vaccineContainerView.topAnchor),
+                vaccineCardsView.view.leadingAnchor.constraint(equalTo: self.vaccineContainerView.leadingAnchor),
+                vaccineCardsView.view.trailingAnchor.constraint(equalTo: self.vaccineContainerView.trailingAnchor),
+                vaccineCardsView.view.bottomAnchor.constraint(equalTo: self.vaccineContainerView.bottomAnchor)
+            ])
+            vaccineCardsView.didMove(toParent: self)
+            self.vaccineView = vaccineCardsView.view
         }
-        
-        vaccineCardsView.didMove(toParent: self)
-        
-        NSLayoutConstraint.activate([
-            vaccineCardsView.view.topAnchor.constraint(equalTo: todaysBitesCollectionView.bottomAnchor, constant: 20),
-            vaccineCardsView.view.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
-            vaccineCardsView.view.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
-            vaccineCardsView.view.heightAnchor.constraint(equalToConstant: 200)
-        ])
-        
-        if let lastConstraint = contentView.constraints.first(where: { $0.firstAttribute == .bottom }) {
-            lastConstraint.isActive = false
-        }
-        
-        contentView.bottomAnchor.constraint(equalTo: vaccineCardsView.view.bottomAnchor, constant: 20).isActive = true
-        
-        vaccineView = vaccineCardsView.view
+        DispatchQueue.main.async(execute: workItem)
     }
     
     private func setupDelegates() {
@@ -372,19 +460,92 @@ class HomeViewController: UIViewController {
     }
     
     private func loadVaccinations() {
-        let schedules = storageManager.getAllSchedules()
-        self.scheduledVaccines = schedules.map { schedule in
-            [
-                "type": schedule.type,
-                "date": schedule.scheduledDate,
-                "hospital": schedule.hospitalName
-            ]
-        }
-        
-        DispatchQueue.main.async {
-            self.setupVaccineView()
+        print("📋 Loading vaccinations...")
+        print("🌐 Fetching all vaccination records from Supabase...")
+        Task {
+            do {
+                // Fetch all scheduled vaccines from Supabase (no baby filter)
+                let allScheduledRecords = try await VaccineScheduleManager.shared.fetchAllSchedules()
+                print("✅ Successfully fetched \(allScheduledRecords.count) scheduled vaccination records (all babies)")
+                
+                // Fetch administered vaccines for all babies (optional, can be filtered if needed)
+                let allAdministeredRecords = try await AdministeredVaccineManager.shared.fetchAllAdministeredVaccines()
+                print("✅ Successfully fetched \(allAdministeredRecords.count) administered vaccination records (all babies)")
+                
+                // Convert scheduled records to dictionaries
+                var scheduledDictionaries: [[String: String]] = []
+                for record in allScheduledRecords {
+                    let dateFormatter = DateFormatter()
+                    dateFormatter.dateStyle = .medium
+                    let vaccineName = await getVaccineName(for: record.vaccineId)
+                    let dict: [String: String] = [
+                        "type": vaccineName,
+                        "date": dateFormatter.string(from: record.date),
+                        "hospital": record.hospital,
+                        "location": record.location
+                    ]
+                    scheduledDictionaries.append(dict)
+                }
+                
+                // Convert administered records to dictionaries
+                var administeredDictionaries: [[String: String]] = []
+                for record in allAdministeredRecords {
+                    let dateFormatter = DateFormatter()
+                    dateFormatter.dateStyle = .medium
+                    let vaccineName = await getVaccineName(for: record.vaccineId)
+                    let dict: [String: String] = [
+                        "type": vaccineName,
+                        "date": dateFormatter.string(from: record.administeredDate),
+                        "hospital": "Unknown Hospital",
+                        "location": "Unknown Location"
+                    ]
+                    administeredDictionaries.append(dict)
+                }
+                
+                print("📊 Processed \(scheduledDictionaries.count) scheduled and \(administeredDictionaries.count) administered vaccines (all babies)")
+                
+                await MainActor.run {
+                    self.scheduledVaccines = scheduledDictionaries
+                    self.administeredVaccines = administeredDictionaries
+                    print("🔢 UI updated with \(self.scheduledVaccines.count) scheduled and \(self.administeredVaccines.count) administered vaccines (all babies)")
+                    self.setupVaccineView()
+                    self.updateTodaysBitesEmptyState()
+                    self.todaysBitesCollectionView.reloadData()
+                }
+            } catch {
+                print("❌ Failed to load vaccination records from Supabase: \(error.localizedDescription)")
+            }
         }
     }
+    
+    // Helper method to get vaccine name from ID
+    private func getVaccineName(for vaccineId: UUID) async -> String {
+        do {
+            // Use SupabaseVaccineManager instead of FetchingVaccines
+            let allVaccines = try await SupabaseVaccineManager.shared.fetchAllVaccines()
+            if let vaccine = allVaccines.first(where: { $0.id == vaccineId }) {
+                return vaccine.name
+            }
+            
+            // Fallback to fetching from VaccineManager's static data if needed
+            for stage in VaccineManager.shared.vaccineData {
+                for vaccineName in stage.vaccines {
+                    // This is a simple check - in practice you'd want to match more precisely
+                    if vaccineName.contains(vaccineId.uuidString.prefix(8)) {
+                        return vaccineName
+                    }
+                }
+            }
+            
+            return "Unknown Vaccine"
+        } catch {
+            print("❌ Error fetching vaccine name: \(error)")
+            
+            // Fallback to local data
+            return "Vaccine \(vaccineId.uuidString.prefix(8))"
+        }
+    }
+    
     @objc private func openTodBiteViewController() {
         if let tabBarController = self.tabBarController {
             tabBarController.selectedIndex = 4
@@ -392,6 +553,7 @@ class HomeViewController: UIViewController {
             print("⚠️ TabBarController not found")
         }
     }
+    
     @objc private func updateTodaysBites() {
         print("✅ Fetching Today's Bites from UserDefaults...")
         
@@ -421,8 +583,13 @@ class HomeViewController: UIViewController {
         // Update the empty state
         updateTodaysBitesEmptyState()
     }
+    
     @objc private func handleNewVaccineScheduled(_ notification: Notification) {
-        loadVaccinations()
+        print("📣 Received NewVaccineScheduled notification")
+        // Use a small delay to ensure database consistency
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            self.loadVaccinations()
+        }
     }
     
     private func removeEmbeddedView() {
@@ -437,6 +604,8 @@ class HomeViewController: UIViewController {
             }
         }
     }
+    
+    
     private func embedSpecialMomentsViewController() {
         let specialMomentsVC = SpecialMomentsViewController()
         addChild(specialMomentsVC)
@@ -491,36 +660,33 @@ extension HomeViewController: UICollectionViewDelegate, UICollectionViewDataSour
 
 
 struct VaccineCardsView: View {
-    var vaccines: [[String: String]]
-    var onVaccineCompleted: ([String: String]) -> Void
+    let vaccines: [(VaccineSchedule, String)]
+    var onVaccineCompleted: ((VaccineSchedule, String)) -> Void
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            UILabelRepresentable(text: "Vaccine Reminder", font: UIFont.boldSystemFont(ofSize: 20))
-                .frame(height: 24)
-                .padding(.horizontal, 16)
-            
+        VStack {
             if vaccines.isEmpty {
-                GeometryReader { geometry in
-                    VStack {
-                        Spacer()
-                        Text("No vaccines added yet")
-                            .font(.system(size: 16))
-                            .foregroundColor(Color(.systemGray))
-                            .frame(width: geometry.size.width, alignment: .center)
-                        Spacer()
-                    }
+                HStack {
+                    Image(systemName: "syringe")
+                        .font(.system(size: 24))
+                        .foregroundColor(.gray)
+                    Text("No upcoming vaccinations")
+                        .font(.system(size: 16))
+                        .foregroundColor(.gray)
                 }
                 .frame(height: 100)
                 .background(Color(UIColor(hex: "#f2f2f7")))
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
-                        ForEach(vaccines, id: \.self) { vaccine in
+                    LazyHStack(spacing: 12) {
+                        ForEach(Array(vaccines.enumerated()), id: \.element.0.id) { index, tuple in
+                            let (vaccine, vaccineName) = tuple
                             VaccineCard(
                                 vaccine: vaccine,
+                                vaccineName: vaccineName,
                                 onComplete: {
-                                    onVaccineCompleted(vaccine)
+                                    print("📱 Vaccine card tapped for completion: \(vaccine.vaccineId)")
+                                    onVaccineCompleted(tuple)
                                 }
                             )
                         }
@@ -533,6 +699,73 @@ struct VaccineCardsView: View {
         }
         .frame(height: 160)
         .background(Color(UIColor(hex: "#f2f2f7")))
+    }
+}
+
+struct VaccineCard: View {
+    let vaccine: VaccineSchedule
+    let vaccineName: String
+    let onComplete: () -> Void
+    @State private var isCompleted = false
+    @State private var opacity = 1.0
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Header with Vaccine Name and Completion Button
+            HStack {
+                Text(vaccineName)
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                Spacer()
+                Button(action: {
+                    withAnimation(.easeOut(duration: 0.3)) {
+                        isCompleted = true
+                        opacity = 0
+                    }
+                    DispatchQueue.main.asyncAfter(wallDeadline: .now() + 0.3) {
+                        onComplete()
+                    }
+                }) {
+                    Image(systemName: isCompleted ? "checkmark.circle.fill" : "circle")
+                        .foregroundColor(isCompleted ? .green : Color(.systemGray3))
+                        .font(.system(size: 22))
+                }
+                .disabled(isCompleted)
+            }
+            // Date and Hospital Info
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 6) {
+                    Image(systemName: "calendar")
+                        .foregroundColor(Color(.systemBlue))
+                        .font(.system(size: 14))
+                    Text(formatDate(vaccine.date))
+                        .font(.subheadline)
+                        .foregroundColor(Color(.systemGray))
+                }
+                HStack(spacing: 6) {
+                    Image(systemName: "building.2")
+                        .foregroundColor(Color(.systemBlue))
+                        .font(.system(size: 14))
+                    Text(vaccine.hospital)
+                        .font(.subheadline)
+                        .foregroundColor(Color(.systemGray))
+                }
+            }
+        }
+        .padding(16)
+        .frame(width: 260, height: 120)
+        .background(Color(.systemBackground))
+        .cornerRadius(12)
+        .shadow(color: Color(.systemGray4).opacity(0.5), radius: 4, x: 0, y: 2)
+        .opacity(opacity)
+    }
+    
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        return formatter.string(from: date)
     }
 }
 
@@ -551,74 +784,5 @@ struct UILabelRepresentable: UIViewRepresentable {
     func updateUIView(_ uiView: UILabel, context: Context) {
         uiView.text = text
         uiView.font = font
-    }
-}
-
-
-struct VaccineCard: View {
-    var vaccine: [String: String]
-    var onComplete: () -> Void
-    @State private var isCompleted = false
-    @State private var opacity = 1.0
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Header with Type and Completion Button
-            HStack {
-                Text(vaccine["type"] ?? "Unknown Vaccine")
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                
-                Spacer()
-                
-                Button(action: {
-                    withAnimation(.easeOut(duration: 0.3)) {
-                        isCompleted = true
-                        opacity = 0
-                    }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        onComplete()
-                    }
-                }) {
-                    Image(systemName: isCompleted ? "checkmark.circle.fill" : "circle")
-                        .foregroundColor(isCompleted ? .green : Color(.systemGray3))
-                        .font(.system(size: 22))
-                }
-                .disabled(isCompleted)
-            }
-            
-            // Date and Hospital Info
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 6) {
-                    Image(systemName: "calendar")
-                        .foregroundColor(Color(.systemBlue))
-                        .font(.system(size: 14))
-                    Text(vaccine["date"] ?? "")
-                        .font(.subheadline)
-                        .foregroundColor(Color(.systemGray))
-                }
-                
-                HStack(spacing: 6) {
-                    Image(systemName: "building.2")
-                        .foregroundColor(Color(.systemBlue))
-                        .font(.system(size: 14))
-                    Text(vaccine["hospital"] ?? "Unknown Hospital")
-                        .font(.subheadline)
-                        .foregroundColor(Color(.systemGray))
-                }
-            }
-        }
-        .padding(16)
-        .frame(width: 260, height: 120)
-        .background(Color(.systemBackground)) // This keeps the cards white
-        .cornerRadius(12)
-        .shadow(color: Color(.systemGray4).opacity(0.5), radius: 4, x: 0, y: 2)
-        .opacity(opacity)
-    }
-}
-// Make Dictionary conform to Hashable
-extension Dictionary: Hashable where Value: Hashable {
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(self.description)
     }
 }
