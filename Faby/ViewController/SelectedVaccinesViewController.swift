@@ -252,53 +252,105 @@ class SelectedVaccinesViewController: UIViewController {
         
         return content
     }
+
+//    @objc private func continueButtonTapped() {
+//            if selectedVaccines.isEmpty {
+//                let noSelectionAlert = UIAlertController(
+//                    title: "No Vaccines Selected",
+//                    message: "Please select at least one vaccine to continue.",
+//                    preferredStyle: .alert
+//                )
+//                noSelectionAlert.addAction(UIAlertAction(title: "OK", style: .default))
+//                present(noSelectionAlert, animated: true)
+//                return
+//            }
+//            
+//            Task {
+//                do {
+//                    // Save selected vaccines to schedule
+//                    for vaccine in selectedVaccines {
+//                        try await VaccineScheduleManager.shared.saveSchedule(
+//                            babyId: vaccine.id,
+//                            vaccineId: vaccine.id,
+//                            hospital: "To be selected",
+//                            date: Date(),
+//                            location: "To be selected"
+//                        )
+//                    }
+//                    
+//                    // Navigate to VacciAlertViewController on the main thread
+//                    await MainActor.run {
+//                        let vacciAlertVC = VacciAlertViewController()
+//                        self.navigationController?.pushViewController(vacciAlertVC, animated: true)
+//                        
+//                        // Post notification to refresh vaccine data
+//                        NotificationCenter.default.post(name: NSNotification.Name("RefreshVaccineData"), object: nil)
+//                    }
+//                } catch {
+//                    print("Error saving vaccine schedules: \(error)")
+//                    await MainActor.run {
+//                        let alert = UIAlertController(
+//                            title: "Error",
+//                            message: "Failed to save vaccine schedules. Please try again.",
+//                            preferredStyle: .alert
+//                        )
+//                        alert.addAction(UIAlertAction(title: "OK", style: .default))
+//                        self.present(alert, animated: true)
+//                    }
+//                }
+//            }
+//        }
+
+    
+    // MARK: - Actions
     @objc private func continueButtonTapped() {
-            if selectedVaccines.isEmpty {
-                let noSelectionAlert = UIAlertController(
-                    title: "No Vaccines Selected",
-                    message: "Please select at least one vaccine to continue.",
-                    preferredStyle: .alert
-                )
-                noSelectionAlert.addAction(UIAlertAction(title: "OK", style: .default))
-                present(noSelectionAlert, animated: true)
-                return
-            }
-            
-            Task {
-                do {
-                    // Save selected vaccines to schedule
-                    for vaccine in selectedVaccines {
-                        try await VaccineScheduleManager.shared.saveSchedule(
-                            babyId: vaccine.id,
-                            vaccineId: vaccine.id,
-                            hospital: "To be selected",
-                            date: Date(),
-                            location: "To be selected"
-                        )
-                    }
+        if selectedVaccines.isEmpty {
+            let noSelectionAlert = UIAlertController(
+                title: "No Vaccines Selected",
+                message: "Please select at least one vaccine to continue.",
+                preferredStyle: .alert
+            )
+            noSelectionAlert.addAction(UIAlertAction(title: "OK", style: .default))
+            present(noSelectionAlert, animated: true)
+            return
+        }
+        
+        Task {
+            do {
+                // Save selected vaccines to schedule
+                for vaccine in selectedVaccines {
+                    try await VaccineScheduleManager.shared.saveSchedule(
+                        babyId: vaccine.id,
+                        vaccineId: vaccine.id,
+                        hospital: "To be selected",
+                        date: Date(),
+                        location: "To be selected"
+                    )
+                }
+                
+                // Navigate to VacciAlertViewController on the main thread
+                await MainActor.run {
+                    let vacciAlertVC = VacciAlertViewController()
+                    self.navigationController?.pushViewController(vacciAlertVC, animated: true)
                     
-                    // Navigate to VacciAlertViewController on the main thread
-                    await MainActor.run {
-                        let vacciAlertVC = VacciAlertViewController()
-                        self.navigationController?.pushViewController(vacciAlertVC, animated: true)
-                        
-                        // Post notification to refresh vaccine data
-                        NotificationCenter.default.post(name: NSNotification.Name("RefreshVaccineData"), object: nil)
-                    }
-                } catch {
-                    print("Error saving vaccine schedules: \(error)")
-                    await MainActor.run {
-                        let alert = UIAlertController(
-                            title: "Error",
-                            message: "Failed to save vaccine schedules. Please try again.",
-                            preferredStyle: .alert
-                        )
-                        alert.addAction(UIAlertAction(title: "OK", style: .default))
-                        self.present(alert, animated: true)
-                    }
+                    // Post notification to refresh vaccine data
+                    NotificationCenter.default.post(name: NSNotification.Name("RefreshVaccineData"), object: nil)
+                }
+            } catch {
+                print("Error saving vaccine schedules: \(error)")
+                await MainActor.run {
+                    let alert = UIAlertController(
+                        title: "Error",
+                        message: "Failed to save vaccine schedules. Please try again.",
+                        preferredStyle: .alert
+                    )
+                    alert.addAction(UIAlertAction(title: "OK", style: .default))
+                    self.present(alert, animated: true)
                 }
             }
         }
+    }
+
     @objc private func vaccineCardTapped(_ sender: UITapGestureRecognizer) {
         guard let cardView = sender.view,
               let index = stackView.arrangedSubviews.firstIndex(of: cardView),
