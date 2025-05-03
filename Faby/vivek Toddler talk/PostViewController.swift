@@ -556,34 +556,49 @@ class PostViewController: UIViewController, UITextViewDelegate, UIImagePickerCon
         present(alert, animated: true)
     }
     
-    private func showImagePicker(sourceType: UIImagePickerController.SourceType) {
-        let imagePicker = UIImagePickerController()
-        imagePicker.delegate = self
-        imagePicker.sourceType = sourceType
-        imagePicker.allowsEditing = true
-        present(imagePicker, animated: true)
+    func showImagePicker(sourceType: UIImagePickerController.SourceType) {
+        guard UIImagePickerController.isSourceTypeAvailable(sourceType) else {
+            let alert = UIAlertController(title: "Error", message: "Camera not available.", preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            present(alert, animated: true)
+            return
+        }
+
+        let picker = UIImagePickerController()
+        picker.sourceType = sourceType
+        picker.delegate = self
+        present(picker, animated: true)
     }
-    
+
     // MARK: - UIImagePickerControllerDelegate
     func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
-        if let image = info[.editedImage] as? UIImage {
+        var image: UIImage?
+        
+        if let edited = info[.editedImage] as? UIImage {
+            image = edited
+        } else if let original = info[.originalImage] as? UIImage {
+            image = original
+        }
+
+        if let image = image {
             selectedImage = image
             selectedImageView.image = image
             selectedImageView.isHidden = false
-            
-            // Animate the appearance of the image and move category view below it
-            UIView.animate(withDuration: 0.3, animations: {
+
+            // Animate the appearance of the image and update constraints
+            UIView.animate(withDuration: 0.3) {
                 self.selectedImageView.alpha = 1
                 self.selectedImageViewHeightConstraint?.constant = 200
-                self.categoryViewTopConstraint?.constant = 16 // Keep consistent spacing
+                self.categoryViewTopConstraint?.constant = 16
                 self.view.layoutIfNeeded()
-            })
-            
+            }
+
             imagePickerButton.setTitle("Change Image", for: .normal)
         }
+        
         dismiss(animated: true)
     }
-    
+
     func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
         dismiss(animated: true)
     }
