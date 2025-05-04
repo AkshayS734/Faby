@@ -512,7 +512,7 @@ extension VaccineInputViewController: VaccineCellDelegate {
         alertController.view.addConstraint(heightConstraint)
         
         // Add actions
-        let scheduleAction = UIAlertAction(title: "Schedule", style: .default) { [weak self] _ in
+        let scheduleAction = UIAlertAction(title: "Set", style: .default) { [weak self] _ in
             self?.handleDateSelection(date: datePicker.date, for: selectedVaccine)
         }
         

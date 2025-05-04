@@ -23,7 +23,7 @@ struct Vaccine: Identifiable, Codable, Equatable {
 }
 
 /// Record representing a vaccine schedule
-struct VaccineSchedule: Codable, Identifiable {
+struct VaccineSchedule: Codable, Identifiable, Equatable {
     let id: UUID
     let babyID: UUID
     let vaccineId: UUID
