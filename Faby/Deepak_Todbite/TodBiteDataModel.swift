@@ -121,6 +121,7 @@ struct MyBowl {
     let childId: String
     var selectedMeals: [BiteType: FeedingMeal]
 }
+
 struct FeedingPlan {
     let childId: String
     let schedule: [BiteType: FeedingMeal]
@@ -130,6 +131,14 @@ struct TodayBite {
     let title: String
     let time: String
     let imageName: String
+}
+
+struct MyBowlItem {
+    let id: Int
+    let bowlId: Int
+    let feedingMealId: Int
+    let biteTypeId: Int
+    let createdAt: Date
 }
 
 

@@ -330,7 +330,7 @@ class FeedingPlanViewController: UIViewController {
         
         // Select the Home tab (usually index 0)
         if let tabBarController = UIApplication.shared.windows.filter({$0.isKeyWindow}).first?.rootViewController as? UITabBarController {
-            tabBarController.selectedIndex = 0 // Home tab index
+            tabBarController.selectedIndex = 1 // Home tab index
             
             // We can't directly call updateTodaysBites as it's private
             // Instead we rely on the notification we just posted
