@@ -1,6 +1,6 @@
 import UIKit
 
-class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UITableViewDataSource, PostViewDelegate, PostCardCellDelegate {
+class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UITableViewDataSource, PostViewDelegate, PostCardCellDelegate, CommentCellDelegate {
     
     // MARK: - Properties
     var selectedTopicId: String?
@@ -17,6 +17,14 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
         didSet {
             commentsTableView.reloadData()
             updateCommentsCountLabel()
+        }
+    }
+    
+    // Properties for reply functionality
+    private var replyingToComment: Comment?
+    private var isInReplyMode: Bool = false {
+        didSet {
+            updateCommentTextFieldPlaceholder()
         }
     }
     
@@ -52,6 +60,60 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
         return view
     }()
     
+    // Replace the entire reply indicator implementation with a simpler approach
+    private lazy var replyIndicatorView: UIView = {
+        let view = UIView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        view.backgroundColor = .systemGray6
+        view.layer.cornerRadius = 8
+        view.isHidden = true
+        
+        // Ensure proper height
+        view.heightAnchor.constraint(equalToConstant: 40).isActive = true
+        
+        // Add top border for visibility
+        let border = CALayer()
+        border.frame = CGRect(x: 0, y: 0, width: UIScreen.main.bounds.width, height: 1)
+        border.backgroundColor = UIColor.systemGray4.cgColor
+        view.layer.addSublayer(border)
+        
+        return view
+    }()
+    
+    private lazy var replyToLabel: UILabel = {
+        let label = UILabel()
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.font = .systemFont(ofSize: 12)
+        label.textColor = .secondaryLabel
+        label.text = "Replying to"
+        return label
+    }()
+    
+    private lazy var replyToNameLabel: UILabel = {
+        let label = UILabel()
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.font = .systemFont(ofSize: 12, weight: .semibold)
+        label.textColor = .label
+        return label
+    }()
+    
+    // Remove the standalone reply button and replace with an in-textfield cross button
+    private lazy var cancelReplyButton: UIButton = {
+        // Configure the button with SF Symbol
+        let button = UIButton(type: .system)
+        let config = UIImage.SymbolConfiguration(pointSize: 18, weight: .bold)
+        let xImage = UIImage(systemName: "xmark.circle.fill", withConfiguration: config)
+        
+        button.setImage(xImage, for: .normal)
+        button.tintColor = .systemRed
+        button.addTarget(self, action: #selector(simpleCancelReply), for: .touchUpInside)
+        
+        // Size it appropriately
+        button.frame = CGRect(x: 5, y: 0, width: 30, height: 30)
+        
+        return button
+    }()
+    
     // Add drag handle for fullscreen expansion
     private lazy var dragHandleView: UIView = {
         let view = UIView()
@@ -82,6 +144,7 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
         return view
     }()
     
+    // Update the comment text field to include a custom right view for the cancel button
     private lazy var commentTextField: UITextField = {
         let textField = UITextField()
         textField.translatesAutoresizingMaskIntoConstraints = false
@@ -89,10 +152,16 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
         textField.font = .systemFont(ofSize: 16)
         textField.backgroundColor = .systemGray6
         textField.layer.cornerRadius = 16
+        
+        // Set left padding
         textField.leftView = UIView(frame: CGRect(x: 0, y: 0, width: 10, height: 0))
         textField.leftViewMode = .always
-        textField.rightView = UIView(frame: CGRect(x: 0, y: 0, width: 10, height: 0))
+        
+        // Create a right view container - empty by default
+        let rightViewContainer = UIView(frame: CGRect(x: 0, y: 0, width: 40, height: 30))
+        textField.rightView = rightViewContainer
         textField.rightViewMode = .always
+        
         return textField
     }()
     
@@ -153,6 +222,23 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
         fetchPosts()
     }
     
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        
+        // Debug the cancel button setup
+        print("📱 Cancel button initialized: \(cancelReplyButton != nil ? "YES" : "NO")")
+        print("📱 Cancel button has actions: \(cancelReplyButton.actions(forTarget: self, forControlEvent: .touchUpInside)?.count ?? 0)")
+    }
+    
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        
+        // Debug layout for cancel button
+        print("📐 Cancel button frame after layout: \(cancelReplyButton.frame)")
+        print("📐 Cancel button is inside: \(cancelReplyButton.superview?.description ?? "NO SUPERVIEW")")
+        print("📐 Cancel button is hidden: \(cancelReplyButton.isHidden)")
+    }
+    
     // MARK: - UI Setup
     private func setupUI() {
         view.backgroundColor = .systemBackground
@@ -169,6 +255,11 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
         commentsOverlayView.addSubview(commentsCountLabel)
         commentsOverlayView.addSubview(commentsTableView)
         commentsOverlayView.addSubview(commentInputView)
+        
+        // Add reply indicator view
+        commentInputView.addSubview(replyIndicatorView)
+        replyIndicatorView.addSubview(replyToLabel)
+        replyIndicatorView.addSubview(replyToNameLabel)
         
         // Add input view subviews
         commentInputView.addSubview(commentTextField)
@@ -223,6 +314,21 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
             commentInputView.trailingAnchor.constraint(equalTo: commentsOverlayView.trailingAnchor),
             commentInputView.heightAnchor.constraint(equalToConstant: 50),
             commentInputBottomConstraint!,
+            
+            // Reply indicator view
+            replyIndicatorView.leadingAnchor.constraint(equalTo: commentInputView.leadingAnchor, constant: 8),
+            replyIndicatorView.trailingAnchor.constraint(equalTo: commentInputView.trailingAnchor, constant: -8),
+            replyIndicatorView.bottomAnchor.constraint(equalTo: commentTextField.topAnchor, constant: -4),
+            replyIndicatorView.heightAnchor.constraint(equalToConstant: 28),
+            
+            // Reply to label
+            replyToLabel.leadingAnchor.constraint(equalTo: replyIndicatorView.leadingAnchor, constant: 12),
+            replyToLabel.centerYAnchor.constraint(equalTo: replyIndicatorView.centerYAnchor),
+            
+            // Reply to name label - with safe constraint
+            replyToNameLabel.leadingAnchor.constraint(equalTo: replyToLabel.trailingAnchor, constant: 4),
+            replyToNameLabel.centerYAnchor.constraint(equalTo: replyIndicatorView.centerYAnchor),
+            replyToNameLabel.trailingAnchor.constraint(lessThanOrEqualTo: replyIndicatorView.trailingAnchor, constant: -50),
             
             // Comment text field
             commentTextField.leadingAnchor.constraint(equalTo: commentInputView.leadingAnchor, constant: 16),
@@ -408,17 +514,40 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
             return
         }
         
-        SupabaseManager.shared.addComment(postId: post.postId, userId: userId, content: commentText) { [weak self] success, error in
-            DispatchQueue.main.async {
-                if success {
-                    self?.commentTextField.text = ""
-                    self?.hideCommentInput()
-                    // Refresh comments
-                    self?.fetchComments()
-                } else {
-                    let alert = UIAlertController(title: "Error", message: "Failed to add comment. Please try again.", preferredStyle: .alert)
-                    alert.addAction(UIAlertAction(title: "OK", style: .default))
-                    self?.present(alert, animated: true)
+        if isInReplyMode, let replyToComment = replyingToComment, let commentId = replyToComment.commentId {
+            // We're replying to a specific comment
+            SupabaseManager.shared.addCommentReply(
+                commentId: commentId,
+                postId: post.postId,
+                userId: userId,
+                content: commentText
+            ) { [weak self] success, error in
+                DispatchQueue.main.async {
+                    if success {
+                        self?.commentTextField.text = ""
+                        self?.simpleCancelReply() // Use new simple cancel method
+                        // Refresh comments
+                        self?.fetchComments()
+                    } else {
+                        let alert = UIAlertController(title: "Error", message: "Failed to add reply. Please try again.", preferredStyle: .alert)
+                        alert.addAction(UIAlertAction(title: "OK", style: .default))
+                        self?.present(alert, animated: true)
+                    }
+                }
+            }
+        } else {
+            // Regular comment (not a reply)
+            SupabaseManager.shared.addComment(postId: post.postId, userId: userId, content: commentText) { [weak self] success, error in
+                DispatchQueue.main.async {
+                    if success {
+                        self?.commentTextField.text = ""
+                        // Refresh comments
+                        self?.fetchComments()
+                    } else {
+                        let alert = UIAlertController(title: "Error", message: "Failed to add comment. Please try again.", preferredStyle: .alert)
+                        alert.addAction(UIAlertAction(title: "OK", style: .default))
+                        self?.present(alert, animated: true)
+                    }
                 }
             }
         }
@@ -603,6 +732,7 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
         } else {
             let cell = tableView.dequeueReusableCell(withIdentifier: "CommentCell", for: indexPath) as! CommentCell
             let comment = comments[indexPath.row]
+            cell.delegate = self
             cell.configure(with: comment, isLiked: false)
             return cell
         }
@@ -762,6 +892,188 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
         let count = comments.count
         commentsCountLabel.text = "\(count) \(count == 1 ? "Comment" : "Comments")"
         print("📊 Updated comments count: \(count)")
+    }
+    
+    // MARK: - CommentCellDelegate methods
+    func didTapReplyButton(for comment: Comment) {
+        print("🗣️ Reply button tapped for comment: \(comment.content)")
+        startReplyToComment(comment)
+    }
+    
+    func didTapViewReplies(for comment: Comment) {
+        print("🔍 View replies tapped for comment: \(comment.content)")
+        print("🔍 Comment ID: \(comment.commentId ?? -1)")
+        
+        guard let commentId = comment.commentId else {
+            print("❌ ERROR: Comment has no ID, cannot show replies")
+            let alert = UIAlertController(
+                title: "Error",
+                message: "Cannot load replies for this comment",
+                preferredStyle: .alert
+            )
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            self.present(alert, animated: true)
+            return
+        }
+        
+        guard let postId = currentPost?.postId else { 
+            print("❌ ERROR: Cannot show replies - no current post")
+            return 
+        }
+        
+        // Make sure any existing presented controllers are dismissed
+        if let presented = self.presentedViewController {
+            presented.dismiss(animated: false) {
+                self.showRepliesView(for: comment, postId: postId)
+            }
+        } else {
+            showRepliesView(for: comment, postId: postId)
+        }
+    }
+    
+    // Extracted method to show replies view
+    private func showRepliesView(for comment: Comment, postId: String) {
+        // Create a reply view controller
+        let repliesVC = RepliesViewController(comment: comment, postId: postId)
+        
+        // Wrap in navigation controller
+        let navController = UINavigationController(rootViewController: repliesVC)
+        
+        // Use pageSheet presentation for better UX
+        navController.modalPresentationStyle = .pageSheet
+        
+        if #available(iOS 15.0, *) {
+            if let sheet = navController.sheetPresentationController {
+                sheet.detents = [.medium(), .large()]
+                sheet.prefersGrabberVisible = true
+            }
+        }
+        
+        // Debug print before presenting
+        print("✅ About to present RepliesViewController")
+        
+        // Present with animation
+        present(navController, animated: true) {
+            print("✅ RepliesViewController presented successfully")
+        }
+    }
+    
+    func didTapMore(for comment: Comment) {
+        let alertController = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
+        
+        let reportAction = UIAlertAction(title: "Report Comment", style: .destructive) { [weak self] _ in
+            self?.didTapReport(for: comment)
+        }
+        
+        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
+        
+        alertController.addAction(reportAction)
+        alertController.addAction(cancelAction)
+        
+        present(alertController, animated: true)
+    }
+    
+    func didTapReport(for comment: Comment) {
+        let alert = UIAlertController(title: "Report Comment",
+                                    message: "Are you sure you want to report this comment?",
+                                    preferredStyle: .alert)
+        
+        alert.addAction(UIAlertAction(title: "Yes", style: .destructive) { [weak self] _ in
+            // TODO: Implement report comment functionality
+            let confirmAlert = UIAlertController(title: "Thank You",
+                                               message: "Your report has been submitted for review",
+                                               preferredStyle: .alert)
+            confirmAlert.addAction(UIAlertAction(title: "OK", style: .default))
+            self?.present(confirmAlert, animated: true)
+        })
+        
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        present(alert, animated: true)
+    }
+    
+    // MARK: - Reply functionality
+    @objc private func simpleCancelReply() {
+        print("🔴🔴🔴 CANCEL BUTTON TAPPED - RIGHT VIEW VERSION 🔴🔴🔴")
+        
+        // Haptic feedback
+        let generator = UIImpactFeedbackGenerator(style: .medium)
+        generator.impactOccurred()
+        
+        // Clear all reply state
+        isInReplyMode = false
+        replyingToComment = nil
+        
+        // Update text field right view
+        updateTextFieldForReplyMode(isReplying: false)
+        
+        // Hide the reply indicator
+        replyIndicatorView.isHidden = true
+        
+        // Clear text fields
+        commentTextField.text = ""
+        replyToNameLabel.text = ""
+        
+        // Reset placeholder
+        commentTextField.placeholder = "Write a comment..."
+        
+        print("✅✅✅ COMPLETED CANCEL REPLY ✅✅✅")
+    }
+    
+    // Update the startReplyToComment method
+    private func startReplyToComment(_ comment: Comment) {
+        print("📝 Starting reply to comment: \(comment.content)")
+        
+        // Store the comment we're replying to
+        replyingToComment = comment
+        isInReplyMode = true
+        
+        // Update UI
+        replyToNameLabel.text = comment.parentName ?? "Unknown User"
+        
+        // Update the text field for reply mode
+        updateTextFieldForReplyMode(isReplying: true)
+        
+        // Log state
+        print("🟢 Reply mode activated with cancel button in rightView")
+        
+        // Update placeholder text
+        updateCommentTextFieldPlaceholder()
+        
+        // Focus on the text field
+        commentTextField.becomeFirstResponder()
+    }
+    
+    private func updateCommentTextFieldPlaceholder() {
+        if isInReplyMode {
+            commentTextField.placeholder = "Reply to \(replyingToComment?.parentName ?? "comment")..."
+        } else {
+            commentTextField.placeholder = "Write a comment..."
+        }
+    }
+    
+    // Replace setupCancelButton with a method that updates the rightView
+    private func updateTextFieldForReplyMode(isReplying: Bool) {
+        if isReplying {
+            print("📱 Setting up text field for reply mode")
+            
+            // Create a new container for the right view
+            let rightViewContainer = UIView(frame: CGRect(x: 0, y: 0, width: 40, height: 30))
+            
+            // Configure the cancel button
+            cancelReplyButton.frame = CGRect(x: 5, y: 0, width: 30, height: 30)
+            
+            // Add button to the container
+            rightViewContainer.addSubview(cancelReplyButton)
+            
+            // Set as right view
+            commentTextField.rightView = rightViewContainer
+            
+            print("📱 Cancel button added to right view container")
+        } else {
+            // Reset to empty right view
+            let emptyRightView = UIView(frame: CGRect(x: 0, y: 0, width: 10, height: 30))
+            commentTextField.rightView = emptyRightView
+        }
     }
 }
 

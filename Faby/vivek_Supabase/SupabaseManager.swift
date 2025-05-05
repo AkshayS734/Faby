@@ -644,7 +644,7 @@ class SupabaseManager {
                 print("🔍 Fetching comments from database...")
                 print("🔍 Using post_id: \(postId)")
                 
-                // Fetch comments with parent name
+                // Only select columns that exist in the database
                 let response = try await client.database
                     .from("Comments")
                     .select("""
@@ -908,12 +908,160 @@ class SupabaseManager {
             }
         }
     }
+    
+    // MARK: - Comment Replies
+    func addCommentReply(commentId: Int, postId: String, userId: String, content: String, completion: @escaping (Bool, Error?) -> Void) {
+        print("📢 addCommentReply() called for comment: \(commentId), post: \(postId), by user: \(userId)")
+        
+        Task {
+            do {
+                // Create a CommentReply object using our updated struct
+                let reply = CommentReply(
+                    commentId: commentId,
+                    postId: postId,
+                    userId: userId,
+                    replyContent: content,
+                    createdAt: ISO8601DateFormatter().string(from: Date())
+                )
+                
+                print("📤 Inserting reply with data: \(reply)")
+                
+                // Insert using the CommentReply struct which conforms to Encodable
+                let response = try await client.database
+                    .from("CommentReplies")
+                    .insert(reply)
+                    .execute()
+                
+                print("✅ Insert response status: \(response.status)")
+                if response.status >= 200 && response.status < 300 {
+                    print("✅ Reply added successfully!")
+                    DispatchQueue.main.async {
+                        completion(true, nil)
+                    }
+                } else {
+                    let errorMessage = String(data: response.data, encoding: .utf8) ?? "Unknown error"
+                    print("❌ Insert failed with status: \(response.status), message: \(errorMessage)")
+                    DispatchQueue.main.async {
+                        completion(false, NSError(domain: "ReplyError", code: response.status, userInfo: [NSLocalizedDescriptionKey: errorMessage]))
+                    }
+                }
+            } catch {
+                print("❌ Error adding reply: \(error.localizedDescription)")
+                print("❌ Detailed error: \(error)")
+                DispatchQueue.main.async {
+                    completion(false, error)
+                }
+            }
+        }
+    }
+    
+    func fetchRepliesForComment(commentId: Int, completion: @escaping ([CommentReply]?, Error?) -> Void) {
+        print("📢 fetchRepliesForComment() called for comment: \(commentId)")
+        
+        Task {
+            do {
+                print("🔍 Fetching replies from database...")
+                
+                // Fetch replies with parent name
+                let response = try await client.database
+                    .from("CommentReplies")
+                    .select("""
+                        reply_id,
+                        comment_id,
+                        post_id, 
+                        user_id, 
+                        reply_content, 
+                        created_at,
+                        parents(name)
+                    """)
+                    .eq("comment_id", value: commentId)
+                    .order("created_at", ascending: true) // Show oldest replies first
+                    .execute()
+                
+                // Print raw response for debugging
+                if let rawString = String(data: response.data, encoding: .utf8) {
+                    print("📦 Raw response for comment \(commentId): \(rawString)")
+                }
+                
+                let decoder = JSONDecoder()
+                let replies = try decoder.decode([CommentReply].self, from: response.data)
+                print("✅ Successfully decoded \(replies.count) replies")
+                
+                DispatchQueue.main.async {
+                    completion(replies, nil)
+                }
+                
+            } catch {
+                print("❌ Error fetching replies: \(error.localizedDescription)")
+                print("❌ Detailed error: \(error)")
+                DispatchQueue.main.async {
+                    completion(nil, error)
+                }
+            }
+        }
+    }
+    
+    func fetchAllRepliesForPost(postId: String, completion: @escaping ([CommentReply]?, Error?) -> Void) {
+        print("📢 fetchAllRepliesForPost() called for post: \(postId)")
+        
+        Task {
+            do {
+                print("🔍 Fetching all replies for post...")
+                
+                // Fetch all replies for a post
+                let response = try await client.database
+                    .from("CommentReplies")
+                    .select("""
+                        reply_id,
+                        comment_id,
+                        post_id, 
+                        user_id, 
+                        reply_content, 
+                        created_at,
+                        parents(name)
+                    """)
+                    .eq("post_id", value: postId)
+                    .order("created_at", ascending: false)
+                    .execute()
+                
+                // Print raw response for debugging
+                if let rawString = String(data: response.data, encoding: .utf8) {
+                    print("📦 Raw response for post \(postId) replies: \(rawString)")
+                }
+                
+                let decoder = JSONDecoder()
+                let replies = try decoder.decode([CommentReply].self, from: response.data)
+                print("✅ Successfully decoded \(replies.count) replies for post")
+                
+                DispatchQueue.main.async {
+                    completion(replies, nil)
+                }
+                
+            } catch {
+                print("❌ Error fetching post replies: \(error.localizedDescription)")
+                print("❌ Detailed error: \(error)")
+                DispatchQueue.main.async {
+                    completion(nil, error)
+                }
+            }
+        }
+    }
 }
 
 extension DateFormatter {
     static let iso8601Full: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ssXXX"
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSXXXXX"
+        formatter.calendar = Calendar(identifier: .iso8601)
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        return formatter
+    }()
+    
+    // Alternative formatter without milliseconds
+    static let iso8601Simple: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
         formatter.calendar = Calendar(identifier: .iso8601)
         formatter.timeZone = TimeZone(secondsFromGMT: 0)
         formatter.locale = Locale(identifier: "en_US_POSIX")
@@ -923,7 +1071,26 @@ extension DateFormatter {
     static func formatPostDate(_ dateString: String?) -> String? {
         guard let dateString = dateString else { return nil }
         
-        if let date = iso8601Full.date(from: dateString) {
+        // Try multiple date formats to handle different formats from the database
+        var date: Date?
+        
+        // Try ISO8601 with full format first
+        if date == nil {
+            date = iso8601Full.date(from: dateString)
+        }
+        
+        // Try with simple format (no milliseconds)
+        if date == nil {
+            date = iso8601Simple.date(from: dateString)
+        }
+        
+        // Try with ISO8601DateFormatter as a fallback
+        if date == nil {
+            let isoFormatter = ISO8601DateFormatter()
+            date = isoFormatter.date(from: dateString)
+        }
+        
+        if let date = date {
             // Calculate time difference
             let now = Date()
             let components = Calendar.current.dateComponents([.day, .hour, .minute], from: date, to: now)
@@ -938,8 +1105,8 @@ extension DateFormatter {
                 return "Just now"
             }
         } else {
-            print("❌ Failed to parse date from string: \(dateString)")
-            return "Recently"
+            print("⚠️ Could not parse date from string: \(dateString)")
+            return "Recently"  // Use a generic fallback instead of showing error
         }
     }
 }

@@ -72,6 +72,25 @@ class CommentCell: UITableViewCell {
         return button
     }()
     
+    // Add a view replies button
+    private lazy var viewRepliesButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.setTitleColor(.white, for: .normal)
+        button.titleLabel?.font = .systemFont(ofSize: 13, weight: .medium)
+        button.backgroundColor = .systemBlue
+        button.layer.cornerRadius = 12
+        button.contentEdgeInsets = UIEdgeInsets(top: 6, left: 12, bottom: 6, right: 12)
+        button.addTarget(self, action: #selector(handleViewReplies), for: .touchUpInside)
+        // Add subtle shadow for depth
+        button.layer.shadowColor = UIColor.black.cgColor
+        button.layer.shadowOffset = CGSize(width: 0, height: 1)
+        button.layer.shadowOpacity = 0.2
+        button.layer.shadowRadius = 2
+        button.isHidden = true
+        return button
+    }()
+    
     // MARK: - Properties
     private var isLiked = false {
         didSet {
@@ -99,7 +118,7 @@ class CommentCell: UITableViewCell {
         selectionStyle = .none
         
         // Add subviews directly to contentView instead of containerView
-        [userImageView, userNameLabel, timeLabel, contentLabel, likeButton, likeCountLabel, replyButton, moreButton].forEach {
+        [userImageView, userNameLabel, timeLabel, contentLabel, likeButton, likeCountLabel, replyButton, moreButton, viewRepliesButton].forEach {
             contentView.addSubview($0)
         }
         
@@ -135,7 +154,11 @@ class CommentCell: UITableViewCell {
             
             replyButton.topAnchor.constraint(equalTo: likeButton.topAnchor),
             replyButton.leadingAnchor.constraint(equalTo: likeCountLabel.trailingAnchor, constant: 16),
-            replyButton.bottomAnchor.constraint(equalTo: likeButton.bottomAnchor)
+            replyButton.bottomAnchor.constraint(equalTo: likeButton.bottomAnchor),
+            
+            viewRepliesButton.topAnchor.constraint(equalTo: likeButton.bottomAnchor, constant: 8),
+            viewRepliesButton.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            viewRepliesButton.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -8)
         ])
         
         setupMoreButton()
@@ -172,7 +195,48 @@ class CommentCell: UITableViewCell {
         self.comment = comment
         
         userNameLabel.text = comment.parentName ?? "Unknown User"
-        contentLabel.text = comment.content
+        
+        // Check if this is a reply (content starts with @Reply[...]:)
+        let isReply = comment.content.starts(with: "@Reply[")
+        let displayContent: String
+        
+        if isReply {
+            // Extract the actual content after the reply prefix
+            if let endOfPrefixIndex = comment.content.firstIndex(of: "]"),
+               let startOfContentIndex = comment.content.firstIndex(of: ":") {
+                let actualContent = comment.content[comment.content.index(startOfContentIndex, offsetBy: 2)...]
+                displayContent = String(actualContent)
+                
+                // Visual indication for replies
+                contentView.backgroundColor = UIColor.systemGray6.withAlphaComponent(0.3)
+                contentView.layer.cornerRadius = 8
+                contentView.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner, .layerMaxXMaxYCorner]
+                
+                // Add left inset to indicate reply
+                for constraint in userImageView.constraints {
+                    if constraint.firstAttribute == .leading {
+                        constraint.isActive = false
+                    }
+                }
+                userImageView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 24).isActive = true
+            } else {
+                displayContent = comment.content
+                contentView.backgroundColor = .clear
+            }
+        } else {
+            displayContent = comment.content
+            contentView.backgroundColor = .clear
+            
+            // Reset leading constraint for regular comments
+            for constraint in userImageView.constraints {
+                if constraint.firstAttribute == .leading {
+                    constraint.isActive = false
+                }
+            }
+            userImageView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16).isActive = true
+        }
+        
+        contentLabel.text = displayContent
         timeLabel.text = DateFormatter.formatPostDate(comment.createdAt)
         
         // For now, use a default user image
@@ -200,6 +264,13 @@ class CommentCell: UITableViewCell {
         } else {
             likeCountLabel.text = "0"
             likeCountLabel.isHidden = true
+        }
+        
+        // Check for replies if we have a comment ID
+        if let commentId = comment.commentId {
+            updateReplyCount(for: commentId)
+        } else {
+            viewRepliesButton.isHidden = true
         }
     }
     
@@ -323,6 +394,94 @@ class CommentCell: UITableViewCell {
             }
         }
     }
+    
+    // Add method to update reply count with improved styling
+    func updateReplyCount(for commentId: Int) {
+        print("🔄 Checking for replies on comment ID: \(commentId)")
+        
+        SupabaseManager.shared.fetchRepliesForComment(commentId: commentId) { [weak self] replies, error in
+            guard let self = self else { return }
+            
+            DispatchQueue.main.async {
+                if let error = error {
+                    print("❌ Error checking for replies: \(error)")
+                    self.viewRepliesButton.isHidden = true
+                    return
+                }
+                
+                if let replies = replies {
+                    let count = replies.count
+                    print("✅ Found \(count) replies for comment ID: \(commentId)")
+                    
+                    if count > 0 {
+                        // Create an eye-catching button title
+                        let buttonTitle = "View \(count) \(count == 1 ? "reply" : "replies")"
+                        self.viewRepliesButton.setTitle(buttonTitle, for: .normal)
+                        
+                        // Make sure button is visible
+                        self.viewRepliesButton.isHidden = false
+                        self.viewRepliesButton.alpha = 0
+                        
+                        // Animate button appearance
+                        UIView.animate(withDuration: 0.3) {
+                            self.viewRepliesButton.alpha = 1.0
+                        }
+                    } else {
+                        self.viewRepliesButton.isHidden = true
+                    }
+                } else {
+                    print("⚠️ No replies data received for comment ID: \(commentId)")
+                    self.viewRepliesButton.isHidden = true
+                }
+            }
+        }
+    }
+    
+    // Improved debug version of reply button handler
+    @objc private func handleViewReplies() {
+        print("🔍 DEBUG: View replies button tapped")
+        
+        // Immediate visual feedback
+        UIView.animate(withDuration: 0.1, animations: {
+            self.viewRepliesButton.transform = CGAffineTransform(scaleX: 0.9, y: 0.9)
+            self.viewRepliesButton.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.8)
+        }) { _ in
+            UIView.animate(withDuration: 0.1) {
+                self.viewRepliesButton.transform = .identity
+                self.viewRepliesButton.backgroundColor = .systemBlue
+            }
+        }
+        
+        // Strong haptic feedback
+        let generator = UIImpactFeedbackGenerator(style: .medium)
+        generator.impactOccurred()
+        
+        // Verify we have a comment
+        guard let comment = comment, let commentId = comment.commentId else {
+            print("❌ ERROR: No valid comment or comment ID")
+            
+            // Show error alert
+            if let topVC = UIApplication.shared.windows.first?.rootViewController {
+                let alert = UIAlertController(title: "Error", message: "Could not view replies for this comment", preferredStyle: .alert)
+                alert.addAction(UIAlertAction(title: "OK", style: .default))
+                topVC.present(alert, animated: true)
+            }
+            return 
+        }
+        
+        print("✓ Found comment with ID: \(commentId)")
+        
+        // Verify delegate exists
+        guard let delegate = delegate else {
+            print("❌ ERROR: No delegate set for CommentCell")
+            return
+        }
+        
+        print("✓ Delegate exists, forwarding to didTapViewReplies")
+        
+        // Call delegate method - this needs to be handled in the ModernPostDetailViewController
+        delegate.didTapViewReplies(for: comment)
+    }
 }
 
 // MARK: - CommentCellDelegate
@@ -330,6 +489,7 @@ protocol CommentCellDelegate: AnyObject {
     func didTapReplyButton(for comment: Comment)
     func didTapMore(for comment: Comment)
     func didTapReport(for comment: Comment)
+    func didTapViewReplies(for comment: Comment)
 }
 
 // MARK: - UIContextMenuInteractionDelegate
