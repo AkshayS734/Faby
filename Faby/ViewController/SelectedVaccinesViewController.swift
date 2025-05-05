@@ -159,7 +159,7 @@ class SelectedVaccinesViewController: UIViewController {
         if let selectedDate = selectedDates[vaccine.name] {
             let dateFormatter = DateFormatter()
             dateFormatter.dateStyle = .medium
-            dateLabel.text = "Scheduled: \(dateFormatter.string(from: selectedDate))"
+            dateLabel.text = "Adminstered on: \(dateFormatter.string(from: selectedDate))"
             dateLabel.textColor = .systemGreen
         } else {
             dateLabel.text = "Date not selected"
