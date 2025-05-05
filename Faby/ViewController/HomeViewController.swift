@@ -319,32 +319,49 @@ class HomeViewController: UIViewController {
     private func setupVaccineView() {
         print("🔄 Setting up vaccine view with \(scheduledVaccines.count) vaccines")
         
-        // Convert dictionary vaccines to VaccineSchedule objects and keep vaccine names
-        let vaccineSchedulesWithNames: [(VaccineSchedule, String)] = scheduledVaccines.compactMap { dict in
-            guard let vaccineName = dict["type"],
-                  let dateString = dict["date"],
-                  let hospital = dict["hospital"] else {
-                return nil
+        // Use the correct VaccineSchedule objects with their original IDs
+        var vaccineSchedulesWithNames: [(VaccineSchedule, String)] = []
+        
+        // Match each scheduled vaccine dictionary with its corresponding VaccineSchedule object
+        for dict in scheduledVaccines {
+            guard let idString = dict["id"],
+                  let vaccineName = dict["type"],
+                  let id = UUID(uuidString: idString) else {
+                continue
             }
             
-            // Create a date from the string
-            let dateFormatter = DateFormatter()
-            dateFormatter.dateStyle = .medium
-            guard let date = dateFormatter.date(from: dateString) else {
-                print("❌ Could not parse date: \(dateString)")
-                return nil
+            // Find the matching VaccineSchedule from actualScheduledVaccines
+            if let matchingSchedule = actualScheduledVaccines.first(where: { $0.id == id }) {
+                vaccineSchedulesWithNames.append((matchingSchedule, vaccineName))
+            } else {
+                // Fallback to creating a new object if we can't find the original
+                guard let dateString = dict["date"],
+                      let hospital = dict["hospital"],
+                      let vaccineIdString = dict["vaccineId"],
+                      let isAdministeredString = dict["isAdministered"],
+                      let vaccineId = UUID(uuidString: vaccineIdString) else {
+                    continue
+                }
+                
+                // Create a date from the string
+                let dateFormatter = DateFormatter()
+                dateFormatter.dateStyle = .medium
+                guard let date = dateFormatter.date(from: dateString) else {
+                    print("❌ Could not parse date: \(dateString)")
+                    continue
+                }
+                
+                let schedule = VaccineSchedule(
+                    id: id,
+                    babyID: BabyDataModel.shared.babyList[0].babyID,
+                    vaccineId: vaccineId,
+                    hospital: hospital,
+                    date: date,
+                    location: dict["location"] ?? "",
+                    isAdministered: isAdministeredString.lowercased() == "true"
+                )
+                vaccineSchedulesWithNames.append((schedule, vaccineName))
             }
-            
-            let schedule = VaccineSchedule(
-                id: UUID(),
-                babyID: BabyDataModel.shared.babyList[0].babyID,
-                vaccineId: UUID(), // This is not used for display
-                hospital: hospital,
-                date: date,
-                location: dict["address"] ?? "",
-                isAdministered: false
-            )
-            return (schedule, vaccineName)
         }
         
         // Debug the content of scheduled vaccines
@@ -375,50 +392,24 @@ class HomeViewController: UIViewController {
             let vaccineCardsView = UIHostingController(rootView: VaccineCardsView(
                 vaccines: vaccineSchedulesWithNames,
                 onVaccineCompleted: { [weak self] tuple in
-                    let (vaccine, _) = tuple
+                    let (vaccine, name) = tuple
+                    print("📱 Vaccine card tapped for completion: \(vaccine.id)")
                     print("📱 Vaccine completion requested for: \(vaccine.vaccineId)")
                     Task {
                         do {
-                            // Get all scheduled records for this baby
-                            let schedules = try await VaccineScheduleManager.shared.fetchSchedules(forBaby: BabyDataModel.shared.babyList[0].babyID)
-                            print("✅ Successfully fetched \(schedules.count) scheduled vaccination records")
-                            // Find and delete the matching schedule
-                            for record in schedules {
-                                if record.id == vaccine.id {
-                                    try await VaccineScheduleManager.shared.updateSchedule(
-                                        recordId: record.id,
-                                        newDate: record.date,
-                                        newHospital: Hospital(
-                                            id: UUID(),
-                                            babyId: record.babyID,
-                                            name: record.hospital,
-                                            address: record.location,
-                                            distance: 0.0
-                                        )
-                                    )
-                                    print("✅ Deleted original scheduled record with ID: \(record.id)")
-                                    // Create administered record
-                                    let administered = VaccineAdministered(
-                                        id: UUID(),
-                                        babyId: record.babyID,
-                                        vaccineId: record.vaccineId,
-                                        scheduleId: record.id,
-                                        administeredDate: Date()
-                                    )
-                                    try await AdministeredVaccineManager.shared.addAdministeredVaccine(
-                                        babyId: administered.babyId,
-                                        vaccineId: administered.vaccineId,
-                                        scheduleId: administered.scheduleId,
-                                        date: administered.administeredDate,
-                                        location: record.location
-                                    )
-                                    print("✅ Saved administered vaccine record")
-                                    // Reload vaccinations
-                                    await MainActor.run {
-                                        self?.loadVaccinations()
-                                    }
-                                    break
-                                }
+                            // Directly use the vaccine.id from the VaccineSchedule object
+                            let scheduleId = vaccine.id.uuidString
+                            
+                            // Use SupabaseVaccineManager to mark vaccine as administered
+                            try await SupabaseVaccineManager.shared.markVaccineAsAdministered(
+                                scheduleId: scheduleId,
+                                administeredDate: Date()
+                            )
+                            print("✅ Vaccine '\(name)' marked as administered in Supabase - ID: \(scheduleId)")
+                            
+                            // Reload vaccinations
+                            await MainActor.run {
+                                self?.loadVaccinations()
                             }
                         } catch {
                             print("❌ Error completing vaccine: \(error)")
@@ -459,6 +450,9 @@ class HomeViewController: UIViewController {
         dateLabel.text = formatter.string(from: Date())
     }
     
+    // Store the actual VaccineSchedule objects for direct access
+    private var actualScheduledVaccines: [VaccineSchedule] = []
+    
     private func loadVaccinations() {
         print("📋 Loading vaccinations...")
         print("🌐 Fetching all vaccination records from Supabase...")
@@ -468,21 +462,28 @@ class HomeViewController: UIViewController {
                 let allScheduledRecords = try await VaccineScheduleManager.shared.fetchAllSchedules()
                 print("✅ Successfully fetched \(allScheduledRecords.count) scheduled vaccination records (all babies)")
                 
+                // Filter out administered vaccines and store only non-administered ones
+                self.actualScheduledVaccines = allScheduledRecords.filter { !$0.isAdministered }
+                
                 // Fetch administered vaccines for all babies (optional, can be filtered if needed)
                 let allAdministeredRecords = try await AdministeredVaccineManager.shared.fetchAllAdministeredVaccines()
                 print("✅ Successfully fetched \(allAdministeredRecords.count) administered vaccination records (all babies)")
                 
-                // Convert scheduled records to dictionaries
+                // Convert scheduled records to dictionaries with the original ID stored
+                // Filter out administered vaccines
                 var scheduledDictionaries: [[String: String]] = []
-                for record in allScheduledRecords {
+                for record in allScheduledRecords.filter({ !$0.isAdministered }) {
                     let dateFormatter = DateFormatter()
                     dateFormatter.dateStyle = .medium
                     let vaccineName = await getVaccineName(for: record.vaccineId)
                     let dict: [String: String] = [
+                        "id": record.id.uuidString, // Store the original ID
                         "type": vaccineName,
                         "date": dateFormatter.string(from: record.date),
                         "hospital": record.hospital,
-                        "location": record.location
+                        "location": record.location,
+                        "vaccineId": record.vaccineId.uuidString, // Store vaccine ID
+                        "isAdministered": String(record.isAdministered)
                     ]
                     scheduledDictionaries.append(dict)
                 }
@@ -494,10 +495,12 @@ class HomeViewController: UIViewController {
                     dateFormatter.dateStyle = .medium
                     let vaccineName = await getVaccineName(for: record.vaccineId)
                     let dict: [String: String] = [
+                        "id": record.id.uuidString,
                         "type": vaccineName,
                         "date": dateFormatter.string(from: record.administeredDate),
                         "hospital": "Unknown Hospital",
-                        "location": "Unknown Location"
+                        "location": "Unknown Location",
+                        "isAdministered": "true"
                     ]
                     administeredDictionaries.append(dict)
                 }
@@ -722,9 +725,16 @@ struct VaccineCard: View {
     let vaccine: VaccineSchedule
     let vaccineName: String
     let onComplete: () -> Void
-    @State private var isCompleted = false
+    @State private var isCompleted: Bool
     @State private var showConfirmation = false
     @State private var showReschedulePrompt = false
+    
+    init(vaccine: VaccineSchedule, vaccineName: String, onComplete: @escaping () -> Void) {
+        self.vaccine = vaccine
+        self.vaccineName = vaccineName
+        self.onComplete = onComplete
+        _isCompleted = State(initialValue: vaccine.isAdministered)
+    }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {

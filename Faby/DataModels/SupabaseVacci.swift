@@ -221,9 +221,9 @@ class SupabaseVaccineManager {
         let administeredVaccine = SupabaseVaccineAdministered(
             id: UUID().uuidString,
             baby_id: schedule.baby_id,
-            vaccine_id: schedule.vaccine_id,
-            schedule_id: scheduleId,
-            administered_date: ISO8601DateFormatter().string(from: administeredDate)
+            vaccineID: schedule.vaccine_id,
+            scheduleId: scheduleId,
+            administeredDate: ISO8601DateFormatter().string(from: administeredDate)
         )
         
         try await client
@@ -265,13 +265,13 @@ class SupabaseVaccineManager {
         
         return rawAdministered.map { raw in
             let dateFormatter = ISO8601DateFormatter()
-            let date = dateFormatter.date(from: raw.administered_date) ?? Date()
+            let date = dateFormatter.date(from: raw.administeredDate) ?? Date()
             
             return VaccineAdministered(
                 id: UUID(uuidString: raw.id) ?? UUID(),
                 babyId: UUID(uuidString: raw.baby_id) ?? UUID(),
-                vaccineId: UUID(uuidString: raw.vaccine_id) ?? UUID(),
-                scheduleId: UUID(uuidString: raw.schedule_id) ?? UUID(),
+                vaccineId: UUID(uuidString: raw.vaccineID) ?? UUID(),
+                scheduleId: UUID(uuidString: raw.scheduleId) ?? UUID(),
                 administeredDate: date
             )
         }
@@ -294,9 +294,18 @@ struct SupabaseVaccineSchedule: Codable {
 struct SupabaseVaccineAdministered: Codable {
     let id: String
     let baby_id: String
-    let vaccine_id: String
-    let schedule_id: String
-    let administered_date: String
+    let vaccineID: String
+    let scheduleId: String
+    let administeredDate: String
+    
+    // CodingKeys to map between Swift property names and database column names
+    enum CodingKeys: String, CodingKey {
+        case id
+        case baby_id
+        case vaccineID // exact match with column name
+        case scheduleId // exact match with column name
+        case administeredDate // exact match with column name
+    }
 }
 
 

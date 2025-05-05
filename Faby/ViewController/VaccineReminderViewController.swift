@@ -404,8 +404,10 @@ class VaccineReminderViewController: UIViewController, UISearchBarDelegate, UISc
                 print("✅ Fetched \(scheduledVaccines.count) scheduled vaccines (all babies)")
                 
                 // Process and combine records
+                // Filter out administered vaccines before processing
+                let filteredScheduledVaccines = scheduledVaccines.filter { !$0.isAdministered }
                 let combinedRecords = processVaccinationRecords(
-                    scheduledVaccines: scheduledVaccines,
+                    scheduledVaccines: filteredScheduledVaccines,
                     administeredVaccines: []
                 )
                 
