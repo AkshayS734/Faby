@@ -567,6 +567,8 @@ class PostViewController: UIViewController, UITextViewDelegate, UIImagePickerCon
         let picker = UIImagePickerController()
         picker.sourceType = sourceType
         picker.delegate = self
+        picker.allowsEditing = true // ✅ Enable cropping
+
         present(picker, animated: true)
     }
 
@@ -602,4 +604,5 @@ class PostViewController: UIViewController, UITextViewDelegate, UIImagePickerCon
     func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
         dismiss(animated: true)
     }
+    
 }

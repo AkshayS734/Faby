@@ -218,6 +218,7 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
         setupTableView()
         setupCommentsTableView()
         setupKeyboardObservers()
+        setupTextFieldTapGesture()
         fetchLikedPosts()
         fetchPosts()
     }
@@ -571,7 +572,7 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
             }
         }
         
-        // Activate the height constraint
+        // Activate the height constraint for partial view (not fullscreen)
         commentsOverlayHeightConstraint?.isActive = true
         
         view.layoutIfNeeded()
@@ -582,7 +583,10 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
             self.tableView.alpha = 0.5  // Dim the background
             self.view.layoutIfNeeded()
         } completion: { _ in
-            self.commentTextField.becomeFirstResponder()
+            // Don't automatically focus the text field - wait for tap
+            // self.commentTextField.becomeFirstResponder()
+            
+            print("📱 Comment input view displayed (without keyboard)")
         }
         
         // Fetch comments for this post
@@ -730,11 +734,97 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
             cell.configure(with: post, isLiked: isLiked)
             return cell
         } else {
-            let cell = tableView.dequeueReusableCell(withIdentifier: "CommentCell", for: indexPath) as! CommentCell
             let comment = comments[indexPath.row]
-            cell.delegate = self
-            cell.configure(with: comment, isLiked: false)
-            return cell
+            
+            // Configure the cell based on whether it's a reply or loading indicator
+            if comment.isLoadingIndicator == true {
+                // Create a simple loading cell
+                let loadingCell = UITableViewCell()
+                let indicator = UIActivityIndicatorView(style: .medium)
+                indicator.translatesAutoresizingMaskIntoConstraints = false
+                indicator.startAnimating()
+                
+                loadingCell.contentView.addSubview(indicator)
+                NSLayoutConstraint.activate([
+                    indicator.centerXAnchor.constraint(equalTo: loadingCell.contentView.centerXAnchor),
+                    indicator.centerYAnchor.constraint(equalTo: loadingCell.contentView.centerYAnchor),
+                    indicator.topAnchor.constraint(equalTo: loadingCell.contentView.topAnchor, constant: 8),
+                    indicator.bottomAnchor.constraint(equalTo: loadingCell.contentView.bottomAnchor, constant: -8)
+                ])
+                
+                // No visual indicators - just clean indentation
+                loadingCell.indentationLevel = 4
+                loadingCell.backgroundColor = .systemBackground
+                loadingCell.selectionStyle = .none
+                
+                return loadingCell
+            } else if comment.isEmptyState == true {
+                // Create a simple empty state cell
+                let emptyCell = UITableViewCell()
+                let label = UILabel()
+                label.translatesAutoresizingMaskIntoConstraints = false
+                label.text = "No replies yet"
+                label.textColor = .secondaryLabel
+                label.font = UIFont.italicSystemFont(ofSize: 14)
+                label.textAlignment = .left
+                
+                emptyCell.contentView.addSubview(label)
+                NSLayoutConstraint.activate([
+                    label.leadingAnchor.constraint(equalTo: emptyCell.contentView.leadingAnchor, constant: 32), // More indentation for cleaner look
+                    label.trailingAnchor.constraint(equalTo: emptyCell.contentView.trailingAnchor, constant: -16),
+                    label.topAnchor.constraint(equalTo: emptyCell.contentView.topAnchor, constant: 8),
+                    label.bottomAnchor.constraint(equalTo: emptyCell.contentView.bottomAnchor, constant: -8)
+                ])
+                
+                // Clean indentation without visual separators
+                emptyCell.indentationLevel = 4
+                emptyCell.backgroundColor = .systemBackground
+                emptyCell.selectionStyle = .none
+                
+                return emptyCell
+            } else {
+                // Regular comment or reply
+                let cell = tableView.dequeueReusableCell(withIdentifier: "CommentCell", for: indexPath) as! CommentCell
+                cell.delegate = self
+                cell.configure(with: comment, isLiked: false)
+                
+                // If this is a reply, indent it with clean spacing
+                if comment.isReply == true {
+                    // Instagram-style indentation with subtle background difference
+                    cell.indentationLevel = 4
+                    cell.backgroundColor = UIColor.systemBackground.withAlphaComponent(1.0) // Same as normal background but ready for custom tint
+                    
+                    // Add subtle left padding to create visual grouping without lines
+                    let paddingView = UIView()
+                    paddingView.translatesAutoresizingMaskIntoConstraints = false
+                    paddingView.backgroundColor = UIColor.systemGray5.withAlphaComponent(0.3)
+                    paddingView.layer.cornerRadius = 2
+                    
+                    // Insert at index 0 to be behind other content
+                    cell.contentView.insertSubview(paddingView, at: 0)
+                    
+                    NSLayoutConstraint.activate([
+                        paddingView.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 4),
+                        paddingView.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -4),
+                        paddingView.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 24),
+                        paddingView.widthAnchor.constraint(equalToConstant: 2)
+                    ])
+                } else {
+                    // Regular comment - no indentation or visual changes
+                    cell.indentationLevel = 0
+                    cell.backgroundColor = .systemBackground
+                    
+                    // Find and remove any padding view if being reused
+                    for subview in cell.contentView.subviews {
+                        if subview.backgroundColor == UIColor.systemGray5.withAlphaComponent(0.3) {
+                            subview.removeFromSuperview()
+                            break
+                        }
+                    }
+                }
+                
+                return cell
+            }
         }
     }
     
@@ -916,45 +1006,151 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
             return
         }
         
-        guard let postId = currentPost?.postId else { 
+        guard let postId = currentPost?.postId else {
             print("❌ ERROR: Cannot show replies - no current post")
-            return 
+            return
         }
         
-        // Make sure any existing presented controllers are dismissed
-        if let presented = self.presentedViewController {
-            presented.dismiss(animated: false) {
-                self.showRepliesView(for: comment, postId: postId)
+        // DEBUGGING - Print all comments currently displayed to help understand the state
+        print("📊 Current comments in tableView: \(comments.count)")
+        for (index, comment) in comments.enumerated() {
+            print("  \(index): ID=\(comment.commentId ?? -1), Content=\(comment.content.prefix(20))...")
+        }
+        
+        // Find the index of the comment in the array
+        if let commentIndex = comments.firstIndex(where: { $0.commentId == commentId }) {
+            print("✅ Found comment at index \(commentIndex)")
+            
+            // Check if comment already has expanded replies
+            let isExpanded = comments[commentIndex].isRepliesExpanded ?? false
+            print("📊 Comment expanded state: \(isExpanded ? "EXPANDED" : "COLLAPSED")")
+            
+            if isExpanded {
+                // Collapse the replies
+                print("📱 Collapsing replies for comment at index \(commentIndex)")
+                
+                // Remove all replies from the comment array
+                comments = comments.filter { comment in
+                    // Keep the comment itself and all non-replies
+                    if comment.commentId == commentId { return true }
+                    if comment.isReply != true { return true }
+                    if comment.replyToCommentId != commentId { return true }
+                    return false // Remove replies to this comment
+                }
+                
+                // Mark comment as collapsed
+                comments[commentIndex].isRepliesExpanded = false
+                
+                // Reload the table
+                commentsTableView.reloadData()
+            } else {
+                // Expand to show replies
+                print("📱 Expanding replies for comment at index \(commentIndex)")
+                
+                // Mark comment as expanded
+                comments[commentIndex].isRepliesExpanded = true
+                
+                // Show loading indicator underneath comment
+                let loadingComment = Comment(
+                    commentId: nil,
+                    content: "Loading replies...",
+                    parentId: nil,
+                    parentName: nil,
+                    postId: postId,
+                    createdAt: nil,
+                    isLoadingIndicator: true,
+                    replyToCommentId: commentId
+                )
+                
+                // Insert loading indicator right after the comment
+                if commentIndex + 1 <= comments.count {
+                    comments.insert(loadingComment, at: commentIndex + 1)
+                    commentsTableView.reloadData()
+                }
+                
+                print("🔄 Sending API request to fetch replies for comment ID: \(commentId)")
+                
+                // Fetch replies
+                SupabaseManager.shared.fetchRepliesForComment(commentId: commentId) { [weak self] replies, error in
+                    guard let self = self else { return }
+                    
+                    print("🔄 Reply fetch callback received")
+                    
+                    DispatchQueue.main.async {
+                        // Remove loading indicator
+                        print("🔄 Removing loading indicators...")
+                        self.comments = self.comments.filter { !($0.isLoadingIndicator == true) }
+                        
+                        if let error = error {
+                            print("❌ ERROR: Failed to load replies: \(error.localizedDescription)")
+                            self.commentsTableView.reloadData()
+                            return
+                        }
+                        
+                        if let replies = replies {
+                            print("✅ Loaded \(replies.count) replies")
+                            
+                            if !replies.isEmpty {
+                                // Convert replies to Comment objects and insert them after the comment
+                                var index = commentIndex + 1
+                                for reply in replies {
+                                    print("🔄 Processing reply: ID=\(reply.replyId ?? -1), Content=\(reply.replyContent.prefix(20))...")
+                                    
+                                    let replyComment = Comment(
+                                        commentId: reply.replyId,
+                                        content: reply.replyContent,
+                                        parentId: reply.userId,
+                                        parentName: reply.parentName,
+                                        postId: postId,
+                                        createdAt: reply.createdAt,
+                                        isReply: true,
+                                        replyToCommentId: commentId
+                                    )
+                                    
+                                    if index <= self.comments.count {
+                                        self.comments.insert(replyComment, at: index)
+                                        index += 1
+                                    } else {
+                                        self.comments.append(replyComment)
+                                    }
+                                }
+                            } else {
+                                print("ℹ️ No replies found for this comment")
+                                
+                                // Show an empty state
+                                let emptyReply = Comment(
+                                    commentId: nil,
+                                    content: "No replies yet",
+                                    parentId: nil,
+                                    parentName: nil,
+                                    postId: postId,
+                                    createdAt: nil,
+                                    isEmptyState: true,
+                                    replyToCommentId: commentId
+                                )
+                                
+                                if commentIndex + 1 <= self.comments.count {
+                                    self.comments.insert(emptyReply, at: commentIndex + 1)
+                                }
+                            }
+                            
+                            print("🔄 Reloading table with \(self.comments.count) comments (including replies)")
+                            // Reload the table
+                            self.commentsTableView.reloadData()
+                            
+                            // Scroll to show the replies
+                            if let originalCommentCell = self.commentsTableView.cellForRow(at: IndexPath(row: commentIndex, section: 0)) {
+                                self.commentsTableView.scrollRectToVisible(originalCommentCell.frame, animated: true)
+                            }
+                        } else {
+                            print("❌ ERROR: Replies data is nil")
+                            self.commentsTableView.reloadData()
+                        }
+                    }
+                }
             }
         } else {
-            showRepliesView(for: comment, postId: postId)
-        }
-    }
-    
-    // Extracted method to show replies view
-    private func showRepliesView(for comment: Comment, postId: String) {
-        // Create a reply view controller
-        let repliesVC = RepliesViewController(comment: comment, postId: postId)
-        
-        // Wrap in navigation controller
-        let navController = UINavigationController(rootViewController: repliesVC)
-        
-        // Use pageSheet presentation for better UX
-        navController.modalPresentationStyle = .pageSheet
-        
-        if #available(iOS 15.0, *) {
-            if let sheet = navController.sheetPresentationController {
-                sheet.detents = [.medium(), .large()]
-                sheet.prefersGrabberVisible = true
-            }
-        }
-        
-        // Debug print before presenting
-        print("✅ About to present RepliesViewController")
-        
-        // Present with animation
-        present(navController, animated: true) {
-            print("✅ RepliesViewController presented successfully")
+            print("❌ ERROR: Could not find comment with ID \(commentId) in the comments array")
         }
     }
     
@@ -1074,6 +1270,18 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
             let emptyRightView = UIView(frame: CGRect(x: 0, y: 0, width: 10, height: 30))
             commentTextField.rightView = emptyRightView
         }
+    }
+    
+    // Add a tap gesture recognizer to the text field
+    private func setupTextFieldTapGesture() {
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(commentTextFieldTapped))
+        commentTextField.addGestureRecognizer(tapGesture)
+        commentTextField.isUserInteractionEnabled = true
+    }
+    
+    @objc private func commentTextFieldTapped() {
+        print("📱 Comment text field tapped, showing keyboard")
+        commentTextField.becomeFirstResponder()
     }
 }
 

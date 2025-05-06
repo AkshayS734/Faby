@@ -15,6 +15,14 @@ struct Comment: Codable, Identifiable {
     let parentName: String?
     let commentId: Int?
     
+    // New properties for in-place reply functionality
+    var isRepliesExpanded: Bool?            // Track if this comment has expanded replies
+    var isReply: Bool?                      // Is this a reply to another comment
+    var replyToCommentId: Int?              // ID of parent comment if this is a reply
+    var isLoadingIndicator: Bool?           // Is this a temporary loading row
+    var isEmptyState: Bool?                 // Is this a "no replies" placeholder
+    var parentId: String?                   // User ID of the comment author
+    
     enum CodingKeys: String, CodingKey {
         case postId = "post_id"
         case userId = "user_id"
@@ -22,6 +30,7 @@ struct Comment: Codable, Identifiable {
         case createdAt = "created_at"
         case parentName = "parents"
         case commentId = "Comment_id"
+        // New properties aren't in JSON, so they don't need coding keys
     }
     
     // Implement Identifiable protocol requirement
@@ -43,6 +52,34 @@ struct Comment: Codable, Identifiable {
         } else {
             parentName = nil
         }
+        
+        // Initialize new properties with default values
+        isRepliesExpanded = false
+        isReply = false
+        replyToCommentId = nil
+        isLoadingIndicator = false
+        isEmptyState = false
+        parentId = nil
+    }
+    
+    // Add a custom initializer for creating special comment objects (loading, empty states, etc.)
+    init(commentId: Int?, content: String, parentId: String?, parentName: String?, postId: String, createdAt: String?,
+         isLoadingIndicator: Bool? = false, isEmptyState: Bool? = false, isReply: Bool? = false,
+         replyToCommentId: Int? = nil, isRepliesExpanded: Bool? = false) {
+        
+        self.commentId = commentId
+        self.content = content
+        self.parentId = parentId
+        self.parentName = parentName
+        self.postId = postId
+        self.userId = parentId ?? ""
+        self.createdAt = createdAt
+        
+        self.isLoadingIndicator = isLoadingIndicator
+        self.isEmptyState = isEmptyState
+        self.isReply = isReply
+        self.replyToCommentId = replyToCommentId
+        self.isRepliesExpanded = isRepliesExpanded
     }
     
     private enum ParentCodingKeys: String, CodingKey {

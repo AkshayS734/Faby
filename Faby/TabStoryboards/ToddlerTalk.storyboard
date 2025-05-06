@@ -49,7 +49,6 @@
                             </tableView>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="Wsz-4O-PNM"/>
-                        <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                         <constraints>
                             <constraint firstItem="Wsz-4O-PNM" firstAttribute="trailing" secondItem="aRn-Vc-0h5" secondAttribute="trailing" id="9kn-33-H2i"/>
                             <constraint firstItem="aRn-Vc-0h5" firstAttribute="top" secondItem="Wsz-4O-PNM" secondAttribute="top" id="TKI-4t-th6"/>
@@ -81,7 +80,7 @@
                             </searchBar>
                             <collectionView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" dataMode="prototypes" translatesAutoresizingMaskIntoConstraints="NO" id="jyS-LG-X9f">
                                 <rect key="frame" x="0.0" y="270" width="393" height="582"/>
-                                <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                                <color key="backgroundColor" systemColor="systemGray6Color"/>
                                 <collectionViewFlowLayout key="collectionViewLayout" automaticEstimatedItemSize="YES" minimumLineSpacing="10" minimumInteritemSpacing="10" id="umx-9x-kkK">
                                     <size key="itemSize" width="128" height="128"/>
                                     <size key="headerReferenceSize" width="0.0" height="0.0"/>
@@ -105,7 +104,6 @@
                             </collectionView>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="vDu-zF-Fre"/>
-                        <color key="backgroundColor" systemColor="systemGray6Color"/>
                         <constraints>
                             <constraint firstAttribute="bottom" secondItem="jyS-LG-X9f" secondAttribute="bottom" id="7Xy-95-HXT"/>
                             <constraint firstItem="jyS-LG-X9f" firstAttribute="leading" secondItem="vDu-zF-Fre" secondAttribute="leading" id="LKK-8d-IXc"/>
@@ -117,7 +115,7 @@
                             <constraint firstItem="jyS-LG-X9f" firstAttribute="top" secondItem="lgC-uj-QqZ" secondAttribute="bottom" id="zJu-Vy-p8f"/>
                         </constraints>
                     </view>
-                    <navigationItem key="navigationItem" title="Toddler Talk" largeTitleDisplayMode="always" id="aat-1U-7dx">
+                    <navigationItem key="navigationItem" title="Toddler Talk" id="aat-1U-7dx">
                         <barButtonItem key="rightBarButtonItem" image="clock" catalog="system" id="uoL-Vc-fIo">
                             <connections>
                                 <segue destination="Ih3-YS-6Mi" kind="show" id="UFJ-B1-7SN"/>
@@ -170,7 +168,6 @@
                             </collectionView>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="yT0-kx-1Q9"/>
-                        <color key="backgroundColor" systemColor="systemGray6Color"/>
                         <constraints>
                             <constraint firstItem="OCf-12-rJU" firstAttribute="leading" secondItem="yT0-kx-1Q9" secondAttribute="leading" id="StC-2t-hNP"/>
                             <constraint firstItem="yT0-kx-1Q9" firstAttribute="trailing" secondItem="OCf-12-rJU" secondAttribute="trailing" id="Vz8-dc-I75"/>
@@ -250,7 +247,7 @@
                             <constraint firstItem="wcd-5z-ZPc" firstAttribute="trailing" secondItem="kgq-lp-Iy8" secondAttribute="trailing" constant="20" id="w68-9T-K3D"/>
                         </constraints>
                     </view>
-                    <navigationItem key="navigationItem" title="Add Post" id="8v5-P2-RNH">
+                    <navigationItem key="navigationItem" title="Add Post" largeTitleDisplayMode="never" id="8v5-P2-RNH">
                         <barButtonItem key="rightBarButtonItem" title="Post" id="X9S-VB-2eX">
                             <connections>
                                 <action selector="postComment:" destination="w8K-Fu-mDh" id="FKc-fF-LUT"/>

@@ -87,6 +87,7 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
         showInitialLoadingState()
         loadCachedTopics()
         loginAndFetchTopics()
+        
     }
     
     private func showInitialLoadingState() {
@@ -101,7 +102,8 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
         collectionView.dataSource = self
         searchBar.delegate = self
         searchBar.placeholder = "Search Topics ...."
-        searchBar.showsCancelButton = false  // Initially hide cancel button
+        searchBar.showsCancelButton = false
+        //searchBar.backgroundColor = .white// Initially hide cancel button
 
         let layout = createCompositionalLayout()
         collectionView.collectionViewLayout = layout

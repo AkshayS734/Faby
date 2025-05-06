@@ -158,7 +158,8 @@ class CommentCell: UITableViewCell {
             
             viewRepliesButton.topAnchor.constraint(equalTo: likeButton.bottomAnchor, constant: 8),
             viewRepliesButton.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-            viewRepliesButton.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -8)
+            viewRepliesButton.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -8),
+            viewRepliesButton.heightAnchor.constraint(equalToConstant: 32),
         ])
         
         setupMoreButton()
@@ -395,7 +396,7 @@ class CommentCell: UITableViewCell {
         }
     }
     
-    // Add method to update reply count with improved styling
+    // Update reply count with improved styling and visibility
     func updateReplyCount(for commentId: Int) {
         print("🔄 Checking for replies on comment ID: \(commentId)")
         
@@ -418,16 +419,27 @@ class CommentCell: UITableViewCell {
                         let buttonTitle = "View \(count) \(count == 1 ? "reply" : "replies")"
                         self.viewRepliesButton.setTitle(buttonTitle, for: .normal)
                         
-                        // Make sure button is visible
+                        // Make sure button is visible with high contrast for visibility
                         self.viewRepliesButton.isHidden = false
-                        self.viewRepliesButton.alpha = 0
+                        self.viewRepliesButton.backgroundColor = .systemBlue
+                        self.viewRepliesButton.setTitleColor(.white, for: .normal)
+                        self.viewRepliesButton.titleLabel?.font = .systemFont(ofSize: 13, weight: .semibold)
+                        self.viewRepliesButton.layer.cornerRadius = 12
                         
-                        // Animate button appearance
-                        UIView.animate(withDuration: 0.3) {
-                            self.viewRepliesButton.alpha = 1.0
-                        }
+                        // Add shadow for better visibility
+                        self.viewRepliesButton.layer.shadowColor = UIColor.black.cgColor
+                        self.viewRepliesButton.layer.shadowOffset = CGSize(width: 0, height: 1)
+                        self.viewRepliesButton.layer.shadowOpacity = 0.3
+                        self.viewRepliesButton.layer.shadowRadius = 2
+                        
+                        print("🔵 View Replies button should be VISIBLE now")
+                        
+                        // Force layout to ensure button is visible
+                        self.setNeedsLayout()
+                        self.layoutIfNeeded()
                     } else {
                         self.viewRepliesButton.isHidden = true
+                        print("⚪ No replies - View Replies button hidden")
                     }
                 } else {
                     print("⚠️ No replies data received for comment ID: \(commentId)")
@@ -437,9 +449,25 @@ class CommentCell: UITableViewCell {
         }
     }
     
-    // Improved debug version of reply button handler
+    // Update the handleViewReplies method with more verbose debugging
     @objc private func handleViewReplies() {
-        print("🔍 DEBUG: View replies button tapped")
+        print("🔍🔍🔍 DEBUG: View replies button tapped - VERBOSE DEBUG")
+        
+        
+        
+        // Verify we have a comment
+        if let comment = comment {
+            print("✅ Comment exists: ID=\(comment.commentId ?? -1), content=\(comment.content)")
+        } else {
+            print("❌ ERROR: Comment is nil!")
+        }
+        
+        // Verify delegate exists
+        if let delegate = delegate {
+            print("✅ Delegate exists: \(type(of: delegate))")
+        } else {
+            print("❌ ERROR: Delegate is nil!")
+        }
         
         // Immediate visual feedback
         UIView.animate(withDuration: 0.1, animations: {
@@ -466,7 +494,7 @@ class CommentCell: UITableViewCell {
                 alert.addAction(UIAlertAction(title: "OK", style: .default))
                 topVC.present(alert, animated: true)
             }
-            return 
+            return
         }
         
         print("✓ Found comment with ID: \(commentId)")
@@ -478,6 +506,7 @@ class CommentCell: UITableViewCell {
         }
         
         print("✓ Delegate exists, forwarding to didTapViewReplies")
+        print("🔍 Calling delegate.didTapViewReplies now...")
         
         // Call delegate method - this needs to be handled in the ModernPostDetailViewController
         delegate.didTapViewReplies(for: comment)
