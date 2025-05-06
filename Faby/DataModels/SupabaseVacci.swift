@@ -276,6 +276,99 @@ class SupabaseVaccineManager {
             )
         }
     }
+    
+    /// Fetch all administered vaccines (not filtered by baby)
+    func fetchAllAdministeredVaccines() async throws -> [VaccineAdministered] {
+        print("DEBUG: SupabaseVaccineManager - Starting fetchAllAdministeredVaccines")
+        guard let client = client else {
+            print("DEBUG: SupabaseVaccineManager - Client not available")
+            throw NSError(domain: "VacciAlertError", code: 1,
+                         userInfo: [NSLocalizedDescriptionKey: "Supabase client not available"])
+        }
+        
+        print("DEBUG: SupabaseVaccineManager - About to query administered_vaccines table")
+        do {
+            let response = try await client
+                .from("administered_vaccines")
+                .select()
+                .execute()
+            
+            print("DEBUG: SupabaseVaccineManager - Query successful, data size: \(response.data.count) bytes")
+            
+            // Print raw data for debugging
+            if let jsonString = String(data: response.data, encoding: .utf8) {
+                print("DEBUG: SupabaseVaccineManager - Raw JSON: \(jsonString)")
+            }
+            
+            // Process the raw data to convert to VaccineAdministered objects
+            do {
+                let rawAdministered = try JSONDecoder().decode([SupabaseVaccineAdministered].self, from: response.data)
+                print("DEBUG: SupabaseVaccineManager - Decoded \(rawAdministered.count) administered vaccines")
+                
+                let result = rawAdministered.map { raw in
+                    let dateFormatter = ISO8601DateFormatter()
+                    let date = dateFormatter.date(from: raw.administeredDate) ?? Date()
+                    
+                    return VaccineAdministered(
+                        id: UUID(uuidString: raw.id) ?? UUID(),
+                        babyId: UUID(uuidString: raw.baby_id) ?? UUID(),
+                        vaccineId: UUID(uuidString: raw.vaccineID) ?? UUID(),
+                        scheduleId: UUID(uuidString: raw.scheduleId) ?? UUID(),
+                        administeredDate: date
+                    )
+                }
+                
+                print("DEBUG: SupabaseVaccineManager - Returned \(result.count) VaccineAdministered objects")
+                return result
+            } catch {
+                print("DEBUG: SupabaseVaccineManager - JSON decoding error: \(error)")
+                throw error
+            }
+        } catch {
+            print("DEBUG: SupabaseVaccineManager - Supabase query error: \(error)")
+            throw error
+        }
+    }
+    
+    /// Update the administered date for a vaccine
+    /// - Parameters:
+    ///   - scheduleId: The UUID string of the schedule
+    ///   - newDate: The new administered date
+    /// - Throws: An error if the update fails
+    func updateAdministeredDate(scheduleId: String, newDate: Date) async throws {
+        guard let client = client else {
+            throw NSError(domain: "VacciAlertError", code: 1,
+                         userInfo: [NSLocalizedDescriptionKey: "Supabase client not available"])
+        }
+        
+        // Convert date to ISO8601 string format
+        let dateFormatter = ISO8601DateFormatter()
+        let dateString = dateFormatter.string(from: newDate)
+        
+        // Create a struct that conforms to Encodable for the update
+        struct UpdateDatePayload: Encodable {
+            let administereddate: String
+        }
+        
+        // Create the payload with the new date
+        let updatePayload = UpdateDatePayload(administereddate: dateString)
+        
+        // Update the record in Supabase
+        do {
+            let _ = try await client
+                .from("administered_vaccines")
+                .update(updatePayload)
+                .eq("scheduleId", value: scheduleId)
+                .execute()
+            
+            // Notify listeners about the update
+            NotificationCenter.default.post(name: Notification.Name("VaccinesUpdated"), object: nil)
+            
+        } catch {
+            print("ERROR: Failed to update administered date - \(error.localizedDescription)")
+            throw error
+        }
+    }
 }
 
 // MARK: - Supabase-compatible Data Structures
@@ -294,17 +387,17 @@ struct SupabaseVaccineSchedule: Codable {
 struct SupabaseVaccineAdministered: Codable {
     let id: String
     let baby_id: String
-    let vaccineID: String
-    let scheduleId: String
+    let vaccineID: String  // This matches the actual JSON field name "vaccineID"
+    let scheduleId: String // This matches the actual JSON field name "scheduleId"
     let administeredDate: String
     
     // CodingKeys to map between Swift property names and database column names
     enum CodingKeys: String, CodingKey {
         case id
         case baby_id
-        case vaccineID // exact match with column name
-        case scheduleId // exact match with column name
-        case administeredDate // exact match with column name
+        case vaccineID // Exact match with field name in JSON
+        case scheduleId // Exact match with field name in JSON
+        case administeredDate // Exact match with field name in JSON
     }
 }
 

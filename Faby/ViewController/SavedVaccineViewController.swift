@@ -1,669 +1,1030 @@
 import UIKit
 import PDFKit
 import Supabase
+import CoreLocation
+import MessageUI
 
-// MARK: - Supabase Vaccine Manager
-class VaccineDataManager {
-    static let shared = VaccineDataManager()
+class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITableViewDelegate, MFMailComposeViewControllerDelegate {
     
-    private init() {}
+    // MARK: - UI Elements
+    private let tableView = UITableView(frame: .zero, style: .grouped)
+    private let emptyStateLabel = UILabel()
+    private let activityIndicator = UIActivityIndicatorView(style: .large)
     
-    // Helper function to get Supabase client
-    private func getSupabaseClient() -> SupabaseClient? {
-        if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
-            return appDelegate.supabase
-        } else if let sceneDelegate = UIApplication.shared.connectedScenes.first?.delegate as? SceneDelegate {
-            return sceneDelegate.supabase
-        }
-        return nil
-    }
-    
-    // Get all available vaccines from Supabase
-    func fetchAllVaccines() async throws -> [Vaccine] {
-        guard let supabase = getSupabaseClient() else {
-            throw NSError(domain: "VaccineError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Supabase client not available"])
-        }
-        
-        let response = try await supabase.from("Vaccines")
-            .select()
-            .execute()
-            
-        return try JSONDecoder().decode([Vaccine].self, from: response.data)
-    }
-    
-    // Get all vaccines scheduled for a specific baby
-    func fetchVaccineSchedules(forBaby babyId: UUID) async throws -> [VaccineSchedule] {
-        guard let supabase = getSupabaseClient() else {
-            throw NSError(domain: "VaccineError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Supabase client not available"])
-        }
-        
-        let response = try await supabase.from("VaccineSchedules")
-            .select()
-            .eq("babyID", value: babyId.uuidString)
-            .execute()
-            
-        return try JSONDecoder().decode([VaccineSchedule].self, from: response.data)
-    }
-    
-    // Get all administered vaccines for a baby
-    func fetchAdministeredVaccines(forBaby babyId: UUID) async throws -> [VaccineAdministered] {
-        guard let supabase = getSupabaseClient() else {
-            throw NSError(domain: "VaccineError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Supabase client not available"])
-        }
-        
-        let response = try await supabase.from("VaccineAdministered")
-            .select()
-            .eq("babyId", value: babyId.uuidString)
-            .execute()
-            
-        return try JSONDecoder().decode([VaccineAdministered].self, from: response.data)
-    }
-    
-    // Mark a vaccine as administered
-    // Mark a vaccine as administered
-    func addAdministeredVaccine(babyId: UUID, vaccineId: UUID, scheduleId: UUID? = nil, date: Date, location: String) async throws {
-        guard let supabase = getSupabaseClient() else {
-            throw NSError(domain: "VaccineError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Supabase client not available"])
-        }
-        
-        let record = VaccineAdministered(
-            id: UUID(),
-            babyId: babyId,
-            vaccineId: vaccineId,
-            scheduleId: scheduleId ?? UUID(),
-            administeredDate: date
-        )
-        
-        // Format date for Supabase compatibility
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
-        let dateString = dateFormatter.string(from: date)
-        
-        // Create an Encodable struct for Supabase
-        struct SupabaseVaccineRecord: Encodable {
-            let id: String
-            let babyId: String
-            let vaccineId: String
-            let scheduleId: String
-            let administeredDate: String
-        }
-        
-        let supabaseRecord = SupabaseVaccineRecord(
-            id: record.id.uuidString,
-            babyId: record.babyId.uuidString,
-            vaccineId: record.vaccineId.uuidString,
-            scheduleId: record.scheduleId.uuidString,
-            administeredDate: dateString
-        )
-        
-        try await supabase.from("VaccineAdministered")
-            .insert(supabaseRecord)
-            .execute()
-    }
-    // Delete an administered vaccine record
-    func removeAdministeredVaccine(recordId: UUID) async throws {
-        guard let supabase = getSupabaseClient() else {
-            throw NSError(domain: "VaccineError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Supabase client not available"])
-        }
-        
-        try await supabase.from("VaccineAdministered")
-            .delete()
-            .eq("id", value: recordId.uuidString)
-            .execute()
-    }
-}
-
-class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
-    
-    // MARK: - Properties
-    private let tableView = UITableView(frame: .zero, style: .insetGrouped)
-    private let emptyStateView = UIView()
-    private let vaccineDataManager = VaccineDataManager.shared
-    
-    private var allVaccines: [Vaccine] = []
-    private var vaccineSchedules: [VaccineSchedule] = []
+    // MARK: - Data
     private var administeredVaccines: [VaccineAdministered] = []
+    private var vaccines: [String: Vaccine] = [:] // Cache for vaccine details
+    private var currentBabyId: String = ""  // Will fetch all babies' vaccines if empty
     
-    // For organizing the UI
-    private var groupedVaccines: [String: [VaccineWithStatus]] = [:]
-    private var ageGroups: [String] = []
+    // Organized vaccine data
+    private var organizedVaccines: [(timeframe: String, vaccines: [VaccineAdministered])] = []
     
-    private var baby: Baby!
-    
-    // MARK: - Helper Struct for UI
-    private struct VaccineWithStatus {
-        let vaccine: Vaccine
-        let isAdministered: Bool
-        let administeredDate: Date?
-        let vaccineAdministeredId: UUID?
-        
-        // Helper to determine display stage based on weeks
-        var stageTitle: String {
-            let weeks = vaccine.startWeek
-            if weeks <= 6 {
-                return "Birth to 6 Weeks"
-            } else if weeks <= 10 {
-                return "6 to 10 Weeks"
-            } else if weeks <= 14 {
-                return "10 to 14 Weeks"
-            } else if weeks <= 24 {
-                return "14 to 24 Weeks"
-            } else if weeks <= 52 {
-                return "24 to 52 Weeks"
-            } else if weeks <= 104 {
-                return "1 to 2 Years"
-            } else {
-                return "Over 2 Years"
-            }
-        }
-    }
-    
-    // MARK: - Lifecycle Methods
+    // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
+        title = "Vaccination Records"
+        view.backgroundColor = .systemGroupedBackground
+        
         setupUI()
-        configureTableView()
-        setupEmptyStateView()
+        setupConstraints()
+        setupNavigationBar()
+        
+        // Get baby ID from user defaults or other source
+        if let babyId = UserDefaults.standard.string(forKey: "selectedBabyId") {
+            currentBabyId = babyId
+        }
+        
+        // Register for vaccine update notifications
+        NotificationCenter.default.addObserver(self, selector: #selector(refreshVaccines), name: Notification.Name("VaccinesUpdated"), object: nil)
+    }
+    
+    private func setupNavigationBar() {
+        // Configure the navigation bar appearance
+        navigationController?.navigationBar.prefersLargeTitles = false
+        
+        // Create download button for vaccination records
+        let downloadButton = UIBarButtonItem(
+            image: UIImage(systemName: "square.and.arrow.down"),
+            style: .plain,
+            target: self,
+            action: #selector(downloadVaccinationRecords)
+        )
+        
+        navigationItem.rightBarButtonItem = downloadButton
     }
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        loadSavedData()
+        loadVaccines()
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
     
     // MARK: - UI Setup
     private func setupUI() {
-        view.backgroundColor = .systemGroupedBackground
-        title = "Vaccination History"
-        navigationItem.rightBarButtonItem = UIBarButtonItem(
-            image: UIImage(systemName: "square.and.arrow.down"),
-            style: .plain,
-            target: self,
-            action: #selector(downloadTapped)
-        )
-    }
-    
-    private func setupEmptyStateView() {
-        emptyStateView.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(emptyStateView)
-        
-        let noDataLabel = UILabel()
-        noDataLabel.translatesAutoresizingMaskIntoConstraints = false
-        noDataLabel.text = "No vaccination records found"
-        noDataLabel.textAlignment = .center
-        noDataLabel.textColor = .secondaryLabel
-        emptyStateView.addSubview(noDataLabel)
-        
-        NSLayoutConstraint.activate([
-            emptyStateView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            emptyStateView.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-            emptyStateView.widthAnchor.constraint(equalTo: view.widthAnchor),
-            emptyStateView.heightAnchor.constraint(equalToConstant: 100),
-            
-            noDataLabel.centerXAnchor.constraint(equalTo: emptyStateView.centerXAnchor),
-            noDataLabel.centerYAnchor.constraint(equalTo: emptyStateView.centerYAnchor),
-            noDataLabel.widthAnchor.constraint(equalTo: emptyStateView.widthAnchor, constant: -40)
-        ])
-        
-        emptyStateView.isHidden = true
-    }
-    
-    private func configureTableView() {
-        view.addSubview(tableView)
+        // Configure table view with iOS native style
+        tableView.register(AdministeredVaccineCell.self, forCellReuseIdentifier: "AdministeredVaccineCell")
         tableView.delegate = self
         tableView.dataSource = self
-        tableView.register(VaccineTableViewCell.self, forCellReuseIdentifier: "VaccineCell")
-        tableView.translatesAutoresizingMaskIntoConstraints = false
+        tableView.separatorStyle = .none
+        tableView.backgroundColor = .systemGroupedBackground
+        tableView.rowHeight = UITableView.automaticDimension
+        tableView.estimatedRowHeight = 100
+        tableView.contentInset = UIEdgeInsets(top: 8, left: 0, bottom: 16, right: 0)
+        tableView.showsVerticalScrollIndicator = false
+        tableView.allowsSelection = false
         
+        // Setup section headers - smaller than before
+        tableView.sectionHeaderHeight = 36
+        tableView.estimatedSectionHeaderHeight = 36
+        
+        // Set autoresizing to false BEFORE adding to view hierarchy
+        tableView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(tableView)
+        
+        // Configure empty state label
+        emptyStateLabel.text = "No vaccination records found"
+        emptyStateLabel.textAlignment = .center
+        emptyStateLabel.textColor = .secondaryLabel
+        emptyStateLabel.font = UIFont.systemFont(ofSize: 18, weight: .medium)
+        emptyStateLabel.isHidden = true
+        emptyStateLabel.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(emptyStateLabel)
+        
+        // Configure activity indicator
+        activityIndicator.color = .systemBlue
+        activityIndicator.hidesWhenStopped = true
+        activityIndicator.style = .large
+        activityIndicator.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(activityIndicator)
+    }
+    
+    private func setupConstraints() {
         NSLayoutConstraint.activate([
+            // Table view constraints
             tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+            tableView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
+            
+            // Empty state label constraints
+            emptyStateLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            emptyStateLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            emptyStateLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            emptyStateLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+            
+            // Activity indicator constraints
+            activityIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            activityIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor)
         ])
     }
     
-    // MARK: - Data Management
-    private func loadSavedData() {
-        showLoadingIndicator()
+    // MARK: - Data Loading
+    private func loadVaccines() {
+        activityIndicator.startAnimating()
+        tableView.isHidden = true
+        emptyStateLabel.isHidden = true
         
         Task {
             do {
-                // Get the current baby
-                if !BabyDataModel.shared.babyList.isEmpty {
-                    baby = BabyDataModel.shared.babyList[0]
-                    
-                    // Load all data concurrently
-                    async let allVaccinesTask = vaccineDataManager.fetchAllVaccines()
-                    async let schedulesTask = vaccineDataManager.fetchVaccineSchedules(forBaby: baby.babyID)
-                    async let administeredTask = vaccineDataManager.fetchAdministeredVaccines(forBaby: baby.babyID)
-                    
-                    // Wait for all to complete
-                    (allVaccines, vaccineSchedules, administeredVaccines) = try await (allVaccinesTask, schedulesTask, administeredTask)
-                    
-                    // Process the data for display
-                    processVaccineData()
-                    
-                    await MainActor.run {
-                        hideLoadingIndicator()
-                        
-                        if self.administeredVaccines.isEmpty {
-                            self.emptyStateView.isHidden = false
-                            self.tableView.isHidden = true
-                        } else {
-                            self.emptyStateView.isHidden = true
-                            self.tableView.isHidden = false
-                            self.tableView.reloadData()
-                        }
+                // Fetch all vaccines first for reference
+                let allVaccines = try await SupabaseVaccineManager.shared.fetchAllVaccines()
+                
+                for vaccine in allVaccines {
+                    if let id = vaccine.id.uuidString as String? {
+                        vaccines[id] = vaccine
                     }
+                }
+                
+                // Fetch administered vaccines for all babies or specific baby
+                if currentBabyId.isEmpty {
+                    administeredVaccines = try await SupabaseVaccineManager.shared.fetchAllAdministeredVaccines()
                 } else {
-                    await MainActor.run {
-                        hideLoadingIndicator()
-                        self.emptyStateView.isHidden = false
-                        self.tableView.isHidden = true
+                    administeredVaccines = try await SupabaseVaccineManager.shared.fetchAdministeredVaccines(forBabyId: currentBabyId)
+                }
+                
+                // Organize vaccines by timeframe
+                organizeVaccinesByTimeframe()
+                
+                await MainActor.run {
+                    activityIndicator.stopAnimating()
+                    
+                    if administeredVaccines.isEmpty {
+                        tableView.isHidden = true
+                        emptyStateLabel.isHidden = false
+                        emptyStateLabel.text = "No administered vaccines found"
+                    } else {
+                        tableView.isHidden = false
+                        tableView.alpha = 1.0
+                        emptyStateLabel.isHidden = true
+                        
+                        view.setNeedsLayout()
+                        view.layoutIfNeeded()
+                        
+                        tableView.reloadData()
                     }
                 }
             } catch {
-                print("❌ Error loading vaccines from Supabase: \(error)")
                 await MainActor.run {
-                    hideLoadingIndicator()
-                    showErrorMessage("Failed to load vaccination records: \(error.localizedDescription)")
-                    self.emptyStateView.isHidden = false
-                    self.tableView.isHidden = true
+                    activityIndicator.stopAnimating()
+                    updateEmptyState(message: "Error loading vaccines: \(error.localizedDescription)")
                 }
             }
         }
     }
     
-    private func processVaccineData() {
-        // Create VaccineWithStatus objects by combining data
-        var vaccinesWithStatus: [VaccineWithStatus] = []
+    // Organize vaccines by timeframe
+    private func organizeVaccinesByTimeframe() {
+        // Group vaccines by their target timeframe
+        var vaccinesByTimeframe: [String: [VaccineAdministered]] = [
+            "BIRTH": [],
+            "6 WEEKS": [],
+            "10 WEEKS": [],
+            "14 WEEKS": [],
+            "6 MONTHS": [],
+            "9 MONTHS": [],
+            "12 MONTHS": [],
+            "15 MONTHS": [],
+            "18 MONTHS": [],
+            "2 YEARS": [],
+            "4-6 YEARS": [],
+            "11-12 YEARS": []
+        ]
         
-        for vaccine in allVaccines {
-            // Find if this vaccine has been administered
-            let administered = administeredVaccines.first { $0.vaccineId == vaccine.id }
-            
-            vaccinesWithStatus.append(VaccineWithStatus(
-                vaccine: vaccine,
-                isAdministered: administered != nil,
-                administeredDate: administered?.administeredDate,
-                vaccineAdministeredId: administered?.id
-            ))
+        // Logic to determine which timeframe each vaccine belongs to
+        for vaccine in administeredVaccines {
+            let vaccineId = vaccine.vaccineId.uuidString
+            if let vaccineInfo = vaccines[vaccineId] {
+                // Use vaccine info to determine timeframe
+                if vaccineInfo.startWeek == 0 {
+                    vaccinesByTimeframe["BIRTH"]?.append(vaccine)
+                } else if vaccineInfo.startWeek <= 6 {
+                    vaccinesByTimeframe["6 WEEKS"]?.append(vaccine)
+                } else if vaccineInfo.startWeek <= 10 {
+                    vaccinesByTimeframe["10 WEEKS"]?.append(vaccine)
+                } else if vaccineInfo.startWeek <= 14 {
+                    vaccinesByTimeframe["14 WEEKS"]?.append(vaccine)
+                } else if vaccineInfo.startWeek <= 26 { // ~6 months
+                    vaccinesByTimeframe["6 MONTHS"]?.append(vaccine)
+                } else if vaccineInfo.startWeek <= 39 { // ~9 months
+                    vaccinesByTimeframe["9 MONTHS"]?.append(vaccine)
+                } else if vaccineInfo.startWeek <= 52 { // ~12 months
+                    vaccinesByTimeframe["12 MONTHS"]?.append(vaccine)
+                } else if vaccineInfo.startWeek <= 65 { // ~15 months
+                    vaccinesByTimeframe["15 MONTHS"]?.append(vaccine)
+                } else if vaccineInfo.startWeek <= 78 { // ~18 months
+                    vaccinesByTimeframe["18 MONTHS"]?.append(vaccine)
+                } else if vaccineInfo.startWeek <= 104 { // ~2 years
+                    vaccinesByTimeframe["2 YEARS"]?.append(vaccine)
+                } else if vaccineInfo.startWeek <= 312 { // ~4-6 years
+                    vaccinesByTimeframe["4-6 YEARS"]?.append(vaccine)
+                } else {
+                    vaccinesByTimeframe["11-12 YEARS"]?.append(vaccine)
+                }
+            } else {
+                // If we don't have info, put it in a default group
+                let defaultTimeframe = "OTHER"
+                if vaccinesByTimeframe[defaultTimeframe] == nil {
+                    vaccinesByTimeframe[defaultTimeframe] = []
+                }
+                vaccinesByTimeframe[defaultTimeframe]?.append(vaccine)
+            }
         }
         
-        // Only show administered vaccines
-        let administeredVaccinesWithStatus = vaccinesWithStatus.filter { $0.isAdministered }
-        
-        // Group by stage
-        groupedVaccines = Dictionary(grouping: administeredVaccinesWithStatus) { $0.stageTitle }
-        
-        // Set up age groups for sections
-        ageGroups = Array(groupedVaccines.keys).sorted { (group1, group2) -> Bool in
-            // Sort age groups by start week
-            let weekRanges = [
-                "Birth to 6 Weeks": 0,
-                "6 to 10 Weeks": 6,
-                "10 to 14 Weeks": 10,
-                "14 to 24 Weeks": 14,
-                "24 to 52 Weeks": 24,
-                "1 to 2 Years": 52,
-                "Over 2 Years": 104
+        // Convert to array and filter out empty sections
+        organizedVaccines = vaccinesByTimeframe.compactMap { key, vaccines in
+            if !vaccines.isEmpty {
+                return (timeframe: key, vaccines: vaccines)
+            }
+            return nil
+        }.sorted { lhs, rhs in
+            // Define order of timeframes
+            let order: [String: Int] = [
+                "BIRTH": 0,
+                "6 WEEKS": 1,
+                "10 WEEKS": 2,
+                "14 WEEKS": 3,
+                "6 MONTHS": 4,
+                "9 MONTHS": 5,
+                "12 MONTHS": 6,
+                "15 MONTHS": 7,
+                "18 MONTHS": 8,
+                "2 YEARS": 9,
+                "4-6 YEARS": 10,
+                "11-12 YEARS": 11,
+                "OTHER": 12
             ]
             
-            return (weekRanges[group1] ?? 0) < (weekRanges[group2] ?? 0)
+            return (order[lhs.timeframe] ?? 99) < (order[rhs.timeframe] ?? 99)
         }
     }
     
-    private func saveVaccineDate(_ date: Date, for vaccineWithStatus: VaccineWithStatus) {
-        showLoadingIndicator()
-        
-        Task {
-            do {
-                // If already administered, update it
-                if let existingId = vaccineWithStatus.vaccineAdministeredId {
-                    // Remove the old record
-                    try await vaccineDataManager.removeAdministeredVaccine(recordId: existingId)
-                }
-                
-                // Create a new record
-                try await vaccineDataManager.addAdministeredVaccine(
-                    babyId: baby.babyID,
-                    vaccineId: vaccineWithStatus.vaccine.id,
-                    date: date,
-                    location: "Added manually"
-                )
-                
-                // Reload data to get the updated records
-                await loadSavedData()
-                
-                await MainActor.run {
-                    hideLoadingIndicator()
-                    showSuccessMessage("Vaccination date saved successfully")
-                }
-            } catch {
-                await MainActor.run {
-                    hideLoadingIndicator()
-                    showErrorMessage("Failed to save vaccination date: \(error.localizedDescription)")
-                }
-            }
+    private func updateEmptyState(message: String) {
+        if administeredVaccines.isEmpty {
+            emptyStateLabel.text = message
+            emptyStateLabel.isHidden = false
+            tableView.isHidden = true
+        } else {
+            emptyStateLabel.isHidden = true
+            tableView.isHidden = false
         }
     }
     
-    // MARK: - UITableViewDataSource Methods
+    @objc private func refreshVaccines() {
+        loadVaccines()
+    }
+    
+    // MARK: - UITableViewDataSource & UITableViewDelegate
     func numberOfSections(in tableView: UITableView) -> Int {
-        return ageGroups.count
+        return organizedVaccines.count
     }
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        let ageGroup = ageGroups[section]
-        return groupedVaccines[ageGroup]?.count ?? 0
+        return organizedVaccines[section].vaccines.count
     }
     
-    func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
-        let ageGroup = ageGroups[section]
-        return groupedVaccines[ageGroup]?.isEmpty == false ? ageGroup : nil
+    func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
+        let headerView = UIView()
+        headerView.backgroundColor = .systemGroupedBackground
+        
+        // Timeframe label
+        let timeframeLabel = UILabel()
+        timeframeLabel.font = UIFont.systemFont(ofSize: 15, weight: .bold)
+        timeframeLabel.textColor = .secondaryLabel
+        timeframeLabel.text = organizedVaccines[section].timeframe
+        timeframeLabel.translatesAutoresizingMaskIntoConstraints = false
+        
+        headerView.addSubview(timeframeLabel)
+        
+        NSLayoutConstraint.activate([
+            timeframeLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
+            timeframeLabel.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
+            timeframeLabel.trailingAnchor.constraint(lessThanOrEqualTo: headerView.trailingAnchor, constant: -16)
+        ])
+        
+        return headerView
+    }
+    
+    func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
+        return 40 // Reduced height since we only have one line of text now
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "VaccineCell", for: indexPath) as! VaccineTableViewCell
-        
-        let ageGroup = ageGroups[indexPath.section]
-        if let vaccinesInGroup = groupedVaccines[ageGroup] {
-            let vaccineWithStatus = vaccinesInGroup[indexPath.row]
-            
-            // Get formatted date for display
-            var displayDate = "Not administered yet"
-            if let administeredDate = vaccineWithStatus.administeredDate {
-                let dateFormatter = DateFormatter()
-                dateFormatter.dateStyle = .medium
-                displayDate = dateFormatter.string(from: administeredDate)
-            }
-            
-            cell.configure(vaccineName: vaccineWithStatus.vaccine.name, date: displayDate)
-            cell.onOptionsButtonTapped = { [weak self] in
-                self?.showDatePicker(for: vaccineWithStatus)
-            }
+        guard let cell = tableView.dequeueReusableCell(withIdentifier: "AdministeredVaccineCell", for: indexPath) as? AdministeredVaccineCell else {
+            return UITableViewCell()
         }
+        
+        let section = organizedVaccines[indexPath.section]
+        let administeredVaccine = section.vaccines[indexPath.row]
+        
+        // Try different formats for the vaccine ID to match with the cached vaccines
+        let vaccineId = administeredVaccine.vaccineId.uuidString
+        let vaccineInfo = vaccines[vaccineId]
+        
+        // Configure cell with menu action handler
+        cell.configure(with: administeredVaccine, vaccine: vaccineInfo)
+        cell.delegate = self
         
         return cell
     }
     
-    // MARK: - Table View Editing
-    func tableView(_ tableView: UITableView, canEditRowAt indexPath: IndexPath) -> Bool {
-        return true
-    }
+    // MARK: - Vaccination Records PDF Generation and Download
     
-    func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
-        if editingStyle == .delete {
-            let ageGroup = ageGroups[indexPath.section]
-            guard var vaccinesInGroup = groupedVaccines[ageGroup],
-                  indexPath.row < vaccinesInGroup.count else { return }
-            
-            let vaccineToDelete = vaccinesInGroup[indexPath.row]
-            
+    @objc private func downloadVaccinationRecords() {
+        // Check if we have vaccines to generate a record
+        guard !administeredVaccines.isEmpty else {
             let alert = UIAlertController(
-                title: "Delete Vaccine Record",
-                message: "Are you sure you want to remove \(vaccineToDelete.vaccine.name) from your vaccination record?",
+                title: "No Records",
+                message: "There are no vaccination records available to download.",
                 preferredStyle: .alert
             )
-            
-            alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-            alert.addAction(UIAlertAction(title: "Delete", style: .destructive) { [weak self] _ in
-                guard let self = self,
-                      let vaccineAdministeredId = vaccineToDelete.vaccineAdministeredId else { return }
-                
-                self.showLoadingIndicator()
-                
-                Task {
-                    do {
-                        // Remove from Supabase
-                        try await self.vaccineDataManager.removeAdministeredVaccine(recordId: vaccineAdministeredId)
-                        
-                        // Reload all data
-                        await self.loadSavedData()
-                        
-                        await MainActor.run {
-                            self.hideLoadingIndicator()
-                            self.showSuccessMessage("Vaccination record removed successfully")
-                        }
-                    } catch {
-                        await MainActor.run {
-                            self.hideLoadingIndicator()
-                            self.showErrorMessage("Failed to remove vaccination record: \(error.localizedDescription)")
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            present(alert, animated: true)
+            return
+        }
+        
+        // Show loading indicator
+        activityIndicator.startAnimating()
+        view.isUserInteractionEnabled = false
+        
+        // Fetch data and generate PDF
+        Task {
+            do {
+                let babyParentData = try await fetchBabyAndParentData()
+                await MainActor.run {
+                    generateAndSharePDF(with: babyParentData)
+                    activityIndicator.stopAnimating()
+                    view.isUserInteractionEnabled = true
+                }
+            } catch {
+                await MainActor.run {
+                    activityIndicator.stopAnimating()
+                    view.isUserInteractionEnabled = true
+                    
+                    // If there's no baby selected, fall back to local data
+                    if (error as NSError).domain == "VacciAlertError" && 
+                       ((error as NSError).code == 2 || (error as NSError).code == 3) {
+                        // Try to use local baby data instead
+                        if let firstBaby = BabyDataModel.shared.babyList.first {
+                            let fakeBabyData = BabyData(
+                                id: firstBaby.babyID.uuidString,
+                                name: firstBaby.name,
+                                dateOfBirth: firstBaby.dateOfBirth,
+                                gender: firstBaby.gender == .male ? "male" : "female"
+                            )
+                            
+                            let fakeParentData = ParentData(
+                                id: UUID().uuidString,
+                                name: UserDefaults.standard.string(forKey: "parentName") ?? "Parent",
+                                relation: "parent"
+                            )
+                            
+                            generateAndSharePDF(with: (fakeBabyData, fakeParentData))
+                            return
                         }
                     }
+                    
+                    let alert = UIAlertController(
+                        title: "Error",
+                        message: "Could not fetch data: \(error.localizedDescription)",
+                        preferredStyle: .alert
+                    )
+                    alert.addAction(UIAlertAction(title: "OK", style: .default))
+                    present(alert, animated: true)
                 }
-            })
+            }
+        }
+    }
+    
+    // Fetch baby and parent data from Supabase
+    private func fetchBabyAndParentData() async throws -> (baby: BabyData, parent: ParentData) {
+        guard let client = (UIApplication.shared.delegate as? AppDelegate)?.supabase ?? 
+                          (UIApplication.shared.connectedScenes.first?.delegate as? SceneDelegate)?.supabase else {
+            throw NSError(domain: "VacciAlertError", code: 1,
+                         userInfo: [NSLocalizedDescriptionKey: "Supabase client not available"])
+        }
+        
+        // Try to get current baby ID from UserDefaults
+        let babyId: String
+        if let selectedBabyId = UserDefaults.standard.string(forKey: "selectedBabyId") {
+            babyId = selectedBabyId
+        } else {
+            // If no baby is directly selected, try to get the parent UUID
+            let parentUUID: String
             
+            // First try to get parent UUID from UserDefaults
+            if let storedParentUUID = UserDefaults.standard.string(forKey: "parentUUID") ?? 
+                                     UserDefaults.standard.string(forKey: "currentUserId") {
+                parentUUID = storedParentUUID
+            } 
+            // If not in UserDefaults, try to get from Supabase session
+            else if let session = try? client.auth.session {
+                // Get user ID as string
+                parentUUID = session.user.id.uuidString
+            }
+            // If all else fails, throw an error
+            else {
+                throw NSError(domain: "VacciAlertError", code: 2,
+                             userInfo: [NSLocalizedDescriptionKey: "No parent or baby found"])
+            }
+            
+            // Fetch the baby associated with this parent (since there's a maximum of 1 baby per parent)
+            let babyResponse = try await client
+                .from("baby")
+                .select()
+                .eq("user_id", value: parentUUID)
+                .limit(1)
+                .execute()
+            
+            if let babyData = try? JSONDecoder().decode([BabyData].self, from: babyResponse.data),
+               let firstBaby = babyData.first {
+                // Save the baby UID for future use
+                UserDefaults.standard.set(firstBaby.id, forKey: "selectedBabyId")
+                babyId = firstBaby.id
+            } else {
+                throw NSError(domain: "VacciAlertError", code: 3,
+                             userInfo: [NSLocalizedDescriptionKey: "Could not find baby for the current parent"])
+            }
+        }
+        
+        // Fetch baby data by ID now that we have a valid baby ID
+        let babyResponse = try await client
+            .from("baby")
+            .select()
+            .eq("uid", value: babyId)
+            .single()
+            .execute()
+        
+        let babyData = try JSONDecoder().decode(BabyData.self, from: babyResponse.data)
+        
+        // Fetch parent data
+        let parentResponse = try await client
+            .from("parents")
+            .select()
+            .eq("baby_uid", value: babyId)
+            .single()
+            .execute()
+        
+        let parentData = try JSONDecoder().decode(ParentData.self, from: parentResponse.data)
+        
+        return (babyData, parentData)
+    }
+    
+    // Data structures for Supabase responses
+    struct BabyData: Codable {
+        let id: String
+        let name: String
+        let dateOfBirth: String
+        let gender: String
+        
+        enum CodingKeys: String, CodingKey {
+            case id = "uid"
+            case name
+            case dateOfBirth = "dob"
+            case gender
+        }
+    }
+    
+    struct ParentData: Codable {
+        let id: String
+        let name: String
+        let relation: String
+        
+        enum CodingKeys: String, CodingKey {
+            case id = "uid"
+            case name
+            case relation = "relationship"
+        }
+    }
+    
+    // Generate PDF with vaccination records in a card format
+    private func generateAndSharePDF(with data: (baby: BabyData, parent: ParentData)? = nil) {
+        if let data = data {
+            // Generate a personalized vaccination card with backend data
+            generatePersonalizedVaccinationCard(babyData: data.baby, parentData: data.parent)
+        } else {
+            // Fallback to local data if backend data is not available
+            guard let currentBaby = BabyDataModel.shared.babyList.first(where: { $0.babyID == UUID(uuidString: currentBabyId) }) else {
+                // If no specific baby is selected, use a generic name
+                generateGenericVaccinationCard()
+                return
+            }
+            
+            // Create fake parent data from UserDefaults
+            let parentName = UserDefaults.standard.string(forKey: "parentName") ?? "Parent"
+            let fakeParentData = ParentData(id: UUID().uuidString, name: parentName, relation: "parent")
+            
+            // Create BabyData from Baby model
+            let fakeBabyData = BabyData(
+                id: currentBaby.babyID.uuidString,
+                name: currentBaby.name,
+                dateOfBirth: currentBaby.dateOfBirth,
+                gender: currentBaby.gender == .male ? "male" : "female"
+            )
+            
+            // Generate a personalized vaccination card with converted local data
+            generatePersonalizedVaccinationCard(babyData: fakeBabyData, parentData: fakeParentData)
+        }
+    }
+    
+    private func generateGenericVaccinationCard() {
+        // Create PDF renderer with A4 portrait size
+        let pageWidth = 8.5 * 72.0
+        let pageHeight = 11.0 * 72.0
+        let pageRect = CGRect(x: 0, y: 0, width: pageWidth, height: pageHeight)
+        
+        // Define colors to be used consistently across all pages
+        let backgroundColor = UIColor(red: 0.98, green: 0.96, blue: 0.94, alpha: 1.0)
+        let primaryTextColor = UIColor(red: 0.25, green: 0.40, blue: 0.55, alpha: 1.0) // Dark blue
+        let secondaryTextColor = UIColor(red: 0.92, green: 0.55, blue: 0.45, alpha: 1.0) // Coral
+        let tableHeaderColor = UIColor(red: 0.92, green: 0.55, blue: 0.45, alpha: 1.0) // Coral
+        
+        let renderer = UIGraphicsPDFRenderer(bounds: pageRect)
+        
+        // Generate PDF data
+        let data = renderer.pdfData { context in
+            context.beginPage()
+            
+            // Draw background
+            backgroundColor.setFill()
+            UIRectFill(pageRect)
+            
+            // Draw dotted border
+            let borderRect = CGRect(x: 60, y: 60, width: pageWidth - 120, height: pageHeight - 120)
+            let borderPath = UIBezierPath(rect: borderRect)
+            borderPath.lineWidth = 1.0
+            
+            // Create a dotted pattern
+            context.cgContext.setLineDash(phase: 0, lengths: [3, 3])
+            context.cgContext.setStrokeColor(UIColor.lightGray.cgColor)
+            context.cgContext.addPath(borderPath.cgPath)
+            context.cgContext.strokePath()
+            
+            // Reset line dash
+            context.cgContext.setLineDash(phase: 0, lengths: [])
+            
+            // Draw baby icon
+            if let babyImage = UIImage(systemName: "face.smiling.fill") {
+                let iconSize: CGFloat = 80
+                let iconRect = CGRect(
+                    x: pageWidth - 150,
+                    y: 100,
+                    width: iconSize,
+                    height: iconSize
+                )
+                
+                // Create a circular background
+                context.cgContext.setFillColor(UIColor(red: 1.0, green: 0.9, blue: 0.85, alpha: 1.0).cgColor)
+                context.cgContext.fillEllipse(in: iconRect)
+                
+                // Draw the icon
+                babyImage.withTintColor(primaryTextColor).draw(in: iconRect.insetBy(dx: 15, dy: 15))
+            }
+            
+            // Add title
+            let titleText = "VACCINATION"
+            let titleFont = UIFont.systemFont(ofSize: 36, weight: .bold)
+            let titleAttributes: [NSAttributedString.Key: Any] = [
+                .font: titleFont,
+                .foregroundColor: primaryTextColor
+            ]
+            
+            titleText.draw(at: CGPoint(x: 100, y: 100), withAttributes: titleAttributes)
+            
+            // Add subtitle
+            let subtitleText = "RECORD"
+            let subtitleFont = UIFont.systemFont(ofSize: 36, weight: .bold)
+            let subtitleAttributes: [NSAttributedString.Key: Any] = [
+                .font: subtitleFont,
+                .foregroundColor: primaryTextColor
+            ]
+            
+            subtitleText.draw(at: CGPoint(x: 100, y: 150), withAttributes: subtitleAttributes)
+            
+            // Add generic information
+            var currentY: CGFloat = 250
+            
+            // Name (Generic)
+            drawInfoField(label: "Name", value: "Child's Name", y: currentY, primaryColor: primaryTextColor, secondaryColor: secondaryTextColor)
+            currentY += 50
+            
+            // Date of Birth (Generic)
+            drawInfoField(label: "Date of Birth", value: "Date of Birth", y: currentY, primaryColor: primaryTextColor, secondaryColor: secondaryTextColor)
+            currentY += 50
+            
+            // Gender (Generic)
+            drawInfoField(label: "Gender", value: "Gender", y: currentY, primaryColor: primaryTextColor, secondaryColor: secondaryTextColor)
+            currentY += 50
+            
+            // Parent (Generic)
+            let parentName = UserDefaults.standard.string(forKey: "parentName") ?? "Parent"
+            drawInfoField(label: "Parent", value: parentName, y: currentY, primaryColor: primaryTextColor, secondaryColor: secondaryTextColor)
+            currentY += 70
+            
+            // Draw vaccination table
+            drawVaccinationTable(context: context, startY: currentY, pageWidth: pageWidth, 
+                                backgroundColor: backgroundColor, headerColor: tableHeaderColor, 
+                                textColor: primaryTextColor)
+        }
+        
+        // Create a temporary file URL to store the PDF
+        let temporaryDirectoryURL = FileManager.default.temporaryDirectory
+        let temporaryFileURL = temporaryDirectoryURL.appendingPathComponent("Vaccination_Record.pdf")
+        
+        // Write PDF data to file
+        do {
+            try data.write(to: temporaryFileURL)
+            
+            // Share the PDF file
+            let activityViewController = UIActivityViewController(
+                activityItems: [temporaryFileURL],
+                applicationActivities: nil
+            )
+            
+            // Configure the activity view controller
+            activityViewController.excludedActivityTypes = [
+                .assignToContact,
+                .postToFlickr,
+                .postToVimeo,
+                .postToWeibo,
+                .saveToCameraRoll
+            ]
+            
+            // For iPad, set the popover presentation controller
+            if let popoverController = activityViewController.popoverPresentationController {
+                popoverController.barButtonItem = navigationItem.rightBarButtonItem
+            }
+            
+            // Present the activity view controller
+            present(activityViewController, animated: true)
+        } catch {
+            print("Error writing PDF: \(error)")
+            
+            let alert = UIAlertController(
+                title: "Error",
+                message: "Could not generate vaccination record. Please try again.",
+                preferredStyle: .alert
+            )
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
             present(alert, animated: true)
         }
     }
     
-    // MARK: - Date Picker
-    private func showDatePicker(for vaccineWithStatus: VaccineWithStatus) {
-        let alert = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
-        
-        let titleLabel = UILabel()
-        titleLabel.text = "Select Vaccination Date"
-        titleLabel.font = .systemFont(ofSize: 17, weight: .bold)
-        titleLabel.textAlignment = .center
-        titleLabel.translatesAutoresizingMaskIntoConstraints = false
-        
-        let datePicker = UIDatePicker()
-        datePicker.datePickerMode = .date
-        datePicker.preferredDatePickerStyle = .wheels
-        if let existingDate = vaccineWithStatus.administeredDate {
-            datePicker.date = existingDate
-        }
-        
-        alert.view.addSubview(titleLabel)
-        alert.view.addSubview(datePicker)
-        datePicker.translatesAutoresizingMaskIntoConstraints = false
-        
-        NSLayoutConstraint.activate([
-            titleLabel.topAnchor.constraint(equalTo: alert.view.topAnchor, constant: 8),
-            titleLabel.leadingAnchor.constraint(equalTo: alert.view.leadingAnchor, constant: 16),
-            titleLabel.trailingAnchor.constraint(equalTo: alert.view.trailingAnchor, constant: -16),
-            
-            datePicker.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 8),
-            datePicker.leadingAnchor.constraint(equalTo: alert.view.leadingAnchor, constant: 8),
-            datePicker.trailingAnchor.constraint(equalTo: alert.view.trailingAnchor, constant: -8),
-            datePicker.heightAnchor.constraint(equalToConstant: 200)
-        ])
-        
-        let constraintHeight = NSLayoutConstraint(
-            item: alert.view!,
-            attribute: .height,
-            relatedBy: .equal,
-            toItem: nil,
-            attribute: .notAnAttribute,
-            multiplier: 1,
-            constant: 320
-        )
-        alert.view.addConstraint(constraintHeight)
-        
-        alert.addAction(UIAlertAction(title: "Save", style: .default) { [weak self] _ in
-            self?.saveVaccineDate(datePicker.date, for: vaccineWithStatus)
-        })
-        
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        
-        present(alert, animated: true)
-    }
-    
-    // MARK: - PDF Export
-    @objc private func downloadTapped() {
-        guard !administeredVaccines.isEmpty else {
-            showAlert(title: "No Data", message: "There are no vaccination records to export")
-            return
-        }
-        
-        guard let pdfData = generatePDF() else {
-            showAlert(title: "Error", message: "Could not generate PDF")
-            return
-        }
-        
-        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("Vaccination_Records.pdf")
-        try? pdfData.write(to: tempURL)
-        
-        let activityViewController = UIActivityViewController(
-            activityItems: [tempURL],
-            applicationActivities: nil
-        )
-        
-        if let popoverController = activityViewController.popoverPresentationController {
-            popoverController.barButtonItem = navigationItem.rightBarButtonItem
-        }
-        present(activityViewController, animated: true)
-    }
-    
-    private func generatePDF() -> Data? {
-        let pdfMetaData = [
-            kCGPDFContextCreator: "Vaccination Tracker",
-            kCGPDFContextAuthor: "Your App Name",
-            kCGPDFContextTitle: "Vaccination Records"
+    // Helper method to draw an information field with label and value
+    private func drawInfoField(label: String, value: String, y: CGFloat, primaryColor: UIColor, secondaryColor: UIColor) {
+        let labelFont = UIFont.systemFont(ofSize: 16, weight: .bold)
+        let labelAttributes: [NSAttributedString.Key: Any] = [
+            .font: labelFont,
+            .foregroundColor: primaryColor
         ]
-        let format = UIGraphicsPDFRendererFormat()
-        format.documentInfo = pdfMetaData as [String: Any]
         
-        let pageWidth: CGFloat = 8.5 * 72.0
-        let pageHeight: CGFloat = 11 * 72.0
+        let valueFont = UIFont.systemFont(ofSize: 20, weight: .regular)
+        let valueAttributes: [NSAttributedString.Key: Any] = [
+            .font: valueFont,
+            .foregroundColor: secondaryColor
+        ]
+        
+        // Draw label
+        label.draw(at: CGPoint(x: 100, y: y), withAttributes: labelAttributes)
+        
+        // Draw value
+        value.draw(at: CGPoint(x: 220, y: y), withAttributes: valueAttributes)
+    }
+    
+    // Generate a personalized vaccination card with backend data
+    private func generatePersonalizedVaccinationCard(babyData: BabyData, parentData: ParentData) {
+        // Create PDF renderer with A4 portrait size
+        let pageWidth = 8.5 * 72.0
+        let pageHeight = 11.0 * 72.0
         let pageRect = CGRect(x: 0, y: 0, width: pageWidth, height: pageHeight)
         
-        let renderer = UIGraphicsPDFRenderer(bounds: pageRect, format: format)
+        // Define colors to be used consistently across all pages
+        let backgroundColor = UIColor(red: 0.98, green: 0.96, blue: 0.94, alpha: 1.0)
+        let primaryTextColor = UIColor(red: 0.25, green: 0.40, blue: 0.55, alpha: 1.0) // Dark blue
+        let secondaryTextColor = UIColor(red: 0.92, green: 0.55, blue: 0.45, alpha: 1.0) // Coral
+        let tableHeaderColor = UIColor(red: 0.92, green: 0.55, blue: 0.45, alpha: 1.0) // Coral
         
+        let renderer = UIGraphicsPDFRenderer(bounds: pageRect)
+        
+        // Generate PDF data
         let data = renderer.pdfData { context in
             context.beginPage()
             
-            let titleAttributes = [
-                NSAttributedString.Key.font: UIFont.boldSystemFont(ofSize: 24)
-            ]
-            let dateAttributes = [
-                NSAttributedString.Key.font: UIFont.systemFont(ofSize: 12)
-            ]
+            // Draw background
+            backgroundColor.setFill()
+            UIRectFill(pageRect)
             
-            let title = "Vaccination Records"
-            let titleSize = title.size(withAttributes: titleAttributes)
-            let titleRect = CGRect(
-                x: (pageWidth - titleSize.width) / 2,
-                y: 50,
-                width: titleSize.width,
-                height: titleSize.height
-            )
-            title.draw(in: titleRect, withAttributes: titleAttributes)
+            // Draw dotted border
+            let borderRect = CGRect(x: 60, y: 60, width: pageWidth - 120, height: pageHeight - 120)
+            let borderPath = UIBezierPath(rect: borderRect)
+            borderPath.lineWidth = 1.0
             
-            let dateFormatter = DateFormatter()
-            dateFormatter.dateStyle = .long
-            let currentDate = "Generated on: \(dateFormatter.string(from: Date()))"
-            currentDate.draw(
-                at: CGPoint(x: 50, y: titleRect.maxY + 20),
-                withAttributes: dateAttributes
-            )
+            // Create a dotted pattern
+            context.cgContext.setLineDash(phase: 0, lengths: [3, 3])
+            context.cgContext.setStrokeColor(UIColor.lightGray.cgColor)
+            context.cgContext.addPath(borderPath.cgPath)
+            context.cgContext.strokePath()
             
-            var yPosition: CGFloat = titleRect.maxY + 60
+            // Reset line dash
+            context.cgContext.setLineDash(phase: 0, lengths: [])
             
-            for ageGroup in ageGroups {
-                if let vaccinesInGroup = groupedVaccines[ageGroup], !vaccinesInGroup.isEmpty {
-                    let stageAttributes = [
-                        NSAttributedString.Key.font: UIFont.boldSystemFont(ofSize: 16)
-                    ]
-                    ageGroup.draw(
-                        at: CGPoint(x: 50, y: yPosition),
-                        withAttributes: stageAttributes
-                    )
-                    yPosition += 25
-                    
-                    for vaccineWithStatus in vaccinesInGroup {
-                        let vaccineAttributes = [
-                            NSAttributedString.Key.font: UIFont.systemFont(ofSize: 14)
-                        ]
-                        
-                        vaccineWithStatus.vaccine.name.draw(
-                            at: CGPoint(x: 70, y: yPosition),
-                            withAttributes: vaccineAttributes
-                        )
-                        
-                        if let date = vaccineWithStatus.administeredDate {
-                            let dateFormatter = DateFormatter()
-                            dateFormatter.dateStyle = .medium
-                            let dateString = dateFormatter.string(from: date)
-                            dateString.draw(
-                                at: CGPoint(x: pageWidth - 200, y: yPosition),
-                                withAttributes: vaccineAttributes
-                            )
-                        } else {
-                            "Not administered".draw(
-                                at: CGPoint(x: pageWidth - 200, y: yPosition),
-                                withAttributes: vaccineAttributes
-                            )
-                        }
-                        
-                        yPosition += 20
-                    }
-                    yPosition += 10
-                }
+            // Draw baby icon
+            if let babyImage = UIImage(systemName: "face.smiling.fill") {
+                let iconSize: CGFloat = 80
+                let iconRect = CGRect(
+                    x: pageWidth - 150,
+                    y: 100,
+                    width: iconSize,
+                    height: iconSize
+                )
                 
-                if yPosition > pageHeight - 100 {
-                    context.beginPage()
-                    yPosition = 50
+                // Create a circular background
+                context.cgContext.setFillColor(UIColor(red: 1.0, green: 0.9, blue: 0.85, alpha: 1.0).cgColor)
+                context.cgContext.fillEllipse(in: iconRect)
+                
+                // Draw the icon
+                babyImage.withTintColor(primaryTextColor).draw(in: iconRect.insetBy(dx: 15, dy: 15))
+            }
+            
+            // Add title
+            let titleText = "VACCINATION"
+            let titleFont = UIFont.systemFont(ofSize: 36, weight: .bold)
+            let titleAttributes: [NSAttributedString.Key: Any] = [
+                .font: titleFont,
+                .foregroundColor: primaryTextColor
+            ]
+            
+            titleText.draw(at: CGPoint(x: 100, y: 100), withAttributes: titleAttributes)
+            
+            // Add subtitle
+            let subtitleText = "RECORD"
+            let subtitleFont = UIFont.systemFont(ofSize: 36, weight: .bold)
+            let subtitleAttributes: [NSAttributedString.Key: Any] = [
+                .font: subtitleFont,
+                .foregroundColor: primaryTextColor
+            ]
+            
+            subtitleText.draw(at: CGPoint(x: 100, y: 150), withAttributes: subtitleAttributes)
+            
+            // Add baby information
+            var currentY: CGFloat = 250
+            
+            // Name
+            drawInfoField(label: "Name", value: babyData.name, y: currentY, primaryColor: primaryTextColor, secondaryColor: secondaryTextColor)
+            currentY += 50
+            
+            // Date of Birth
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateFormat = "ddMMyyyy"
+            if let birthDate = dateFormatter.date(from: babyData.dateOfBirth) {
+                dateFormatter.dateStyle = .long
+                let birthDateString = dateFormatter.string(from: birthDate)
+                drawInfoField(label: "Date of Birth", value: birthDateString, y: currentY, primaryColor: primaryTextColor, secondaryColor: secondaryTextColor)
+            } else {
+                drawInfoField(label: "Date of Birth", value: babyData.dateOfBirth, y: currentY, primaryColor: primaryTextColor, secondaryColor: secondaryTextColor)
+            }
+            currentY += 50
+            
+            // Gender
+            let genderString = babyData.gender.lowercased() == "male" ? "Male" : "Female"
+            drawInfoField(label: "Gender", value: genderString, y: currentY, primaryColor: primaryTextColor, secondaryColor: secondaryTextColor)
+            currentY += 50
+            
+            // Parent
+            drawInfoField(label: "Parent", value: parentData.name, y: currentY, primaryColor: primaryTextColor, secondaryColor: secondaryTextColor)
+            currentY += 70
+            
+            // Draw vaccination table
+            drawVaccinationTable(context: context, startY: currentY, pageWidth: pageWidth, 
+                                backgroundColor: backgroundColor, headerColor: tableHeaderColor, 
+                                textColor: primaryTextColor)
+        }
+        
+        // Create a temporary file URL to store the PDF
+        let temporaryDirectoryURL = FileManager.default.temporaryDirectory
+        let temporaryFileURL = temporaryDirectoryURL.appendingPathComponent("\(babyData.name)_Vaccination_Record.pdf")
+        
+        // Write PDF data to file
+        do {
+            try data.write(to: temporaryFileURL)
+            
+            // Share the PDF file
+            let activityViewController = UIActivityViewController(
+                activityItems: [temporaryFileURL],
+                applicationActivities: nil
+            )
+            
+            // Configure the activity view controller
+            activityViewController.excludedActivityTypes = [
+                .assignToContact,
+                .postToFlickr,
+                .postToVimeo,
+                .postToWeibo,
+                .saveToCameraRoll
+            ]
+            
+            // For iPad, set the popover presentation controller
+            if let popoverController = activityViewController.popoverPresentationController {
+                popoverController.barButtonItem = navigationItem.rightBarButtonItem
+            }
+            
+            // Present the activity view controller
+            present(activityViewController, animated: true)
+        } catch {
+            print("Error writing PDF: \(error)")
+            
+            let alert = UIAlertController(
+                title: "Error",
+                message: "Could not generate vaccination record. Please try again.",
+                preferredStyle: .alert
+            )
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            present(alert, animated: true)
+        }
+    }
+    
+    // Helper method to draw the vaccination table
+    private func drawVaccinationTable(context: UIGraphicsPDFRendererContext, startY: CGFloat, pageWidth: CGFloat, 
+                                     backgroundColor: UIColor, headerColor: UIColor, textColor: UIColor) {
+        let tableWidth = pageWidth - 200
+        let tableX = 100.0
+        var currentY = startY
+        
+        // Draw table header
+        let headerHeight = 40.0
+        let headerRect = CGRect(x: tableX, y: currentY, width: tableWidth, height: headerHeight)
+        headerColor.setFill()
+        UIRectFill(headerRect)
+        
+        // Draw header text
+        let nameHeaderWidth = tableWidth * 0.6
+        let dateHeaderWidth = tableWidth * 0.4
+        
+        let headerFont = UIFont.systemFont(ofSize: 16, weight: .bold)
+        let headerAttributes: [NSAttributedString.Key: Any] = [
+            .font: headerFont,
+            .foregroundColor: UIColor.white
+        ]
+        
+        "Vaccine Name".draw(at: CGPoint(x: tableX + 10, y: currentY + 12), withAttributes: headerAttributes)
+        "Administered Date".draw(at: CGPoint(x: tableX + nameHeaderWidth + 10, y: currentY + 12), withAttributes: headerAttributes)
+        
+        // Draw header divider
+        context.cgContext.setStrokeColor(UIColor.white.cgColor)
+        context.cgContext.setLineWidth(1.0)
+        context.cgContext.move(to: CGPoint(x: tableX + nameHeaderWidth, y: currentY))
+        context.cgContext.addLine(to: CGPoint(x: tableX + nameHeaderWidth, y: currentY + headerHeight))
+        context.cgContext.strokePath()
+        
+        currentY += headerHeight
+        
+        // Draw rows
+        let rowHeight = 35.0
+        let rowFont = UIFont.systemFont(ofSize: 14)
+        let rowAttributes: [NSAttributedString.Key: Any] = [
+            .font: rowFont,
+            .foregroundColor: textColor
+        ]
+        
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateStyle = .long
+        
+        for vaccine in administeredVaccines {
+            // Draw row background
+            let rowRect = CGRect(x: tableX, y: currentY, width: tableWidth, height: rowHeight)
+            backgroundColor.setFill()
+            UIRectFill(rowRect)
+            
+            // Draw border
+            context.cgContext.setStrokeColor(UIColor.lightGray.cgColor)
+            context.cgContext.setLineWidth(0.5)
+            context.cgContext.stroke(rowRect)
+            
+            // Draw vertical divider
+            context.cgContext.move(to: CGPoint(x: tableX + nameHeaderWidth, y: currentY))
+            context.cgContext.addLine(to: CGPoint(x: tableX + nameHeaderWidth, y: currentY + rowHeight))
+            context.cgContext.strokePath()
+            
+            // Get vaccine name from cache
+            let vaccineId = vaccine.vaccineId.uuidString
+            let vaccineName = vaccines[vaccineId]?.name ?? "Vaccine #\(String(vaccineId.prefix(8)))"
+            
+            // Draw vaccine name
+            vaccineName.draw(at: CGPoint(x: tableX + 10, y: currentY + 12), withAttributes: rowAttributes)
+            
+            // Draw administered date
+            let dateString = dateFormatter.string(from: vaccine.administeredDate)
+            dateString.draw(at: CGPoint(x: tableX + nameHeaderWidth + 10, y: currentY + 12), withAttributes: rowAttributes)
+            
+            currentY += rowHeight
+            
+            // Check if we need a new page
+            if currentY > context.pdfContextBounds.height - 100 {
+                context.beginPage()
+                
+                // Draw consistent background color on new page
+                backgroundColor.setFill()
+                UIRectFill(context.pdfContextBounds)
+                
+                // Draw dotted border on new page
+                let borderRect = CGRect(x: 60, y: 60, 
+                                      width: context.pdfContextBounds.width - 120, 
+                                      height: context.pdfContextBounds.height - 120)
+                let borderPath = UIBezierPath(rect: borderRect)
+                borderPath.lineWidth = 1.0
+                
+                // Create a dotted pattern
+                context.cgContext.setLineDash(phase: 0, lengths: [3, 3])
+                context.cgContext.setStrokeColor(UIColor.lightGray.cgColor)
+                context.cgContext.addPath(borderPath.cgPath)
+                context.cgContext.strokePath()
+                
+                // Reset line dash
+                context.cgContext.setLineDash(phase: 0, lengths: [])
+                
+                currentY = 50
+                
+                // Redraw the header on the new page
+                let headerRect = CGRect(x: tableX, y: currentY, width: tableWidth, height: headerHeight)
+                headerColor.setFill()
+                UIRectFill(headerRect)
+                
+                "Vaccine Name".draw(at: CGPoint(x: tableX + 10, y: currentY + 12), withAttributes: headerAttributes)
+                "Administered Date".draw(at: CGPoint(x: tableX + nameHeaderWidth + 10, y: currentY + 12), withAttributes: headerAttributes)
+                
+                context.cgContext.setStrokeColor(UIColor.white.cgColor)
+                context.cgContext.setLineWidth(1.0)
+                context.cgContext.move(to: CGPoint(x: tableX + nameHeaderWidth, y: currentY))
+                context.cgContext.addLine(to: CGPoint(x: tableX + nameHeaderWidth, y: currentY + headerHeight))
+                context.cgContext.strokePath()
+                
+                currentY += headerHeight
+            }
+        }
+    }
+    
+    // MARK: - Date Change Functionality
+    
+    /// Shows date change options when the three-dot menu is tapped
+    func showDateChangeOptions(for vaccine: VaccineAdministered) {
+        // Create and present the date picker controller
+        let datePickerVC = DatePickerViewController()
+        datePickerVC.modalPresentationStyle = .pageSheet
+        datePickerVC.initialDate = vaccine.administeredDate
+        
+        // Set callback for when a date is selected
+        datePickerVC.dateSelected = { [weak self] newDate in
+            // Handle the date selection
+            Task {
+                do {
+                    // Get the schedule ID for this administered vaccine
+                    try await SupabaseVaccineManager.shared.updateAdministeredDate(
+                        scheduleId: vaccine.scheduleId.uuidString,
+                        newDate: newDate
+                    )
+                    
+                    // Refresh the view
+                    await MainActor.run {
+                        self?.loadVaccines()
+                    }
+                } catch {
+                    print("Failed to update date: \(error)")
                 }
             }
         }
         
-        return data
+        present(datePickerVC, animated: true)
     }
     
-    // MARK: - Utility Methods
-    private func showAlert(title: String, message: String) {
-        let alert = UIAlertController(
-            title: title,
-            message: message,
-            preferredStyle: .alert
-        )
-        alert.addAction(UIAlertAction(title: "OK", style: .default))
-        present(alert, animated: true)
-    }
+    // MARK: - Vaccine Cell Delegate
     
-    private func showLoadingIndicator() {
-        // Add activity indicator if it doesn't exist
-        if view.viewWithTag(999) == nil {
-            let activityIndicator = UIActivityIndicatorView(style: .large)
-            activityIndicator.translatesAutoresizingMaskIntoConstraints = false
-            activityIndicator.startAnimating()
-            activityIndicator.tag = 999
-            
-            view.addSubview(activityIndicator)
-            
-            NSLayoutConstraint.activate([
-                activityIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-                activityIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor)
-            ])
-        }
-    }
-    
-    private func hideLoadingIndicator() {
-        // Remove activity indicator
-        if let activityIndicator = view.viewWithTag(999) as? UIActivityIndicatorView {
-            activityIndicator.stopAnimating()
-            activityIndicator.removeFromSuperview()
-        }
-    }
-    
-    private func showSuccessMessage(_ message: String) {
-        showAlert(title: "Success", message: message)
-    }
-    
-    private func showErrorMessage(_ message: String) {
-        showAlert(title: "Error", message: message)
+    func showOptionsForVaccine(_ vaccine: VaccineAdministered) {
+        showDateChangeOptions(for: vaccine)
     }
 }
 
-// MARK: - VaccineTableViewCell
-class VaccineTableViewCell: UITableViewCell {
-    private let vaccineLabel = UILabel()
+// MARK: - Vaccine Cell Class
+class AdministeredVaccineCell: UITableViewCell {
+    // Card container view - maintains the iOS native look
+    private let cardView = UIView()
+    
+    // Content labels
+    private let nameLabel = UILabel()
     private let dateLabel = UILabel()
-    private let optionsButton = UIButton()
-    var onOptionsButtonTapped: (() -> Void)?
+    
+    // Icon view
+    private let iconImageView = UIImageView()
+    
+    // Menu button
+    private let menuButton = UIButton(type: .system)
+    
+    // Store the administered vaccine for menu actions
+    var vaccine: VaccineAdministered?
+    
+    // Delegate to handle menu actions
+    weak var delegate: SavedVaccineViewController?
     
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
@@ -675,58 +1036,287 @@ class VaccineTableViewCell: UITableViewCell {
     }
     
     private func setupUI() {
-        vaccineLabel.font = .systemFont(ofSize: 17, weight: .regular)
-        vaccineLabel.translatesAutoresizingMaskIntoConstraints = false
-        contentView.addSubview(vaccineLabel)
+        // Configure cell background
+        backgroundColor = .clear
+        selectionStyle = .none
+        contentView.backgroundColor = .clear
         
-        dateLabel.font = .systemFont(ofSize: 14)
-        dateLabel.textColor = .systemGray
+        // Configure card view
+        cardView.backgroundColor = .white
+        cardView.layer.cornerRadius = 12
+        cardView.translatesAutoresizingMaskIntoConstraints = false
+        contentView.addSubview(cardView)
+        
+        // Configure icon image view
+        iconImageView.contentMode = .scaleAspectFit
+        iconImageView.tintColor = .systemBlue
+        iconImageView.image = UIImage(systemName: "syringe.fill")
+        iconImageView.translatesAutoresizingMaskIntoConstraints = false
+        cardView.addSubview(iconImageView)
+        
+        // Configure name label
+        nameLabel.font = UIFont.systemFont(ofSize: 17, weight: .semibold)
+        nameLabel.textColor = .label
+        nameLabel.numberOfLines = 0
+        nameLabel.translatesAutoresizingMaskIntoConstraints = false
+        cardView.addSubview(nameLabel)
+        
+        // Configure date label
+        dateLabel.font = UIFont.systemFont(ofSize: 14, weight: .regular)
+        dateLabel.textColor = .secondaryLabel
+        dateLabel.numberOfLines = 1
         dateLabel.translatesAutoresizingMaskIntoConstraints = false
-        contentView.addSubview(dateLabel)
+        cardView.addSubview(dateLabel)
         
-        optionsButton.setImage(UIImage(systemName: "ellipsis.circle"), for: .normal)
-        optionsButton.tintColor = .systemBlue
-        optionsButton.addTarget(self, action: #selector(optionsButtonTapped), for: .touchUpInside)
-        optionsButton.translatesAutoresizingMaskIntoConstraints = false
-        contentView.addSubview(optionsButton)
+        // Configure menu button
+        menuButton.setImage(UIImage(systemName: "ellipsis"), for: .normal)
+        menuButton.tintColor = .systemGray3
+        menuButton.translatesAutoresizingMaskIntoConstraints = false
+        menuButton.addTarget(self, action: #selector(showMenu), for: .touchUpInside)
+        cardView.addSubview(menuButton)
         
+        // Set constraints for all subviews
         NSLayoutConstraint.activate([
-            vaccineLabel.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 12),
-            vaccineLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-            vaccineLabel.trailingAnchor.constraint(equalTo: optionsButton.leadingAnchor, constant: -8),
+            // Card view constraints
+            cardView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 4),
+            cardView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            cardView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+            cardView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -4),
             
-            dateLabel.topAnchor.constraint(equalTo: vaccineLabel.bottomAnchor, constant: 4),
-            dateLabel.leadingAnchor.constraint(equalTo: vaccineLabel.leadingAnchor),
-            dateLabel.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -12),
+            // Icon image view constraints
+            iconImageView.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 16),
+            iconImageView.centerYAnchor.constraint(equalTo: cardView.centerYAnchor),
+            iconImageView.widthAnchor.constraint(equalToConstant: 24),
+            iconImageView.heightAnchor.constraint(equalToConstant: 24),
             
-            optionsButton.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
-            optionsButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-            optionsButton.widthAnchor.constraint(equalToConstant: 32),
-            optionsButton.heightAnchor.constraint(equalToConstant: 32)
+            // Name label constraints
+            nameLabel.topAnchor.constraint(equalTo: cardView.topAnchor, constant: 12),
+            nameLabel.leadingAnchor.constraint(equalTo: iconImageView.trailingAnchor, constant: 12),
+            nameLabel.trailingAnchor.constraint(equalTo: menuButton.leadingAnchor, constant: -12),
+            
+            // Date label constraints
+            dateLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 4),
+            dateLabel.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
+            dateLabel.trailingAnchor.constraint(equalTo: nameLabel.trailingAnchor),
+            dateLabel.bottomAnchor.constraint(equalTo: cardView.bottomAnchor, constant: -12),
+            
+            // Menu button constraints
+            menuButton.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -12),
+            menuButton.centerYAnchor.constraint(equalTo: cardView.centerYAnchor),
+            menuButton.widthAnchor.constraint(equalToConstant: 32),
+            menuButton.heightAnchor.constraint(equalToConstant: 32)
         ])
     }
     
-    // MARK: - Actions
-    @objc private func optionsButtonTapped() {
-        onOptionsButtonTapped?()
+    @objc private func showMenu() {
+        guard let vaccine = vaccine, let delegate = delegate else { return }
+        
+        delegate.showOptionsForVaccine(vaccine)
     }
     
-    // MARK: - Configuration
-    func configure(vaccineName: String, date: String? = nil) {
-        vaccineLabel.text = vaccineName
-        setDate(date)
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        nameLabel.text = nil
+        dateLabel.text = nil
+        vaccine = nil
     }
     
-    func setDate(_ dateString: String?) {
-        if let dateString = dateString, dateString != "Not administered yet" {
-            dateLabel.text = "Administered on: \(dateString)"
-            dateLabel.isHidden = false
-        } else if let dateString = dateString {
-            dateLabel.text = dateString
-            dateLabel.isHidden = false
-        } else {
-            dateLabel.text = nil
-            dateLabel.isHidden = true
-        }
+    func configure(with administeredVaccine: VaccineAdministered, vaccine: Vaccine?) {
+        // Store the vaccine for menu actions
+        self.vaccine = administeredVaccine
+        
+        // Set up vaccine name
+        nameLabel.text = vaccine?.name ?? "Unknown Vaccine"
+        
+        // Format the date
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateStyle = .medium
+        dateLabel.text = "Administered on \(dateFormatter.string(from: administeredVaccine.administeredDate))"
+        
+        // Always use syringe icon with systemBlue color
+        iconImageView.image = UIImage(systemName: "syringe.fill")
+        iconImageView.tintColor = .systemBlue
+    }
+}
+
+// MARK: - Date Picker View Controller
+class DatePickerViewController: UIViewController {
+    
+    // Date picker to select new date
+    private let datePicker = UIDatePicker()
+    
+    // Callback when date is selected
+    var dateSelected: ((Date) -> Void)?
+    
+    // Initial date to show
+    var initialDate: Date = Date()
+    
+    // Maximum date (defaults to today)
+    var maximumDate: Date = Date()
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        setupUI()
+    }
+    
+    private func setupUI() {
+        view.backgroundColor = .systemBackground
+        
+        // Container view for better styling
+        let containerView = UIView()
+        containerView.backgroundColor = .systemBackground
+        containerView.layer.cornerRadius = 12
+        containerView.clipsToBounds = true
+        containerView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(containerView)
+        
+        // Title label
+        let titleLabel = UILabel()
+        titleLabel.text = "Change Administration Date"
+        titleLabel.textAlignment = .center
+        titleLabel.font = UIFont.systemFont(ofSize: 17, weight: .semibold)
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        containerView.addSubview(titleLabel)
+        
+        // Date picker setup
+        datePicker.datePickerMode = .date
+        datePicker.preferredDatePickerStyle = .wheels
+        datePicker.date = initialDate
+        datePicker.maximumDate = maximumDate
+        datePicker.translatesAutoresizingMaskIntoConstraints = false
+        containerView.addSubview(datePicker)
+        
+        // Done button
+        let doneButton = UIButton(type: .system)
+        doneButton.setTitle("Done", style: .body, state: .normal)
+        doneButton.titleLabel?.font = UIFont.systemFont(ofSize: 17, weight: .semibold)
+        doneButton.setTitleColor(.systemBlue, for: .normal)
+        doneButton.addTarget(self, action: #selector(doneButtonTapped), for: .touchUpInside)
+        doneButton.translatesAutoresizingMaskIntoConstraints = false
+        containerView.addSubview(doneButton)
+        
+        // Cancel button
+        let cancelButton = UIButton(type: .system)
+        cancelButton.setTitle("Cancel", style: .body, state: .normal)
+        cancelButton.titleLabel?.font = UIFont.systemFont(ofSize: 17, weight: .regular)
+        cancelButton.setTitleColor(.systemBlue, for: .normal)
+        cancelButton.addTarget(self, action: #selector(cancelButtonTapped), for: .touchUpInside)
+        cancelButton.translatesAutoresizingMaskIntoConstraints = false
+        containerView.addSubview(cancelButton)
+        
+        // Separator line
+        let separatorView = UIView()
+        separatorView.backgroundColor = .systemGray5
+        separatorView.translatesAutoresizingMaskIntoConstraints = false
+        containerView.addSubview(separatorView)
+        
+        // Layout constraints
+        NSLayoutConstraint.activate([
+            containerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            containerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            containerView.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            
+            titleLabel.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 16),
+            titleLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 16),
+            titleLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
+            
+            separatorView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 16),
+            separatorView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+            separatorView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
+            separatorView.heightAnchor.constraint(equalToConstant: 0.5),
+            
+            datePicker.topAnchor.constraint(equalTo: separatorView.bottomAnchor),
+            datePicker.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+            datePicker.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
+            datePicker.heightAnchor.constraint(equalToConstant: 216),
+            
+            doneButton.topAnchor.constraint(equalTo: datePicker.bottomAnchor, constant: 16),
+            doneButton.centerXAnchor.constraint(equalTo: containerView.centerXAnchor),
+            doneButton.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -16),
+            
+            cancelButton.topAnchor.constraint(equalTo: datePicker.bottomAnchor, constant: 16),
+            cancelButton.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
+            cancelButton.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -16)
+        ])
+    }
+    
+    @objc private func doneButtonTapped() {
+        dateSelected?(datePicker.date)
+        dismiss(animated: true)
+    }
+    
+    @objc private func cancelButtonTapped() {
+        dismiss(animated: true)
+    }
+}
+
+// Add extension for button styling
+extension UIButton {
+    func setTitle(_ title: String, style: UIFont.TextStyle, state: UIControl.State) {
+        setTitle(title, for: state)
+        titleLabel?.font = UIFont.preferredFont(forTextStyle: style)
+    }
+}
+
+// MARK: - Model Extensions
+extension Vaccine {
+    var targetAgeRange: String? {
+        let minMonth = startWeek / 4
+        let maxMonth = endWeek / 4
+        return "\(minMonth)-\(maxMonth) months"
+    }
+}
+
+// MARK: - UIAlertController Extension for Date Picker
+extension UIAlertController {
+    /// Adds a date picker to an alert controller
+    ///
+    /// - Parameters:
+    ///   - mode: The mode of the date picker (e.g., date, time, dateAndTime)
+    ///   - date: The initial date to display
+    ///   - minimumDate: The minimum selectable date (or nil for no minimum)
+    ///   - maximumDate: The maximum selectable date (or nil for no maximum)
+    ///   - action: The action to perform when a date is selected
+    func addDatePicker(
+        mode: UIDatePicker.Mode, date: Date, minimumDate: Date? = nil, maximumDate: Date? = nil, action: @escaping (Date) -> Void) {
+        // Create a container view for the date picker
+        let containerView = UIView()
+        containerView.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Create date picker
+        let datePicker = UIDatePicker()
+        datePicker.datePickerMode = mode
+        datePicker.preferredDatePickerStyle = .wheels
+        datePicker.date = date
+        datePicker.minimumDate = minimumDate
+        datePicker.maximumDate = maximumDate
+        datePicker.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Add to container
+        containerView.addSubview(datePicker)
+        
+        // Set up constraints
+        NSLayoutConstraint.activate([
+            datePicker.topAnchor.constraint(equalTo: containerView.topAnchor),
+            datePicker.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
+            datePicker.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+            datePicker.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
+            datePicker.heightAnchor.constraint(equalToConstant: 216) // Standard height for date picker
+        ])
+        
+        // Set up alert view
+        self.view.addSubview(containerView)
+        
+        // Position container view to be centered and sized correctly
+        NSLayoutConstraint.activate([
+            containerView.topAnchor.constraint(equalTo: self.view.topAnchor, constant: 50),
+            containerView.leadingAnchor.constraint(equalTo: self.view.leadingAnchor),
+            containerView.trailingAnchor.constraint(equalTo: self.view.trailingAnchor)
+        ])
+        
+        // Add a "Done" button
+        self.addAction(UIAlertAction(title: "Done", style: .default, handler: { _ in
+            action(datePicker.date)
+        }))
     }
 }

@@ -236,6 +236,17 @@ class VacciAlertViewController: UIViewController, TimePeriodCollectionViewDelega
         }
     }
     
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        
+        // Ensure large title is set when this view appears
+        navigationController?.navigationBar.prefersLargeTitles = true
+        navigationItem.largeTitleDisplayMode = .always
+        
+        // Force the title display
+        setNavigationTitle()
+    }
+    
     private func setupNotifications() {
         NotificationCenter.default.addObserver(
             self,
@@ -279,8 +290,8 @@ class VacciAlertViewController: UIViewController, TimePeriodCollectionViewDelega
         // Setup time period collection view with new component
         timePeriodCollectionView = TimePeriodCollectionView(
             timePeriods: timePeriods,
-            itemSize: CGSize(width: 85, height: 85),
-            lineSpacing: 8
+            itemSize: CGSize(width: 90, height: 90),  // Increased card size
+            lineSpacing: 10  // Slightly increased spacing
         )
         timePeriodCollectionView.delegate = self
         view.addSubview(timePeriodCollectionView)
@@ -294,10 +305,11 @@ class VacciAlertViewController: UIViewController, TimePeriodCollectionViewDelega
         
         // Apply consistent spacing per HIG
         NSLayoutConstraint.activate([
-            timePeriodCollectionView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            timePeriodCollectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            // Move the collection view down a bit and start from the leading edge
+            timePeriodCollectionView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16),
+            timePeriodCollectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             timePeriodCollectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            timePeriodCollectionView.heightAnchor.constraint(equalToConstant: 90),
+            timePeriodCollectionView.heightAnchor.constraint(equalToConstant: 110),  // Increased height
             
             emptyStateLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             emptyStateLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor),
@@ -608,4 +620,3 @@ class VacciAlertViewController: UIViewController, TimePeriodCollectionViewDelega
         }
     }
 }
-
