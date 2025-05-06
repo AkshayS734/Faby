@@ -12,4 +12,7 @@ protocol PostCardCellDelegate: AnyObject {
     func didTapMore(for post: Post)
     func didTapSave(for post: Post)
     func didTapReport(for post: Post)
+    
+    // Optional method to handle share functionality directly
+    func sharePost(_ post: Post, from viewController: UIViewController)
 }

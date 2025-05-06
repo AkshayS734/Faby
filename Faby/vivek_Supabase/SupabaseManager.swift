@@ -6,7 +6,7 @@ class SupabaseManager {
     static let shared = SupabaseManager() // Singleton instance
     
     let client: SupabaseClient
-    var userID: String? // Add userID property
+    var userID: String? // Add userID property 
     
     private init() {
         let supabaseURL = URL(string: "https://hlkmrimpxzsnxzrgofes.supabase.co")!
@@ -665,18 +665,77 @@ class SupabaseManager {
                 }
                 
                 let decoder = JSONDecoder()
-                let comments = try decoder.decode([Comment].self, from: response.data)
+                var comments = try decoder.decode([Comment].self, from: response.data)
                 print("✅ Successfully decoded \(comments.count) comments")
                 
-                DispatchQueue.main.async {
-                    completion(comments, nil)
+                // Now for each comment, get the reply count
+                if !comments.isEmpty {
+                    // Create a group to manage multiple async calls
+                    let group = DispatchGroup()
+                    
+                    for i in 0..<comments.count {
+                        if let commentId = comments[i].commentId {
+                            group.enter()
+                            
+                            // Get reply count for this comment
+                            self.getReplyCount(for: commentId) { count in
+                                // Update the comment with reply count
+                                comments[i].repliesCount = count
+                                group.leave()
+                            }
+                        }
+                    }
+                    
+                    // Wait for all reply counts to be fetched
+                    group.notify(queue: .main) {
+                        print("✅ Successfully updated all comments with reply counts")
+                        completion(comments, nil)
+                    }
+                } else {
+                    // No comments to process
+                    DispatchQueue.main.async {
+                        completion(comments, nil)
+                    }
                 }
-                
             } catch {
                 print("❌ Error fetching comments: \(error.localizedDescription)")
                 print("❌ Detailed error: \(error)")
                 DispatchQueue.main.async {
                     completion(nil, error)
+                }
+            }
+        }
+    }
+    
+    // Helper function to get reply count for a comment
+    private func getReplyCount(for commentId: Int, completion: @escaping (Int) -> Void) {
+        Task {
+            do {
+                // Query to count replies for this comment
+                let response = try await client.database
+                    .from("CommentReplies")
+                    .select("reply_id")
+                    .eq("comment_id", value: commentId)
+                    .execute()
+                
+                // Parse the JSON array to count replies
+                if let jsonArray = try? JSONSerialization.jsonObject(with: response.data, options: []) as? [[String: Any]] {
+                    let replyCount = jsonArray.count
+                    print("✅ Comment \(commentId) has \(replyCount) replies")
+                    
+                    DispatchQueue.main.async {
+                        completion(replyCount)
+                    }
+                } else {
+                    print("⚠️ Failed to parse comment replies response, returning 0")
+                    DispatchQueue.main.async {
+                        completion(0)
+                    }
+                }
+            } catch {
+                print("❌ Error counting replies: \(error.localizedDescription)")
+                DispatchQueue.main.async {
+                    completion(0)
                 }
             }
         }
@@ -1042,6 +1101,563 @@ class SupabaseManager {
                 print("❌ Detailed error: \(error)")
                 DispatchQueue.main.async {
                     completion(nil, error)
+                }
+            }
+        }
+    }
+    
+    // MARK: - Saved Posts Management
+    func savePost(postId: String, completion: @escaping (Bool, Error?) -> Void) {
+        guard let userId = self.userID else {
+            print("❌ User not logged in")
+            completion(false, NSError(domain: "AuthError", code: 401, userInfo: [NSLocalizedDescriptionKey: "User not logged in"]))
+            return
+        }
+        
+        print("📢 savePost() called for post: \(postId)")
+        print("📢 Current user ID: \(userId)")
+        
+        // First check if the post is already saved to avoid duplicate entries
+        self.isPostSaved(postId: postId) { isSaved, _ in
+            if isSaved {
+                print("⚠️ Post is already saved, no need to save again")
+                completion(true, nil)
+                return
+            }
+            
+            // Post is not saved, proceed with saving
+            Task {
+                do {
+                    // Since your database has post_id as UUID type but our Post.postId is String,
+                    // we need to check if the postId can be converted to a UUID
+                    if let uuid = UUID(uuidString: postId) {
+                        // Valid UUID format, we can use it directly
+                        let savedPost = [
+                            "user_id": userId,
+                            "post_id": uuid.uuidString,
+                            "created_at": ISO8601DateFormatter().string(from: Date())
+                        ]
+                        
+                        print("📢 Saving post with data: \(savedPost)")
+                        print("📢 Checking if post exists in Posts table...")
+                        
+                        // First check if the post exists in the Posts table
+                        let postCheckResponse = try await self.client.database
+                            .from("posts")
+                            .select("postId")
+                            .eq("postId", value: postId)
+                            .execute()
+                        
+                        if let postCheckJson = String(data: postCheckResponse.data, encoding: .utf8) {
+                            print("📄 Post check response: \(postCheckJson)")
+                            
+                            if let postArray = try? JSONSerialization.jsonObject(with: postCheckResponse.data) as? [Any], postArray.isEmpty {
+                                print("❌ Error: Post with ID \(postId) does not exist in Posts table")
+                                DispatchQueue.main.async {
+                                    completion(false, NSError(domain: "SavePostError", code: 404, userInfo: [NSLocalizedDescriptionKey: "Post not found"]))
+                                }
+                                return
+                            }
+                        }
+                        
+                        // Post exists, attempt to save it
+                        let response = try await self.client.database
+                            .from("SavedPosts")
+                            .insert(savedPost)
+                            .execute()
+                        
+                        print("✅ Save post response status: \(response.status)")
+                        print("📄 Response data: \(String(data: response.data, encoding: .utf8) ?? "None")")
+                        
+                        DispatchQueue.main.async {
+                            if response.status >= 200 && response.status < 300 {
+                                completion(true, nil)
+                            } else {
+                                let errorMessage = String(data: response.data, encoding: .utf8) ?? "Unknown error"
+                                print("❌ Error saving post: \(errorMessage)")
+                                completion(false, NSError(domain: "SavePostError", code: response.status, userInfo: [NSLocalizedDescriptionKey: errorMessage]))
+                            }
+                        }
+                    } else {
+                        // Not a valid UUID format, this is likely why the save is failing
+                        print("❌ Error: postId \(postId) is not in UUID format, cannot save to SavedPosts table with UUID column")
+                        let errorDetail = "The post ID format is incompatible with the database schema. Post IDs must be in UUID format."
+                        DispatchQueue.main.async {
+                            completion(false, NSError(domain: "SavePostError", code: 400, userInfo: [NSLocalizedDescriptionKey: errorDetail]))
+                        }
+                    }
+                } catch {
+                    print("❌ Error saving post: \(error.localizedDescription)")
+                    print("❌ Detailed error: \(error)")
+                    DispatchQueue.main.async {
+                        completion(false, error)
+                    }
+                }
+            }
+        }
+    }
+    
+    func unsavePost(postId: String, completion: @escaping (Bool, Error?) -> Void) {
+        guard let userId = self.userID else {
+            print("❌ User not logged in")
+            completion(false, NSError(domain: "AuthError", code: 401, userInfo: [NSLocalizedDescriptionKey: "User not logged in"]))
+            return
+        }
+        
+        print("📢 unsavePost() called for post: \(postId)")
+        
+        Task {
+            do {
+                // Check if postId is in valid UUID format
+                if let _ = UUID(uuidString: postId) {
+                    let response = try await client.database
+                        .from("SavedPosts")
+                        .delete()
+                        .eq("post_id", value: postId)
+                        .eq("user_id", value: userId)
+                        .execute()
+                    
+                    print("✅ Unsave post response status: \(response.status)")
+                    print("📄 Response data: \(String(data: response.data, encoding: .utf8) ?? "None")")
+                    
+                    DispatchQueue.main.async {
+                        if response.status >= 200 && response.status < 300 {
+                            completion(true, nil)
+                        } else {
+                            let errorMessage = String(data: response.data, encoding: .utf8) ?? "Unknown error"
+                            print("❌ Error unsaving post: \(errorMessage)")
+                            completion(false, NSError(domain: "UnsavePostError", code: response.status, userInfo: [NSLocalizedDescriptionKey: errorMessage]))
+                        }
+                    }
+                } else {
+                    // Not a valid UUID format
+                    print("❌ Error: postId \(postId) is not in UUID format, cannot unsave from SavedPosts table with UUID column")
+                    let errorDetail = "The post ID format is incompatible with the database schema. Post IDs must be in UUID format."
+                    DispatchQueue.main.async {
+                        completion(false, NSError(domain: "UnsavePostError", code: 400, userInfo: [NSLocalizedDescriptionKey: errorDetail]))
+                    }
+                }
+            } catch {
+                print("❌ Error unsaving post: \(error.localizedDescription)")
+                DispatchQueue.main.async {
+                    completion(false, error)
+                }
+            }
+        }
+    }
+    
+    // Enhanced version of isPostSaved for debugging
+    func debugIsPostSaved(postId: String, completion: @escaping (Bool) -> Void) {
+        print("🔍 DEBUG: Checking if post \(postId) is saved for user \(self.userID ?? "nil")")
+        
+        Task {
+            do {
+                // Check if postId is in valid UUID format
+                if let _ = UUID(uuidString: postId) {
+                    print("✅ DEBUG: Valid UUID format: \(postId)")
+                    
+                    // Check database
+                    print("🔍 DEBUG: Querying SavedPosts table...")
+                    
+                    let response = try await client.database
+                        .from("SavedPosts")
+                        .select("id, user_id, post_id")
+                        .eq("post_id", value: postId)
+                        .eq("user_id", value: self.userID)
+                        .execute()
+                    
+                    print("📋 DEBUG: Raw response: \(String(data: response.data, encoding: .utf8) ?? "No data")")
+                    
+                    let isSaved = !response.data.isEmpty
+                    
+                    if isSaved {
+                        print("✅ DEBUG: Post IS saved (non-empty response)")
+                    } else {
+                        print("⚠️ DEBUG: Post is NOT saved (empty response)")
+                    }
+                    
+                    // Try to parse the response
+                    if let jsonArray = try? JSONSerialization.jsonObject(with: response.data, options: []) as? [[String: Any]] {
+                        print("📊 DEBUG: Parsed \(jsonArray.count) records from response")
+                        
+                        for (index, record) in jsonArray.enumerated() {
+                            print("📝 DEBUG: Record #\(index + 1):")
+                            print("   - id: \(record["id"] ?? "nil")")
+                            print("   - user_id: \(record["user_id"] ?? "nil")")
+                            print("   - post_id: \(record["post_id"] ?? "nil")")
+                        }
+                    } else {
+                        print("⚠️ DEBUG: Failed to parse response as JSON array")
+                    }
+                    
+                    DispatchQueue.main.async {
+                        completion(isSaved)
+                    }
+                } else {
+                    // Not a valid UUID format
+                    print("❌ DEBUG: Invalid UUID format: \(postId)")
+                    DispatchQueue.main.async {
+                        completion(false)
+                    }
+                }
+            } catch {
+                print("❌ DEBUG: Error checking save status: \(error.localizedDescription)")
+                DispatchQueue.main.async {
+                    completion(false)
+                }
+            }
+        }
+    }
+    
+    func fetchSavedPosts(completion: @escaping ([Post]?, Error?) -> Void) {
+        guard let userId = self.userID else {
+            print("❌ User not logged in")
+            completion(nil, NSError(domain: "AuthError", code: 401, userInfo: [NSLocalizedDescriptionKey: "User not logged in"]))
+            return
+        }
+        
+        print("📢 fetchSavedPosts() called")
+        
+        Task {
+            do {
+                // First get all saved post IDs
+                let savedPostsResponse = try await client.database
+                    .from("SavedPosts")
+                    .select("post_id")
+                    .eq("user_id", value: userId)
+                    .execute()
+                
+                // Print raw response for debugging
+                print("📄 Saved posts raw response: \(String(data: savedPostsResponse.data, encoding: .utf8) ?? "None")")
+                
+                guard !savedPostsResponse.data.isEmpty else {
+                    print("ℹ️ No saved posts found")
+                    DispatchQueue.main.async {
+                        completion([], nil)
+                    }
+                    return
+                }
+                
+                // Parse the response to get post IDs
+                guard let jsonArray = try? JSONSerialization.jsonObject(with: savedPostsResponse.data, options: []) as? [[String: Any]] else {
+                    print("❌ Error parsing saved posts response")
+                    DispatchQueue.main.async {
+                        completion(nil, NSError(domain: "SavedPostsError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to parse saved posts"]))
+                    }
+                    return
+                }
+                
+                // The post_id might be a UUID or a string in the database
+                let postIds = jsonArray.compactMap { 
+                    if let postIdString = $0["post_id"] as? String {
+                        return postIdString
+                    } 
+                    // Add other type conversions if necessary
+                    return nil
+                }
+                
+                print("📊 Found \(postIds.count) saved post IDs: \(postIds)")
+                
+                if postIds.isEmpty {
+                    DispatchQueue.main.async {
+                        completion([], nil)
+                    }
+                    return
+                }
+                
+                // Fetch all posts with these IDs
+                var postsQuery = client.database.from("posts").select("""
+                    postId, 
+                    postTitle, 
+                    postContent, 
+                    topicId, 
+                    userId, 
+                    createdAt, 
+                    image_url,
+                    parents(name)
+                """)
+                
+                // Use in() filter with the list of post IDs
+                if let postIdsJson = try? JSONEncoder().encode(postIds),
+                   let postIdsJsonString = String(data: postIdsJson, encoding: .utf8) {
+                    postsQuery = postsQuery.filter("postId", operator: "in", value: postIdsJsonString)
+                    let postsResponse = try await postsQuery.execute()
+                    
+                    print("📄 Posts response: \(String(data: postsResponse.data, encoding: .utf8) ?? "None")")
+                    
+                    let decodedPosts = try JSONDecoder().decode([Post].self, from: postsResponse.data)
+                    print("✅ Fetched \(decodedPosts.count) saved posts")
+                    
+                    DispatchQueue.main.async {
+                        completion(decodedPosts, nil)
+                    }
+                } else {
+                    print("❌ Failed to encode post IDs to JSON")
+                    DispatchQueue.main.async {
+                        completion([], nil)
+                    }
+                }
+            } catch {
+                print("❌ Error fetching saved posts: \(error.localizedDescription)")
+                DispatchQueue.main.async {
+                    completion(nil, error)
+                }
+            }
+        }
+    }
+    
+    // MARK: - Delete Post
+    func deletePost(postId: String, completion: @escaping (Bool, Error?) -> Void) {
+        print("📢 deletePost() called for post: \(postId)")
+        
+        Task {
+            do {
+                // 1. First delete all likes for this post to avoid foreign key constraints
+                let likesResponse = try await client.database
+                    .from("Likes")
+                    .delete()
+                    .eq("post_id", value: postId)
+                    .execute()
+                
+                print("✅ Deleted likes for post: \(postId)")
+                
+                // 2. Delete all saved instances of this post
+                let savedResponse = try await client.database
+                    .from("SavedPosts")
+                    .delete()
+                    .eq("post_id", value: postId)
+                    .execute()
+                
+                print("✅ Deleted saved instances of post: \(postId)")
+                
+                // 3. Delete all comments for this post
+                // First, get all comment IDs to handle replies
+                let commentsResponse = try await client.database
+                    .from("Comments")
+                    .select("Comment_id")
+                    .eq("post_id", value: postId)
+                    .execute()
+                
+                if let commentData = try? JSONSerialization.jsonObject(with: commentsResponse.data, options: []) as? [[String: Any]] {
+                    let commentIds = commentData.compactMap { $0["Comment_id"] as? Int }
+                    print("📊 Found \(commentIds.count) comments to delete for post: \(postId)")
+                    
+                    // 3a. Delete all comment replies
+                    if !commentIds.isEmpty {
+                        if let commentIdsJson = try? JSONEncoder().encode(commentIds),
+                           let commentIdsJsonString = String(data: commentIdsJson, encoding: .utf8) {
+                            let repliesResponse = try await client.database
+                                .from("CommentReplies")
+                                .delete()
+                                .filter("comment_id", operator: "in", value: commentIdsJsonString)
+                                .execute()
+                            
+                            print("✅ Deleted all comment replies")
+                        } else {
+                            print("⚠️ Failed to encode comment IDs for replies deletion")
+                        }
+                    }
+                    
+                    // 3b. Delete all comment likes
+                    if !commentIds.isEmpty {
+                        if let commentIdsJson = try? JSONEncoder().encode(commentIds),
+                           let commentIdsJsonString = String(data: commentIdsJson, encoding: .utf8) {
+                            let commentLikesResponse = try await client.database
+                                .from("CommentLikes")
+                                .delete()
+                                .filter("comment_id", operator: "in", value: commentIdsJsonString)
+                                .execute()
+                            
+                            print("✅ Deleted all comment likes")
+                        } else {
+                            print("⚠️ Failed to encode comment IDs for likes deletion")
+                        }
+                    }
+                }
+                
+                // 3c. Now delete all comments
+                let deleteCommentsResponse = try await client.database
+                    .from("Comments")
+                    .delete()
+                    .eq("post_id", value: postId)
+                    .execute()
+                
+                print("✅ Deleted all comments for post: \(postId)")
+                
+                // 4. Finally delete the post itself
+                let postResponse = try await client.database
+                    .from("posts")
+                    .delete()
+                    .eq("postId", value: postId)
+                    .execute()
+                
+                print("✅ Deleted post: \(postId)")
+                
+                if postResponse.status >= 200 && postResponse.status < 300 {
+                    // 5. If post has an image, attempt to delete it from storage
+                    // Note: This is optional and may fail if image names don't match
+                    if let fileIdMatch = postId.split(separator: "-").last {
+                        let possibleImageName = "\(fileIdMatch).jpg"
+                        do {
+                            let _ = try await client.storage
+                                .from("postimages")
+                                .remove(paths: [possibleImageName])
+                            
+                            print("✅ Deleted image for post: \(postId)")
+                        } catch {
+                            print("⚠️ Could not delete image, but post deletion was successful")
+                        }
+                    }
+                    
+                    DispatchQueue.main.async {
+                        completion(true, nil)
+                    }
+                } else {
+                    let errorMessage = String(data: postResponse.data, encoding: .utf8) ?? "Unknown error"
+                    DispatchQueue.main.async {
+                        completion(false, NSError(domain: "DeletePostError", code: postResponse.status, userInfo: [NSLocalizedDescriptionKey: errorMessage]))
+                    }
+                }
+            } catch {
+                print("❌ Error deleting post: \(error.localizedDescription)")
+                DispatchQueue.main.async {
+                    completion(false, error)
+                }
+            }
+        }
+    }
+    
+    // MARK: - Post Deep Link Generation
+    func generatePostDeepLink(for post: Post) -> URL? {
+        // Create a deep link structure
+        // Format: faby://post/{postId}
+        
+        let baseUrlString = "faby://post/"
+        let postIdComponent = post.postId
+        
+        guard let url = URL(string: baseUrlString + postIdComponent) else {
+            print("❌ Failed to create deep link URL")
+            return nil
+        }
+        
+        return url
+    }
+    
+    // Generate a web link (for when deep links aren't available)
+    func generatePostWebLink(for post: Post) -> URL? {
+        // Use the Supabase URL as a base for web sharing
+        // This is a placeholder for a real web link to your app
+        
+        let baseUrlString = "https://hlkmrimpxzsnxzrgofes.supabase.co/storage/v1/object/public/share"
+        let postIdComponent = "/post/\(post.postId)"
+        
+        guard let url = URL(string: baseUrlString + postIdComponent) else {
+            print("❌ Failed to create web link URL")
+            return nil
+        }
+        
+        return url
+    }
+    
+    // MARK: - Debug Functions
+    func debugFetchAllSavedPostsRecords(completion: @escaping (Bool) -> Void) {
+        print("🔍 DEBUG: Fetching all records from SavedPosts table")
+        
+        Task {
+            do {
+                // Fetch all records from SavedPosts table
+                let response = try await client.database
+                    .from("SavedPosts")
+                    .select("*")
+                    .execute()
+                
+                print("📋 DEBUG: SavedPosts table raw response:")
+                print(String(data: response.data, encoding: .utf8) ?? "No data")
+                
+                // Parse the response
+                if let jsonArray = try? JSONSerialization.jsonObject(with: response.data, options: []) as? [[String: Any]] {
+                    print("📊 DEBUG: SavedPosts table records count: \(jsonArray.count)")
+                    
+                    for (index, record) in jsonArray.enumerated() {
+                        print("📝 DEBUG: Record #\(index + 1):")
+                        print("   - id: \(record["id"] ?? "nil")")
+                        print("   - user_id: \(record["user_id"] ?? "nil")")
+                        print("   - post_id: \(record["post_id"] ?? "nil")")
+                        print("   - created_at: \(record["created_at"] ?? "nil")")
+                    }
+                    
+                    DispatchQueue.main.async {
+                        completion(true)
+                    }
+                } else {
+                    print("⚠️ DEBUG: Failed to parse SavedPosts records as JSON array")
+                    DispatchQueue.main.async {
+                        completion(false)
+                    }
+                }
+            } catch {
+                print("❌ DEBUG: Error fetching SavedPosts records: \(error.localizedDescription)")
+                DispatchQueue.main.async {
+                    completion(false)
+                }
+            }
+        }
+    }
+    
+    func isPostSaved(postId: String, completion: @escaping (Bool, Error?) -> Void) {
+        guard let userId = self.userID else {
+            print("❌ User not logged in")
+            completion(false, NSError(domain: "AuthError", code: 401, userInfo: [NSLocalizedDescriptionKey: "User not logged in"]))
+            return
+        }
+        
+        print("📢 isPostSaved() called for post: \(postId)")
+        
+        Task {
+            do {
+                // Check if postId is in valid UUID format
+                if let _ = UUID(uuidString: postId) {
+                    let response = try await client.database
+                        .from("SavedPosts")
+                        .select("id")
+                        .eq("post_id", value: postId)
+                        .eq("user_id", value: userId)
+                        .execute()
+                    
+                    // Parse the response to check if any records were returned
+                    if let jsonString = String(data: response.data, encoding: .utf8) {
+                        // Try to parse the data
+                        if let jsonArray = try? JSONSerialization.jsonObject(with: response.data) as? [Any] {
+                            let isSaved = !jsonArray.isEmpty
+                            print(isSaved ? "✅ Post is saved (found \(jsonArray.count) records)" : "ℹ️ Post is not saved (no records found)")
+                            print("📄 Raw response data: \(jsonString)")
+                            
+                            DispatchQueue.main.async {
+                                completion(isSaved, nil)
+                            }
+                            return
+                        }
+                    }
+                    
+                    // If we couldn't parse or the array was empty, the post is not saved
+                    print("ℹ️ Post is not saved (no records or parsing failed)")
+                    print("📄 Response data: \(String(data: response.data, encoding: .utf8) ?? "None")")
+                    
+                    DispatchQueue.main.async {
+                        completion(false, nil)
+                    }
+                } else {
+                    // Not a valid UUID format
+                    print("❌ Error: postId \(postId) is not in UUID format, cannot check in SavedPosts table with UUID column")
+                    // Since it's just a check, we'll return false instead of an error
+                    DispatchQueue.main.async {
+                        completion(false, nil)
+                    }
+                }
+            } catch {
+                print("❌ Error checking if post is saved: \(error.localizedDescription)")
+                DispatchQueue.main.async {
+                    completion(false, error)
                 }
             }
         }

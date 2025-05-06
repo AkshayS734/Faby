@@ -48,6 +48,49 @@ class ModernCommentCell: UITableViewCell {
         return label
     }()
     
+    // Actions row for likes, replies, etc.
+    private let actionsStackView: UIStackView = {
+        let stackView = UIStackView()
+        stackView.translatesAutoresizingMaskIntoConstraints = false
+        stackView.axis = .horizontal
+        stackView.spacing = 16
+        stackView.alignment = .center
+        return stackView
+    }()
+    
+    // Reply button styled like Instagram
+    private let replyButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.setTitle("Reply", for: .normal)
+        button.titleLabel?.font = .systemFont(ofSize: 12)
+        button.setTitleColor(.systemGray, for: .normal)
+        return button
+    }()
+    
+    // View Replies button styled like Instagram
+    private let viewRepliesButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.setTitleColor(.systemGray, for: .normal)
+        button.titleLabel?.font = .systemFont(ofSize: 13)
+        button.contentHorizontalAlignment = .left
+        button.backgroundColor = .clear
+        return button
+    }()
+    
+    // Indent line for replies - Instagram style
+    private let indentLineView: UIView = {
+        let view = UIView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        view.backgroundColor = .systemGray5
+        return view
+    }()
+    
+    // MARK: - Properties
+    private var comment: Comment?
+    private var delegate: CommentCellDelegate?
+    
     // MARK: - Initialization
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
@@ -68,6 +111,20 @@ class ModernCommentCell: UITableViewCell {
         commentBubble.addSubview(usernameLabel)
         commentBubble.addSubview(commentLabel)
         contentView.addSubview(timeLabel)
+        contentView.addSubview(actionsStackView)
+        contentView.addSubview(viewRepliesButton)
+        contentView.addSubview(indentLineView)
+        
+        // Add reply button to actions stack
+        actionsStackView.addArrangedSubview(replyButton)
+        
+        // Setup reply button action
+        replyButton.addTarget(self, action: #selector(replyButtonTapped), for: .touchUpInside)
+        viewRepliesButton.addTarget(self, action: #selector(viewRepliesButtonTapped), for: .touchUpInside)
+        
+        // Hide indent line and view replies button by default
+        indentLineView.isHidden = true
+        viewRepliesButton.isHidden = true
         
         NSLayoutConstraint.activate([
             userImageView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 8),
@@ -90,14 +147,100 @@ class ModernCommentCell: UITableViewCell {
             
             timeLabel.topAnchor.constraint(equalTo: commentBubble.bottomAnchor, constant: 4),
             timeLabel.leadingAnchor.constraint(equalTo: commentBubble.leadingAnchor),
-            timeLabel.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -8)
+            
+            // Action stack view positioning
+            actionsStackView.topAnchor.constraint(equalTo: timeLabel.bottomAnchor, constant: 2),
+            actionsStackView.leadingAnchor.constraint(equalTo: commentBubble.leadingAnchor),
+            actionsStackView.heightAnchor.constraint(equalToConstant: 24),
+            
+            // View replies button
+            viewRepliesButton.topAnchor.constraint(equalTo: actionsStackView.bottomAnchor, constant: 4),
+            viewRepliesButton.leadingAnchor.constraint(equalTo: userImageView.trailingAnchor, constant: 20), // Indented more than the comment
+            viewRepliesButton.heightAnchor.constraint(equalToConstant: 22),
+            viewRepliesButton.widthAnchor.constraint(lessThanOrEqualTo: contentView.widthAnchor, constant: -80),
+            
+            // Indent line for replies (Instagram style)
+            indentLineView.topAnchor.constraint(equalTo: actionsStackView.bottomAnchor, constant: 8),
+            indentLineView.leadingAnchor.constraint(equalTo: userImageView.trailingAnchor, constant: 4),
+            indentLineView.widthAnchor.constraint(equalToConstant: 1.5),
+            indentLineView.bottomAnchor.constraint(equalTo: viewRepliesButton.bottomAnchor),
+            
+            // Content bottom constraint
+            viewRepliesButton.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -8)
         ])
     }
     
     // MARK: - Configuration
-    func configure(username: String, comment: String, time: String) {
-        usernameLabel.text = username
-        commentLabel.text = comment
-        timeLabel.text = time
+    func configure(with comment: Comment, isLiked: Bool, delegate: CommentCellDelegate? = nil) {
+        self.comment = comment
+        self.delegate = delegate
+        
+        usernameLabel.text = comment.parentName ?? "Unknown User"
+        commentLabel.text = comment.content
+        timeLabel.text = formatTime(from: comment.createdAt)
+        
+        // Configure the view replies button if there are replies
+        if let repliesCount = comment.repliesCount, repliesCount > 0 {
+            viewRepliesButton.isHidden = false
+            indentLineView.isHidden = false
+            
+            // Instagram style with customization for count
+            let repliesCountText = repliesCount == 1 ? "1 reply" : "\(repliesCount) replies"
+            
+            // Check if replies are expanded
+            if comment.isRepliesExpanded == true {
+                viewRepliesButton.setTitle("Hide replies", for: .normal)
+            } else {
+                viewRepliesButton.setTitle("View \(repliesCountText)", for: .normal)
+            }
+        } else {
+            viewRepliesButton.isHidden = true
+            indentLineView.isHidden = true
+        }
+        
+        // If it's a reply, adjust the UI accordingly
+        if comment.isReply == true {
+            // Replies don't have the view replies button
+            viewRepliesButton.isHidden = true
+            indentLineView.isHidden = true
+        }
+    }
+    
+    // MARK: - Actions
+    @objc private func replyButtonTapped() {
+        guard let comment = comment, let delegate = delegate else { return }
+        delegate.didTapReplyButton(for: comment)
+    }
+    
+    @objc private func viewRepliesButtonTapped() {
+        guard let comment = comment, let delegate = delegate else { return }
+        delegate.didTapViewReplies(for: comment)
+    }
+    
+    // MARK: - Helper Methods
+    private func formatTime(from timeString: String?) -> String {
+        guard let timeString = timeString,
+              let date = DateFormatter.iso8601Full.date(from: timeString) else {
+            return "Just now"
+        }
+        
+        let calendar = Calendar.current
+        let now = Date()
+        let components = calendar.dateComponents([.minute, .hour, .day, .weekOfYear], from: date, to: now)
+        
+        if let minutes = components.minute, minutes < 60 {
+            return minutes == 1 ? "1m" : "\(minutes)m"
+        } else if let hours = components.hour, hours < 24 {
+            return hours == 1 ? "1h" : "\(hours)h"
+        } else if let days = components.day, days < 7 {
+            return days == 1 ? "1d" : "\(days)d"
+        } else if let weeks = components.weekOfYear, weeks < 5 {
+            return weeks == 1 ? "1w" : "\(weeks)w"
+        } else {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "MMM d"
+            return formatter.string(from: date)
+        }
     }
 }
+

@@ -22,6 +22,7 @@ struct Comment: Codable, Identifiable {
     var isLoadingIndicator: Bool?           // Is this a temporary loading row
     var isEmptyState: Bool?                 // Is this a "no replies" placeholder
     var parentId: String?                   // User ID of the comment author
+    var repliesCount: Int?                  // Number of replies to this comment
     
     enum CodingKeys: String, CodingKey {
         case postId = "post_id"
@@ -60,12 +61,13 @@ struct Comment: Codable, Identifiable {
         isLoadingIndicator = false
         isEmptyState = false
         parentId = nil
+        repliesCount = nil
     }
     
     // Add a custom initializer for creating special comment objects (loading, empty states, etc.)
     init(commentId: Int?, content: String, parentId: String?, parentName: String?, postId: String, createdAt: String?,
          isLoadingIndicator: Bool? = false, isEmptyState: Bool? = false, isReply: Bool? = false,
-         replyToCommentId: Int? = nil, isRepliesExpanded: Bool? = false) {
+         replyToCommentId: Int? = nil, isRepliesExpanded: Bool? = false, repliesCount: Int? = nil) {
         
         self.commentId = commentId
         self.content = content
@@ -80,6 +82,7 @@ struct Comment: Codable, Identifiable {
         self.isReply = isReply
         self.replyToCommentId = replyToCommentId
         self.isRepliesExpanded = isRepliesExpanded
+        self.repliesCount = repliesCount
     }
     
     private enum ParentCodingKeys: String, CodingKey {

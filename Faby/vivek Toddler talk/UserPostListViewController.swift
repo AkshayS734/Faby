@@ -255,6 +255,69 @@ class UserPostListViewController: UIViewController {
         alert.addAction(UIAlertAction(title: "OK", style: .default))
         present(alert, animated: true)
     }
+    
+    private func deletePost(_ post: Post) {
+        let alert = UIAlertController(
+            title: "Delete Post",
+            message: "Are you sure you want to delete this post? This action cannot be undone.",
+            preferredStyle: .alert
+        )
+        
+        alert.addAction(UIAlertAction(title: "Delete", style: .destructive) { [weak self] _ in
+            guard let self = self else { return }
+            
+            // Show loading indicator
+            let loadingAlert = UIAlertController(
+                title: "Deleting Post",
+                message: "Please wait...",
+                preferredStyle: .alert
+            )
+            self.present(loadingAlert, animated: true)
+            
+            // Call Supabase manager to delete post
+            SupabaseManager.shared.deletePost(postId: post.postId) { success, error in
+                DispatchQueue.main.async {
+                    // Dismiss loading indicator
+                    loadingAlert.dismiss(animated: true) {
+                        if success {
+                            // Provide success feedback
+                            let feedback = UINotificationFeedbackGenerator()
+                            feedback.notificationOccurred(.success)
+                            
+                            // Show success toast
+                            let toast = UIAlertController(
+                                title: "Post Deleted",
+                                message: "Your post has been successfully deleted",
+                                preferredStyle: .alert
+                            )
+                            self.present(toast, animated: true)
+                            
+                            // Dismiss toast after a delay
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                                toast.dismiss(animated: true) {
+                                    // Refresh posts after deletion
+                                    self.fetchPosts()
+                                }
+                            }
+                        } else {
+                            // Show error message
+                            let errorAlert = UIAlertController(
+                                title: "Error",
+                                message: error?.localizedDescription ?? "Failed to delete post",
+                                preferredStyle: .alert
+                            )
+                            errorAlert.addAction(UIAlertAction(title: "OK", style: .default))
+                            self.present(errorAlert, animated: true)
+                        }
+                    }
+                }
+            }
+        })
+        
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        
+        present(alert, animated: true)
+    }
 }
 
 // MARK: - UITableView DataSource & Delegate
@@ -347,36 +410,114 @@ extension UserPostListViewController: PostCardCellDelegate {
     
     func didTapSave(for post: Post) {
         // Implement save functionality
+        SupabaseManager.shared.isPostSaved(postId: post.postId) { [weak self] isSaved, error in
+            guard let self = self else { return }
+            
+            if isSaved {
+                // Post is already saved, ask if they want to unsave
+                let alert = UIAlertController(title: "Post Already Saved", 
+                                             message: "Do you want to remove this post from your saved collection?", 
+                                             preferredStyle: .alert)
+                
+                alert.addAction(UIAlertAction(title: "Remove", style: .destructive) { _ in
+                    SupabaseManager.shared.unsavePost(postId: post.postId) { success, error in
+                        DispatchQueue.main.async {
+                            if success {
+                                let feedback = UINotificationFeedbackGenerator()
+                                feedback.notificationOccurred(.success)
+                                
+                                let toast = UIAlertController(title: "Post Removed", message: "Post has been removed from your saved collection", preferredStyle: .alert)
+                                self.present(toast, animated: true)
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                                    toast.dismiss(animated: true)
+                                }
+                            } else {
+                                self.showError(message: "Failed to remove post from your saved collection")
+                            }
+                        }
+                    }
+                })
+                
+                alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+                present(alert, animated: true)
+                
+            } else {
+                // Save the post
+                SupabaseManager.shared.savePost(postId: post.postId) { success, error in
+                    DispatchQueue.main.async {
+                        if success {
+                            let feedback = UINotificationFeedbackGenerator()
+                            feedback.notificationOccurred(.success)
+                            
+                            let toast = UIAlertController(title: "Post Saved", message: "Post has been saved to your collection", preferredStyle: .alert)
+                            self.present(toast, animated: true)
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                                toast.dismiss(animated: true)
+                            }
+                        } else {
+                            self.showError(message: "Failed to save post")
+                        }
+                    }
+                }
+            }
+        }
     }
     
     func didTapReport(for post: Post) {
         // No need for report in own posts
     }
     
-    private func sharePost(_ post: Post) {
+    func sharePost(_ post: Post, from viewController: UIViewController) {
         var items: [Any] = []
-        items.append(post.postTitle)
-        items.append(post.postContent)
         
-        let activityVC = UIActivityViewController(activityItems: items, applicationActivities: nil)
-        present(activityVC, animated: true)
+        // Create post title with content
+        let postText = "\(post.postTitle)\n\n\(post.postContent)"
+        items.append(postText)
+        
+        // Add deep link or web link for sharing
+        if let deepLink = SupabaseManager.shared.generatePostDeepLink(for: post) {
+            items.append(deepLink)
+        } else if let webLink = SupabaseManager.shared.generatePostWebLink(for: post) {
+            items.append(webLink)
+        }
+        
+        // Add image if available
+        if let imageUrlString = post.image_url, let imageUrl = URL(string: imageUrlString) {
+            // Load image asynchronously
+            URLSession.shared.dataTask(with: imageUrl) { data, response, error in
+                if let data = data, let image = UIImage(data: data) {
+                    items.append(image)
+                }
+                
+                DispatchQueue.main.async {
+                    self.presentShareSheet(items: items, from: viewController)
+                }
+            }.resume()
+        } else {
+            // No image, share text and link only
+            self.presentShareSheet(items: items, from: viewController)
+        }
     }
     
-    private func deletePost(_ post: Post) {
-        let alert = UIAlertController(
-            title: "Delete Post",
-            message: "Are you sure you want to delete this post? This action cannot be undone.",
-            preferredStyle: .alert
-        )
+    private func presentShareSheet(items: [Any], from viewController: UIViewController) {
+        let activityVC = UIActivityViewController(activityItems: items, applicationActivities: nil)
         
-        alert.addAction(UIAlertAction(title: "Delete", style: .destructive) { [weak self] _ in
-            // TODO: Implement delete functionality with Supabase
-            self?.fetchPosts()
-        })
+        // iPad support
+        if let popover = activityVC.popoverPresentationController {
+            popover.sourceView = viewController.view
+            popover.sourceRect = CGRect(x: viewController.view.bounds.midX,
+                                       y: viewController.view.bounds.midY,
+                                       width: 0,
+                                       height: 0)
+            popover.permittedArrowDirections = []
+        }
         
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        
-        present(alert, animated: true)
+        viewController.present(activityVC, animated: true)
+    }
+    
+    private func sharePost(_ post: Post) {
+        // Keep this for backward compatibility with didTapMore
+        sharePost(post, from: self)
     }
 }
 

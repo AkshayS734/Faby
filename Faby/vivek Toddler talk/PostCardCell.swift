@@ -148,13 +148,6 @@ class PostCardCell: UITableViewCell {
         return label
     }()
     
-//    private let shareButton: UIButton = {
-//        let button = UIButton()
-//        button.translatesAutoresizingMaskIntoConstraints = false
-//        button.setImage(UIImage(systemName: "square.and.arrow.up"), for: .normal)
-//        button.tintColor = .systemGray
-//        return button
-//    }()
     
     private var postImagesStackViewHeightConstraint: NSLayoutConstraint?
     private var isLiked = false {
@@ -270,7 +263,6 @@ class PostCardCell: UITableViewCell {
         
         likeButton.addTarget(self, action: #selector(handleLikeButton), for: .touchUpInside)
         commentButton.addTarget(self, action: #selector(handleCommentButton), for: .touchUpInside)
-        moreButton.addTarget(self, action: #selector(handleMoreButton), for: .touchUpInside)
     }
     
     private func setupMoreButton() {
@@ -366,12 +358,6 @@ class PostCardCell: UITableViewCell {
         }
     }
     
-    @objc private func handleMoreButton() {
-        if let post = post {
-            delegate?.didTapMore(for: post)
-        }
-    }
-    
     // MARK: - Configuration
     func configure(with post: Post, isLiked: Bool = false) {
         self.post = post
@@ -439,6 +425,12 @@ class PostCardCell: UITableViewCell {
         imageView.backgroundColor = .systemGray6
         return imageView
     }
+    
+//    // MARK: - Debug Functions
+//    func debugSavedPostsFunctionality() {
+//        print("\n\n🛠️ Starting SavedPosts debugging...\n\n")
+//        SavedPostsDebugger.runTests()
+//    }
 }
 
 // MARK: - UIContextMenuInteractionDelegate
@@ -449,7 +441,9 @@ extension PostCardCell: UIContextMenuInteractionDelegate {
                 guard let self = self, let post = self.post else { return nil }
                 
                 let share = UIAction(title: "Share", image: UIImage(systemName: "square.and.arrow.up")) { _ in
-                    self.delegate?.didTapMore(for: post)
+                    if let parentViewController = self.findViewController() {
+                        self.delegate?.sharePost(post, from: parentViewController)
+                    }
                 }
                 
                 let bookmark = UIAction(title: "Save", image: UIImage(systemName: "bookmark")) { _ in
@@ -462,6 +456,17 @@ extension PostCardCell: UIContextMenuInteractionDelegate {
                 }
                 
                 return UIMenu(title: "", children: [share, bookmark, report])
+            }
+        }
+        return nil
+    }
+    
+    private func findViewController() -> UIViewController? {
+        var responder: UIResponder? = self
+        while let nextResponder = responder?.next {
+            responder = nextResponder
+            if let viewController = responder as? UIViewController {
+                return viewController
             }
         }
         return nil

@@ -221,6 +221,10 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
         setupTextFieldTapGesture()
         fetchLikedPosts()
         fetchPosts()
+        
+        // Add a long press gesture to navigation bar to run debug tests
+        let longPressGesture = UILongPressGestureRecognizer(target: self, action: #selector(handleLongPress(_:)))
+        self.navigationController?.navigationBar.addGestureRecognizer(longPressGesture)
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -229,6 +233,11 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
         // Debug the cancel button setup
         print("📱 Cancel button initialized: \(cancelReplyButton != nil ? "YES" : "NO")")
         print("📱 Cancel button has actions: \(cancelReplyButton.actions(forTarget: self, forControlEvent: .touchUpInside)?.count ?? 0)")
+        
+        // Run SavedPosts debugging to diagnose the issue
+        #if DEBUG
+        debugSavedPostsFunctionality()
+        #endif
     }
     
     override func viewDidLayoutSubviews() {
@@ -788,41 +797,6 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
                 cell.delegate = self
                 cell.configure(with: comment, isLiked: false)
                 
-                // If this is a reply, indent it with clean spacing
-                if comment.isReply == true {
-                    // Instagram-style indentation with subtle background difference
-                    cell.indentationLevel = 4
-                    cell.backgroundColor = UIColor.systemBackground.withAlphaComponent(1.0) // Same as normal background but ready for custom tint
-                    
-                    // Add subtle left padding to create visual grouping without lines
-                    let paddingView = UIView()
-                    paddingView.translatesAutoresizingMaskIntoConstraints = false
-                    paddingView.backgroundColor = UIColor.systemGray5.withAlphaComponent(0.3)
-                    paddingView.layer.cornerRadius = 2
-                    
-                    // Insert at index 0 to be behind other content
-                    cell.contentView.insertSubview(paddingView, at: 0)
-                    
-                    NSLayoutConstraint.activate([
-                        paddingView.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 4),
-                        paddingView.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -4),
-                        paddingView.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 24),
-                        paddingView.widthAnchor.constraint(equalToConstant: 2)
-                    ])
-                } else {
-                    // Regular comment - no indentation or visual changes
-                    cell.indentationLevel = 0
-                    cell.backgroundColor = .systemBackground
-                    
-                    // Find and remove any padding view if being reused
-                    for subview in cell.contentView.subviews {
-                        if subview.backgroundColor == UIColor.systemGray5.withAlphaComponent(0.3) {
-                            subview.removeFromSuperview()
-                            break
-                        }
-                    }
-                }
-                
                 return cell
             }
         }
@@ -871,31 +845,53 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
         showCommentInput(for: post)
     }
     
-    func didTapMore(for post: Post) {
-        let alertController = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
+    // Implement optional sharePost method for direct sharing
+    func sharePost(_ post: Post, from viewController: UIViewController) {
+        var items: [Any] = []
         
-        let shareAction = UIAlertAction(title: "Share Post", style: .default) { [weak self] _ in
-            guard let self = self else { return }
-            self.sharePost(post, from: self)
-        }
-
+        // Create post title with content
+        let postText = "\(post.postTitle)\n\n\(post.postContent)"
+        items.append(postText)
         
-        let saveAction = UIAlertAction(title: "Save Post", style: .default) { [weak self] _ in
-            self?.savePost(post)
-        }
-        
-        let reportAction = UIAlertAction(title: "Report Post", style: .destructive) { [weak self] _ in
-            self?.reportPost(post)
+        // Add deep link or web link for sharing
+        if let deepLink = SupabaseManager.shared.generatePostDeepLink(for: post) {
+            items.append(deepLink)
+        } else if let webLink = SupabaseManager.shared.generatePostWebLink(for: post) {
+            items.append(webLink)
         }
         
-        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
+        // Add image if available
+        if let imageUrlString = post.image_url, let imageUrl = URL(string: imageUrlString) {
+            // Load image asynchronously
+            URLSession.shared.dataTask(with: imageUrl) { data, response, error in
+                if let data = data, let image = UIImage(data: data) {
+                    items.append(image)
+                }
+                
+                DispatchQueue.main.async {
+                    self.presentShareSheet(items: items, from: viewController)
+                }
+            }.resume()
+        } else {
+            // No image, share text and link only
+            self.presentShareSheet(items: items, from: viewController)
+        }
+    }
+    
+    private func presentShareSheet(items: [Any], from viewController: UIViewController) {
+        let activityVC = UIActivityViewController(activityItems: items, applicationActivities: nil)
         
-        alertController.addAction(shareAction)
-        alertController.addAction(saveAction)
-        alertController.addAction(reportAction)
-        alertController.addAction(cancelAction)
+        // iPad support
+        if let popover = activityVC.popoverPresentationController {
+            popover.sourceView = viewController.view
+            popover.sourceRect = CGRect(x: viewController.view.bounds.midX,
+                                       y: viewController.view.bounds.midY,
+                                       width: 0,
+                                       height: 0)
+            popover.permittedArrowDirections = []
+        }
         
-        present(alertController, animated: true)
+        viewController.present(activityVC, animated: true)
     }
     
     func didTapSave(for post: Post) {
@@ -905,59 +901,65 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
     func didTapReport(for post: Post) {
         reportPost(post)
     }
-
-
-    func sharePost(_ post: Post, from viewController: UIViewController) {
-        var items: [Any] = [post.postTitle, post.postContent]
-
-        if let imageUrlString = post.image_url, let imageUrl = URL(string: imageUrlString) {
-            // Load image asynchronously
-            URLSession.shared.dataTask(with: imageUrl) { data, response, error in
-                if let data = data, let image = UIImage(data: data) {
-                    items.append(image)
-                }
-
-                DispatchQueue.main.async {
-                    let activityVC = UIActivityViewController(activityItems: items, applicationActivities: nil)
-
-                    // iPad support
-                    if let popover = activityVC.popoverPresentationController {
-                        popover.sourceView = viewController.view
-                        popover.sourceRect = CGRect(x: viewController.view.bounds.midX,
-                                                    y: viewController.view.bounds.midY,
-                                                    width: 0,
-                                                    height: 0)
-                        popover.permittedArrowDirections = []
-                    }
-
-                    viewController.present(activityVC, animated: true)
-                }
-            }.resume()
-        } else {
-            // No image, share text only
-            let activityVC = UIActivityViewController(activityItems: items, applicationActivities: nil)
-
-            // iPad support
-            if let popover = activityVC.popoverPresentationController {
-                popover.sourceView = viewController.view
-                popover.sourceRect = CGRect(x: viewController.view.bounds.midX,
-                                            y: viewController.view.bounds.midY,
-                                            width: 0,
-                                            height: 0)
-                popover.permittedArrowDirections = []
-            }
-
-            viewController.present(activityVC, animated: true)
-        }
+    
+    // Add empty implementation for didTapMore since we're handling actions directly now
+    func didTapMore(for post: Post) {
+        // This is required by the protocol but no longer used
+        // All actions are now handled directly by the context menu
     }
-
-
     
     private func savePost(_ post: Post) {
-        // TODO: Implement save post functionality
-        let alert = UIAlertController(title: "Post Saved", message: "This post has been saved to your favorites", preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "OK", style: .default))
-        present(alert, animated: true)
+        SupabaseManager.shared.isPostSaved(postId: post.postId) { [weak self] isSaved, error in
+            guard let self = self else { return }
+            
+            if isSaved {
+                // Post is already saved, ask if they want to unsave
+                let alert = UIAlertController(title: "Post Already Saved", 
+                                             message: "Do you want to remove this post from your saved collection?", 
+                                             preferredStyle: .alert)
+                
+                alert.addAction(UIAlertAction(title: "Remove", style: .destructive) { _ in
+                    SupabaseManager.shared.unsavePost(postId: post.postId) { success, error in
+                        DispatchQueue.main.async {
+                            if success {
+                                let feedback = UINotificationFeedbackGenerator()
+                                feedback.notificationOccurred(.success)
+                                
+                                let toast = UIAlertController(title: "Post Removed", message: "Post has been removed from your saved collection", preferredStyle: .alert)
+                                self.present(toast, animated: true)
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                                    toast.dismiss(animated: true)
+                                }
+                            } else {
+                                self.showError(message: "Failed to remove post from your saved collection")
+                            }
+                        }
+                    }
+                })
+                
+                alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+                present(alert, animated: true)
+                
+            } else {
+                // Save the post
+                SupabaseManager.shared.savePost(postId: post.postId) { success, error in
+                    DispatchQueue.main.async {
+                        if success {
+                            let feedback = UINotificationFeedbackGenerator()
+                            feedback.notificationOccurred(.success)
+                            
+                            let toast = UIAlertController(title: "Post Saved", message: "Post has been saved to your collection", preferredStyle: .alert)
+                            self.present(toast, animated: true)
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                                toast.dismiss(animated: true)
+                            }
+                        } else {
+                            self.showError(message: "Failed to save post")
+                        }
+                    }
+                }
+            }
+        }
     }
     
     private func reportPost(_ post: Post) {
@@ -1187,6 +1189,12 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
         present(alert, animated: true)
     }
     
+    // Add missing method to conform to CommentCellDelegate
+    func didTapLikeButton(for comment: Comment) {
+        // TODO: Implement comment like functionality
+        print("Like button tapped for comment: \(comment.content)")
+    }
+    
     // MARK: - Reply functionality
     @objc private func simpleCancelReply() {
         print("🔴🔴🔴 CANCEL BUTTON TAPPED - RIGHT VIEW VERSION 🔴🔴🔴")
@@ -1282,6 +1290,27 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
     @objc private func commentTextFieldTapped() {
         print("📱 Comment text field tapped, showing keyboard")
         commentTextField.becomeFirstResponder()
+    }
+    
+    // MARK: - Debug Functions
+    func debugSavedPostsFunctionality() {
+        print("\n\n🛠️ Starting SavedPosts debugging from ModernPostDetailViewController...\n\n")
+        SavedPostsDebugger.runTests()
+    }
+    
+    // Debug handler
+    @objc private func handleLongPress(_ gesture: UILongPressGestureRecognizer) {
+        if gesture.state == .began {
+            let alert = UIAlertController(title: "Debug Options", message: "Select a debug action", preferredStyle: .actionSheet)
+            
+            alert.addAction(UIAlertAction(title: "Test SavedPosts Functionality", style: .default) { [weak self] _ in
+                self?.debugSavedPostsFunctionality()
+            })
+            
+            alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+            
+            self.present(alert, animated: true)
+        }
     }
 }
 
