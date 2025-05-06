@@ -7,6 +7,7 @@ class MyPostCardCell: UITableViewCell {
         let view = UIView()
         view.translatesAutoresizingMaskIntoConstraints = false
         view.backgroundColor = .systemBackground
+        view.layer.masksToBounds = true
         view.layer.cornerRadius = 12
         view.layer.shadowColor = UIColor.black.cgColor
         view.layer.shadowOpacity = 0.1
@@ -140,7 +141,8 @@ class MyPostCardCell: UITableViewCell {
     // MARK: - UI Setup
     private func setupUI() {
         selectionStyle = .none
-        backgroundColor = .clear
+        backgroundColor = .systemBackground
+        contentView.backgroundColor = .systemBackground
         
         contentView.addSubview(cardView)
         
@@ -333,6 +335,12 @@ class MyPostCardCell: UITableViewCell {
             DispatchQueue.main.async {
                 self?.likeCountLabel.text = "\(count)"
                 self?.likeCountLabel.isHidden = count == 0
+                
+                // Update isLiked state based on count
+                self?.isLiked = count ?? 0 > 0
+                
+                // Update button appearance after changing isLiked
+                self?.updateLikeButtonAppearance()
             }
         }
         
