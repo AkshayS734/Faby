@@ -6,26 +6,30 @@ class SettingsViewController: UIViewController, UICollectionViewDelegate, UIColl
     var tableView: UITableView!
     var searchBar: UISearchBar!
     
-    let tableSections = ["PARENT PROFILE", "VACCITIME", "GROWTRACK", "TODBITE", "HELP & SUPPORT"]
+    let tableSections = ["PARENT PROFILE", "VACCITIME", "GROWTRACK", "TODBITE", "HELP & SUPPORT", "CONTACT INFORMATION", "LEGAL"]
     var filteredTableItems: [[String]] = [
         ["Parents Info"],
         ["Vaccine History", "Administered Vaccines"],
         ["Milestone track"],
         ["Today's meal", "Your plan"],
-        ["Contact support", "FAQs", "Submit feedback"]
+        ["Contact support", "FAQs", "Submit feedback"],
+        ["Email: support@faby.com", "Phone: +1 (800) 123-4567", "Available 24/7"],
+        ["Terms of Service", "Privacy Policy", "Community Guidelines"]
     ]
     let tableItems = [
         ["Parents Info"],
         ["Vaccine History", "Administered Vaccines"],
         ["Milestone track"],
         ["Today's meal", "Your plan"],
-        ["Contact support", "FAQs", "Submit feedback"]
+        ["Contact support", "FAQs", "Submit feedback"],
+        ["Email: support@faby.com", "Phone: +1 (800) 123-4567", "Available 24/7"],
+        ["Terms of Service", "Privacy Policy", "Community Guidelines"]
     ]
     
     override func viewDidLoad() {
         super.viewDidLoad()
         self.title = "Settings"
-        view.backgroundColor = .systemGroupedBackground
+        view.backgroundColor = .systemGray6
         setupSearchBar()
         setupCollectionView()
         setupTableView()
@@ -36,11 +40,9 @@ class SettingsViewController: UIViewController, UICollectionViewDelegate, UIColl
         searchBar = UISearchBar()
         searchBar.placeholder = "Search Settings"
         searchBar.delegate = self
-        searchBar.translatesAutoresizingMaskIntoConstraints = false
         searchBar.searchBarStyle = .minimal
-        searchBar.backgroundColor = .systemGroupedBackground
+        searchBar.backgroundColor = .systemGray6
         searchBar.tintColor = .black
-        view.addSubview(searchBar)
     }
     
     func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
@@ -56,6 +58,19 @@ class SettingsViewController: UIViewController, UICollectionViewDelegate, UIColl
         tableView.reloadData()
     }
     
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        if scrollView == tableView {
+            // Update cell constraints if needed
+            if let indexPathsForVisibleRows = tableView.indexPathsForVisibleRows {
+                for indexPath in indexPathsForVisibleRows {
+                    if let cell = tableView.cellForRow(at: indexPath) as? TableViewCellWithArrow {
+                        cell.updateConstraintsIfNeeded()
+                    }
+                }
+            }
+        }
+    }
+    
     // MARK: - Collection View Setup
     func setupCollectionView() {
         let layout = UICollectionViewFlowLayout()
@@ -67,10 +82,9 @@ class SettingsViewController: UIViewController, UICollectionViewDelegate, UIColl
         collectionView.dataSource = self
         collectionView.layer.cornerRadius = 12
         collectionView.layer.masksToBounds = true
-        collectionView.translatesAutoresizingMaskIntoConstraints = false
-        collectionView.backgroundColor = .systemGroupedBackground
+        collectionView.backgroundColor = .systemGray6
         collectionView.register(ProfileCollectionViewCell.self, forCellWithReuseIdentifier: "ProfileCell")
-        view.addSubview(collectionView)
+        collectionView.isScrollEnabled = false // Disable scrolling in collection view as it's part of the table header
     }
     
     func setupTableView() {
@@ -79,30 +93,34 @@ class SettingsViewController: UIViewController, UICollectionViewDelegate, UIColl
         tableView.dataSource = self
         tableView.translatesAutoresizingMaskIntoConstraints = false
         tableView.register(TableViewCellWithArrow.self, forCellReuseIdentifier: "ArrowCell")
-        tableView.backgroundColor = .systemGroupedBackground
+        tableView.backgroundColor = .systemGray6
         view.addSubview(tableView)
     }
     
     // MARK: - Layout Setup
     func setupLayout() {
+        // Set up table view to take the full screen
         NSLayoutConstraint.activate([
-            // Search Bar Constraints
-            searchBar.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            searchBar.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            searchBar.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            
-            // Collection View Constraints
-            collectionView.topAnchor.constraint(equalTo: searchBar.bottomAnchor, constant: 10),
-            collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            collectionView.heightAnchor.constraint(equalToConstant: 120),
-            
-            // Table View Constraints
-            tableView.topAnchor.constraint(equalTo: collectionView.bottomAnchor, constant: 10),
+            tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            tableView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor)
+            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
+        
+        // Create a header view containing the search bar and collection view
+        let headerView = UIView(frame: CGRect(x: 0, y: 0, width: view.frame.width, height: 180))
+        headerView.backgroundColor = .systemGray6
+        
+        // Add search bar to header view
+        searchBar.frame = CGRect(x: 0, y: 0, width: view.frame.width, height: 50)
+        headerView.addSubview(searchBar)
+        
+        // Add collection view to header view
+        collectionView.frame = CGRect(x: 10, y: 60, width: view.frame.width - 20, height: 120)
+        headerView.addSubview(collectionView)
+        
+        // Set the header view as the table's header view
+        tableView.tableHeaderView = headerView
     }
     
     // MARK: - Collection View DataSource and Delegate
@@ -128,13 +146,77 @@ class SettingsViewController: UIViewController, UICollectionViewDelegate, UIColl
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "ArrowCell", for: indexPath) as! TableViewCellWithArrow
         let title = filteredTableItems[indexPath.section][indexPath.row]
+        
+        // Set appropriate icon based on the section and row
+        switch (indexPath.section, indexPath.row) {
+        // PARENT PROFILE section
+        case (0, 0): // Parents Info
+            cell.setLeftIcon(systemName: "person.2.fill")
+            
+        // VACCITIME section
+        case (1, 0): // Vaccine History
+            cell.setLeftIcon(systemName: "list.bullet.clipboard")
+        case (1, 1): // Administered Vaccines
+            cell.setLeftIcon(systemName: "syringe")
+            
+        // GROWTRACK section
+        case (2, 0): // Milestone track
+            cell.setLeftIcon(systemName: "chart.line.uptrend.xyaxis")
+            
+        // TODBITE section
+        case (3, 0): // Today's meal
+            cell.setLeftIcon(systemName: "fork.knife")
+        case (3, 1): // Your plan
+            cell.setLeftIcon(systemName: "calendar")
+            
+        // HELP & SUPPORT section
+        case (4, 0): // Contact support
+            cell.setLeftIcon(systemName: "headphones")
+        case (4, 1): // FAQs
+            cell.setLeftIcon(systemName: "questionmark.circle")
+        case (4, 2): // Submit feedback
+            cell.setLeftIcon(systemName: "square.and.pencil")
+            
+        // CONTACT INFORMATION section
+        case (5, 0): // Email
+            cell.setLeftIcon(systemName: "envelope")
+            cell.configure(with: title, showArrow: false)
+            return cell
+        case (5, 1): // Phone
+            cell.setLeftIcon(systemName: "phone")
+            cell.configure(with: title, showArrow: false)
+            return cell
+        case (5, 2): // Available 24/7
+            cell.setLeftIcon(systemName: "clock")
+            cell.configure(with: title, showArrow: false)
+            return cell
+            
+        // LEGAL section
+        case (6, 0): // Terms of Service
+            cell.setLeftIcon(systemName: "doc.text")
+            cell.configure(with: title, showArrow: false)
+            return cell
+        case (6, 1): // Privacy Policy
+            cell.setLeftIcon(systemName: "lock.shield")
+            cell.configure(with: title, showArrow: false)
+            return cell
+        case (6, 2): // Community Guidelines
+            cell.setLeftIcon(systemName: "person.3")
+            cell.configure(with: title, showArrow: false)
+            return cell
+            
+        default:
+            break
+        }
+        
         cell.configure(with: title)
         return cell
     }
     
     func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
+        // Standard header for all sections
         let headerView = UIView()
-        headerView.backgroundColor = .systemGroupedBackground
+        headerView.backgroundColor = .systemGray6
         
         let titleLabel = UILabel()
         titleLabel.font = UIFont.systemFont(ofSize: 13, weight: .semibold)
@@ -157,16 +239,27 @@ class SettingsViewController: UIViewController, UICollectionViewDelegate, UIColl
         return 30
     }
     
-    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-        return 50
-    }
-    
+
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        // Handle navigation based on selected item
+        tableView.deselectRow(at: indexPath, animated: true)
+        
         let selectedSection = tableSections[indexPath.section]
         let selectedItem = filteredTableItems[indexPath.section][indexPath.row]
         
+        // Don't navigate for Legal section items
+        if selectedSection == "LEGAL" {
+            return
+        }
+        
+        // Don't navigate for Contact Information section items
+        if selectedSection == "CONTACT INFORMATION" {
+            return
+        }
+        
         switch (selectedSection, selectedItem) {
+        case ("PARENT PROFILE", "Parents Info"):
+            print("Navigate to Parents Info")
+            
         case ("VACCITIME", "Vaccine History"):
             let savedVaccineVC = SavedVaccineViewController()
             navigationController?.pushViewController(savedVaccineVC, animated: true)
@@ -179,11 +272,27 @@ class SettingsViewController: UIViewController, UICollectionViewDelegate, UIColl
             let milestoneOverviewVC = MilestonesOverviewViewController()
             navigationController?.pushViewController(milestoneOverviewVC, animated: true)
             
+        case ("TODBITE", "Today's meal"):
+            print("Navigate to Today's meal")
+            
+        case ("TODBITE", "Your plan"):
+            print("Navigate to Your plan")
+            
+        case ("HELP & SUPPORT", "Contact support"):
+            let contactSupportVC = ContactSupportViewController()
+            navigationController?.pushViewController(contactSupportVC, animated: true)
+            
+        case ("HELP & SUPPORT", "FAQs"):
+            let faqsVC = FAQsViewController()
+            navigationController?.pushViewController(faqsVC, animated: true)
+            
+        case ("HELP & SUPPORT", "Submit feedback"):
+            let submitFeedbackVC = SubmitFeedbackViewController()
+            navigationController?.pushViewController(submitFeedbackVC, animated: true)
+            
         default:
             break
         }
-        
-        tableView.deselectRow(at: indexPath, animated: true)
     }
 }
 
@@ -279,28 +388,40 @@ class ProfileCollectionViewCell: UICollectionViewCell {
 class TableViewCellWithArrow: UITableViewCell {
     let titleLabel = UILabel()
     let arrowImageView = UIImageView()
+    let leftIconImageView = UIImageView()
     
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
         
+        // Left icon for items
+        leftIconImageView.contentMode = .scaleAspectFit
+        leftIconImageView.translatesAutoresizingMaskIntoConstraints = false
+        contentView.addSubview(leftIconImageView)
+        
         titleLabel.font = UIFont.systemFont(ofSize: 16)
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        contentView.addSubview(titleLabel)
         
         arrowImageView.image = UIImage(systemName: "chevron.right")
-        arrowImageView.tintColor = .gray
+        arrowImageView.tintColor = .systemGray3
+        arrowImageView.contentMode = .scaleAspectFit
         arrowImageView.translatesAutoresizingMaskIntoConstraints = false
-        
-        contentView.addSubview(titleLabel)
         contentView.addSubview(arrowImageView)
-        contentView.layer.cornerRadius = 10
-        contentView.layer.masksToBounds = true
         
         NSLayoutConstraint.activate([
-            titleLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 15),
-            titleLabel.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
+            leftIconImageView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            leftIconImageView.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
+            leftIconImageView.widthAnchor.constraint(equalToConstant: 24),
+            leftIconImageView.heightAnchor.constraint(equalToConstant: 24),
             
-            arrowImageView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -15),
-            arrowImageView.centerYAnchor.constraint(equalTo: contentView.centerYAnchor)
+            titleLabel.leadingAnchor.constraint(equalTo: leftIconImageView.trailingAnchor, constant: 16),
+            titleLabel.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
+            titleLabel.trailingAnchor.constraint(equalTo: arrowImageView.leadingAnchor, constant: -8),
+            
+            arrowImageView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+            arrowImageView.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
+            arrowImageView.widthAnchor.constraint(equalToConstant: 12),
+            arrowImageView.heightAnchor.constraint(equalToConstant: 20)
         ])
     }
     
@@ -308,7 +429,27 @@ class TableViewCellWithArrow: UITableViewCell {
         fatalError("init(coder:) has not been implemented")
     }
     
-    func configure(with text: String) {
-        titleLabel.text = text
+    func configure(with title: String, showArrow: Bool = true) {
+        titleLabel.text = title
+        arrowImageView.isHidden = !showArrow
+    }
+    
+    func setLeftIcon(systemName: String) {
+        leftIconImageView.image = UIImage(systemName: systemName)
+        leftIconImageView.isHidden = false
+        leftIconImageView.tintColor = getIconColor(for: systemName)
+    }
+    
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        leftIconImageView.image = nil
+        arrowImageView.isHidden = false
+    }
+    
+    // Helper method to get appropriate color for each icon - all set to gray for consistency
+    private func getIconColor(for iconName: String) -> UIColor {
+        return UIColor.systemGray
     }
 }
+
+// ... (rest of the code remains the same)
