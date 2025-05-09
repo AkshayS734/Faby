@@ -6,12 +6,13 @@ class SettingsViewController: UIViewController, UICollectionViewDelegate, UIColl
     var tableView: UITableView!
     var searchBar: UISearchBar!
     
-    let tableSections = ["PARENT PROFILE", "VACCITIME", "GROWTRACK", "TODBITE", "HELP & SUPPORT", "CONTACT INFORMATION", "LEGAL"]
+    let tableSections = ["PARENT PROFILE", "VACCITIME", "GROWTRACK", "TODBITE", "TODDLER TALK", "HELP & SUPPORT", "CONTACT INFORMATION", "LEGAL"]
     var filteredTableItems: [[String]] = [
         ["Parents Info"],
         ["Vaccine History", "Administered Vaccines"],
         ["Milestone track"],
         ["Today's meal", "Your plan"],
+        ["Saved Post"],
         ["Contact support", "FAQs", "Submit feedback"],
         ["Email: support@faby.com", "Phone: +1 (800) 123-4567", "Available 24/7"],
         ["Terms of Service", "Privacy Policy", "Community Guidelines"]
@@ -21,6 +22,7 @@ class SettingsViewController: UIViewController, UICollectionViewDelegate, UIColl
         ["Vaccine History", "Administered Vaccines"],
         ["Milestone track"],
         ["Today's meal", "Your plan"],
+        ["Saved Post"],
         ["Contact support", "FAQs", "Submit feedback"],
         ["Email: support@faby.com", "Phone: +1 (800) 123-4567", "Available 24/7"],
         ["Terms of Service", "Privacy Policy", "Community Guidelines"]
@@ -169,38 +171,42 @@ class SettingsViewController: UIViewController, UICollectionViewDelegate, UIColl
         case (3, 1): // Your plan
             cell.setLeftIcon(systemName: "calendar")
             
+        // TODDLER TALK section
+        case (4, 0): // Saved Post
+            cell.setLeftIcon(systemName: "bookmark.fill")
+            
         // HELP & SUPPORT section
-        case (4, 0): // Contact support
+        case (5, 0): // Contact support
             cell.setLeftIcon(systemName: "headphones")
-        case (4, 1): // FAQs
+        case (5, 1): // FAQs
             cell.setLeftIcon(systemName: "questionmark.circle")
-        case (4, 2): // Submit feedback
+        case (5, 2): // Submit feedback
             cell.setLeftIcon(systemName: "square.and.pencil")
             
         // CONTACT INFORMATION section
-        case (5, 0): // Email
+        case (6, 0): // Email
             cell.setLeftIcon(systemName: "envelope")
             cell.configure(with: title, showArrow: false)
             return cell
-        case (5, 1): // Phone
+        case (6, 1): // Phone
             cell.setLeftIcon(systemName: "phone")
             cell.configure(with: title, showArrow: false)
             return cell
-        case (5, 2): // Available 24/7
+        case (6, 2): // Available 24/7
             cell.setLeftIcon(systemName: "clock")
             cell.configure(with: title, showArrow: false)
             return cell
             
         // LEGAL section
-        case (6, 0): // Terms of Service
+        case (7, 0): // Terms of Service
             cell.setLeftIcon(systemName: "doc.text")
             cell.configure(with: title, showArrow: false)
             return cell
-        case (6, 1): // Privacy Policy
+        case (7, 1): // Privacy Policy
             cell.setLeftIcon(systemName: "lock.shield")
             cell.configure(with: title, showArrow: false)
             return cell
-        case (6, 2): // Community Guidelines
+        case (7, 2): // Community Guidelines
             cell.setLeftIcon(systemName: "person.3")
             cell.configure(with: title, showArrow: false)
             return cell
@@ -277,6 +283,10 @@ class SettingsViewController: UIViewController, UICollectionViewDelegate, UIColl
             
         case ("TODBITE", "Your plan"):
             print("Navigate to Your plan")
+            
+        case ("TODDLER TALK", "Saved Post"):
+            let savedPostsVC = SavedPostsViewController()
+            navigationController?.pushViewController(savedPostsVC, animated: true)
             
         case ("HELP & SUPPORT", "Contact support"):
             let contactSupportVC = ContactSupportViewController()
