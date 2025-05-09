@@ -2,6 +2,11 @@ import UIKit
 import SwiftUI
 
 class HomeViewController: UIViewController {
+    // For storing navigation bar blur effect view
+    private var navigationBarBlurEffectView: UIVisualEffectView?
+    
+    // Gradient layer for the background - same as AuthViewController
+    private let gradientLayer = CAGradientLayer()
     
     private let storageManager = SupabaseVaccineManager.shared
     var scheduledVaccines: [[String: String]] = []
@@ -21,19 +26,14 @@ class HomeViewController: UIViewController {
         view.translatesAutoresizingMaskIntoConstraints = false
         return view
     }()
-    private let nameLabel: UILabel = {
-        let label = UILabel()
-        label.text = "Name"
-        label.font = UIFont.boldSystemFont(ofSize: 34)
-        label.translatesAutoresizingMaskIntoConstraints = false
-        return label
-    }()
+    // Using navigation bar's large title instead of custom nameLabel
     private let dateLabel: UILabel = {
         let label = UILabel()
         label.text = "Date"
-        label.font = UIFont.systemFont(ofSize: 16)
+        label.font = UIFont.systemFont(ofSize: 16, weight: .regular)
         label.textColor = .gray
         label.translatesAutoresizingMaskIntoConstraints = false
+        // We'll position this right below the navigation bar's large title
         return label
     }()
     private let specialMomentsLabel: UILabel = {
@@ -101,6 +101,15 @@ class HomeViewController: UIViewController {
         return view
     }()
     
+    // Loading indicator for upcoming vaccination section
+    private let vaccinationLoadingIndicator: UIActivityIndicatorView = {
+        let indicator = UIActivityIndicatorView(style: .medium)
+        indicator.hidesWhenStopped = true
+        indicator.color = .systemBlue
+        indicator.translatesAutoresizingMaskIntoConstraints = false
+        return indicator
+    }()
+    
     var todaysBitesData: [TodayBite] = []
     
     private let todaysBitesEmptyStateView: UIView = {
@@ -158,26 +167,26 @@ class HomeViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         print("🚀 HomeViewController viewDidLoad")
-        view.backgroundColor = .systemGray6
-        navigationController?.navigationBar.prefersLargeTitles = false
+        view.backgroundColor = .systemGroupedBackground
+        
+        // Set up navigation bar with large title
+        navigationController?.navigationBar.prefersLargeTitles = true
+        navigationItem.title = baby.name
+        
+        // Setup the navigation bar with gradient and blur effects
+        setupNavigationBar()
+        
         navigationItem.rightBarButtonItem = UIBarButtonItem(
             image: UIImage(systemName: "person.crop.circle"),
             style: .plain,
             target: self,
             action: #selector(goToSettings)
         )
-        NotificationCenter.default.addObserver(self, selector: #selector(updateSpecialMoments), name: .milestonesAchievedUpdated, object: nil)
-        NotificationCenter.default.addObserver(self, selector: #selector(handleNewVaccineScheduled), name: NSNotification.Name("NewVaccineScheduled"), object: nil)
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(updateTodaysBites),
-            name: NSNotification.Name("FeedingPlanUpdated"),
-            object: nil
-        )
         let layout = UICollectionViewFlowLayout()
         layout.scrollDirection = .horizontal
         layout.itemSize = CGSize(width: 220, height: 160)
         layout.minimumLineSpacing = 15
+        layout.sectionInset = UIEdgeInsets(top: 0, left: 16, bottom: 0, right: 16)
         
         todaysBitesCollectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
         todaysBitesCollectionView.translatesAutoresizingMaskIntoConstraints = false
@@ -192,22 +201,29 @@ class HomeViewController: UIViewController {
         setupUI()
         setupDelegates()
         loadVaccinations() // Initial load of vaccinations
-        updateNameLabel()
+        // Navigation title is set directly in viewDidLoad instead of using updateNameLabel()
         updateDateLabel()
         updateTodaysBites()
         embedSpecialMomentsViewController()
     }
+    
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         print("🚀 HomeViewController viewWillAppear")
         loadVaccinations() // Reload vaccinations when view appears
         updateSpecialMoments()
-        updateTodaysBites()
+        updateDateLabel()
     }
     
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         NotificationCenter.default.removeObserver(self)
+    }
+    
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        // Ensure gradient covers the entire view when layout changes
+        gradientLayer.frame = view.bounds
     }
     
     @objc func goToSettings() {
@@ -224,7 +240,7 @@ class HomeViewController: UIViewController {
         view.addSubview(scrollView)
         scrollView.addSubview(contentView)
         
-        contentView.addSubview(nameLabel)
+        // Using navigation bar's large title instead of custom nameLabel
         contentView.addSubview(dateLabel)
         contentView.addSubview(specialMomentsLabel)
         contentView.addSubview(specialMomentsContainerView)
@@ -234,6 +250,9 @@ class HomeViewController: UIViewController {
         // Add the vaccination container view
         contentView.addSubview(upcomingVaccinationLabel)
         contentView.addSubview(vaccineContainerView)
+        
+        // Add loading indicator to the vaccine container view
+        vaccineContainerView.addSubview(vaccinationLoadingIndicator)
         
         // Add empty state views with proper hierarchy
         contentView.addSubview(todaysBitesEmptyStateView)
@@ -259,17 +278,15 @@ class HomeViewController: UIViewController {
             contentView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
             contentView.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
             
-            nameLabel.topAnchor.constraint(equalTo: contentView.safeAreaLayoutGuide.topAnchor),
-            nameLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-            
-            dateLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 5),
-            dateLabel.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
+            // Position dateLabel to be right below the large title with minimal spacing
+            dateLabel.topAnchor.constraint(equalTo: contentView.safeAreaLayoutGuide.topAnchor, constant: 0),
+            dateLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
             
             specialMomentsLabel.topAnchor.constraint(equalTo: dateLabel.bottomAnchor, constant: 20),
-            specialMomentsLabel.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
+            specialMomentsLabel.leadingAnchor.constraint(equalTo: dateLabel.leadingAnchor),
             
             specialMomentsContainerView.topAnchor.constraint(equalTo: specialMomentsLabel.bottomAnchor, constant: 10),
-            specialMomentsContainerView.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
+            specialMomentsContainerView.leadingAnchor.constraint(equalTo: dateLabel.leadingAnchor),
             specialMomentsContainerView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
             specialMomentsContainerView.heightAnchor.constraint(equalToConstant: 225),
             
@@ -277,7 +294,7 @@ class HomeViewController: UIViewController {
             todaysBitesLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
             
             todaysBitesCollectionView.topAnchor.constraint(equalTo: todaysBitesLabel.bottomAnchor, constant: 10),
-            todaysBitesCollectionView.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
+            todaysBitesCollectionView.leadingAnchor.constraint(equalTo: dateLabel.leadingAnchor),
             todaysBitesCollectionView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
             todaysBitesCollectionView.heightAnchor.constraint(equalToConstant: 225),
             
@@ -288,8 +305,12 @@ class HomeViewController: UIViewController {
             vaccineContainerView.topAnchor.constraint(equalTo: upcomingVaccinationLabel.bottomAnchor, constant: 10),
             vaccineContainerView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
             vaccineContainerView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
-            vaccineContainerView.heightAnchor.constraint(equalToConstant: 160),
+            vaccineContainerView.heightAnchor.constraint(equalToConstant: 165),
             vaccineContainerView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -20),
+            
+            // Add constraints for the vaccination loading indicator
+            vaccinationLoadingIndicator.centerXAnchor.constraint(equalTo: vaccineContainerView.centerXAnchor),
+            vaccinationLoadingIndicator.centerYAnchor.constraint(equalTo: vaccineContainerView.centerYAnchor),
             
             // Card constraints
             todaysBitesEmptyStateView.topAnchor.constraint(equalTo: todaysBitesLabel.bottomAnchor, constant: 12),
@@ -440,9 +461,7 @@ class HomeViewController: UIViewController {
         todaysBitesCollectionView.dataSource = self
     }
     
-    private func updateNameLabel() {
-        nameLabel.text = baby.name
-    }
+    // Now using navigation title instead of custom nameLabel
     
     private func updateDateLabel() {
         let formatter = DateFormatter()
@@ -456,6 +475,10 @@ class HomeViewController: UIViewController {
     private func loadVaccinations() {
         print("📋 Loading vaccinations...")
         print("🌐 Fetching all vaccination records from Supabase...")
+        
+        // Show loading indicator
+        vaccinationLoadingIndicator.startAnimating()
+        
         Task {
             do {
                 // Fetch all scheduled vaccines from Supabase (no baby filter)
@@ -514,9 +537,22 @@ class HomeViewController: UIViewController {
                     self.setupVaccineView()
                     self.updateTodaysBitesEmptyState()
                     self.todaysBitesCollectionView.reloadData()
+                    
+                    // Stop the loading indicators
+                    self.vaccinationLoadingIndicator.stopAnimating()
                 }
             } catch {
                 print("❌ Failed to load vaccination records from Supabase: \(error.localizedDescription)")
+                await MainActor.run {
+                    // Stop loading indicator
+                    self.vaccinationLoadingIndicator.stopAnimating()
+                    
+                    // Show error state or empty state
+                    print("📦 Error fetching vaccination data: \(error.localizedDescription)")
+                    self.setupVaccineView() // Setup with empty data
+                    self.updateTodaysBitesEmptyState()
+                    self.todaysBitesCollectionView.reloadData()
+                }
             }
         }
     }
@@ -554,6 +590,68 @@ class HomeViewController: UIViewController {
             tabBarController.selectedIndex = 4
         } else {
             print("⚠️ TabBarController not found")
+        }
+    }
+    
+    // Setup background gradient - exactly like AuthViewController
+    private func setupNavigationBar() {
+        // Match the AuthViewController exactly
+        gradientLayer.colors = [
+            UIColor(red: 0.85, green: 0.95, blue: 1.0, alpha: 1.0).cgColor,  // Light blue at top - exact match to AuthViewController
+            UIColor.white.cgColor  // White at bottom - exact match to AuthViewController
+        ]
+        gradientLayer.locations = [0.0, 1.0]
+        gradientLayer.startPoint = CGPoint(x: 0.5, y: 0.0)
+        gradientLayer.endPoint = CGPoint(x: 0.5, y: 0.3)  // Gradient fades to white faster
+        
+        // Apply gradient to the entire view just like in AuthViewController
+        gradientLayer.frame = view.bounds
+        view.layer.insertSublayer(gradientLayer, at: 0)
+        
+        // Set background to white so it matches AuthViewController
+        view.backgroundColor = .white
+        
+        // Configure navigation bar with modern iOS appearance
+        if let navigationBar = navigationController?.navigationBar {
+            // Enable large titles properly
+            navigationBar.prefersLargeTitles = true
+            navigationItem.largeTitleDisplayMode = .always
+            
+            // iOS 15+ appearance with different states
+            if #available(iOS 15.0, *) {
+                // Create large title appearance
+                let appearance = UINavigationBarAppearance()
+                appearance.configureWithTransparentBackground()
+                
+                // Standard appearance (when scrolled) - with blur effect
+                appearance.backgroundEffect = UIBlurEffect(style: .systemUltraThinMaterialLight)
+                appearance.backgroundColor = UIColor(red: 0.85, green: 0.95, blue: 1.0, alpha: 0.7)
+                
+                // Large title text attributes - make them bold and larger
+                appearance.largeTitleTextAttributes = [
+                    .foregroundColor: UIColor.black,
+                    .font: UIFont.systemFont(ofSize: 34, weight: .bold)
+                ]
+                
+                // Apply appearances to all navigation bar states
+                navigationBar.standardAppearance = appearance
+                navigationBar.compactAppearance = appearance
+                
+                // Scroll edge appearance should be transparent to show the gradient
+                let scrollEdgeAppearance = UINavigationBarAppearance()
+                scrollEdgeAppearance.configureWithTransparentBackground()
+                scrollEdgeAppearance.largeTitleTextAttributes = appearance.largeTitleTextAttributes
+                navigationBar.scrollEdgeAppearance = scrollEdgeAppearance
+            } else {
+                // iOS 14 and below
+                navigationBar.setBackgroundImage(UIImage(), for: .default)
+                navigationBar.shadowImage = UIImage()
+                navigationBar.isTranslucent = true
+                navigationBar.largeTitleTextAttributes = [
+                    .foregroundColor: UIColor.black,
+                    .font: UIFont.systemFont(ofSize: 34, weight: .bold)
+                ]
+            }
         }
     }
     
@@ -639,8 +737,11 @@ class HomeViewController: UIViewController {
             todaysBitesEmptyStateView.isHidden = true
         }
     }
-    
 }
+
+
+
+// MARK: - UICollection View
 
 extension HomeViewController: UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {

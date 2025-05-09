@@ -15,6 +15,7 @@ class AuthViewController: UIViewController {
     private let passwordTextField = UITextField()
     private let forgotPasswordButton = UIButton(type: .system)
     private let signInButton = UIButton(type: .system)
+    private let signInLoadingIndicator = UIActivityIndicatorView(style: .medium)
     private let orLabel = UILabel()
     private let appleSignInButton = UIButton(type: .system)
     private let accountLabel = UILabel() // Label for 'Don't have an account?'
@@ -228,6 +229,16 @@ class AuthViewController: UIViewController {
         signInButton.layer.cornerRadius = 25
         signInButton.addTarget(self, action: #selector(signInTapped), for: .touchUpInside)
         signInButton.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Setup loading indicator
+        signInLoadingIndicator.color = .white
+        signInLoadingIndicator.hidesWhenStopped = true
+        signInButton.addSubview(signInLoadingIndicator)
+        signInLoadingIndicator.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            signInLoadingIndicator.centerYAnchor.constraint(equalTo: signInButton.centerYAnchor),
+            signInLoadingIndicator.trailingAnchor.constraint(equalTo: signInButton.trailingAnchor, constant: -16)
+        ])
         contentView.addSubview(signInButton)
         
         // Or label with lines on both sides
@@ -482,14 +493,27 @@ class AuthViewController: UIViewController {
             return
         }
         
+        // Show loading indicator and disable button
+        signInLoadingIndicator.startAnimating()
+        signInButton.setTitle("Signing In", for: .normal)
+        signInButton.isEnabled = false
+        
         Task {
             do {
                 let session = try await supabase.auth.signIn(email: email, password: password)
                 await MainActor.run {
+                    // Hide loading indicator
+                    signInLoadingIndicator.stopAnimating()
+                    signInButton.setTitle("Sign In", for: .normal)
+                    signInButton.isEnabled = true
                     navigateToHome()
                 }
             } catch {
                 await MainActor.run {
+                    // Hide loading indicator and re-enable button on error
+                    signInLoadingIndicator.stopAnimating()
+                    signInButton.setTitle("Sign In", for: .normal)
+                    signInButton.isEnabled = true
                     showAlert(title: "Sign In Failed", message: error.localizedDescription)
                 }
             }
