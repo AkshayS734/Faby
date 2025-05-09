@@ -26,7 +26,7 @@ struct VaccineCardView: View {
                         .foregroundColor(.secondary)
                 }
                 Spacer()
-                Image(systemName: "chevron.right")
+                Image(systemName: "calendar.badge.plus")
                     .font(.title3)
                     .foregroundColor(Color.accentColor)
                     .frame(width: 44, height: 44) // Optimal tap target size
@@ -182,6 +182,15 @@ class VacciAlertViewController: UIViewController, TimePeriodCollectionViewDelega
     private var cancellables = Set<AnyCancellable>()
     private var currentLoadingTask: Task<Void, Never>?
     
+    // Subtle Apple-style loading indicator
+    private lazy var loadingIndicator: UIActivityIndicatorView = {
+        let indicator = UIActivityIndicatorView(style: .medium)
+        indicator.hidesWhenStopped = true
+        indicator.color = .systemGray
+        indicator.translatesAutoresizingMaskIntoConstraints = false
+        return indicator
+    }()
+    
     // Cache for vaccines
     private var cachedAllVaccines: [Vaccine]?
     private var lastVaccinesFetchTime: Date?
@@ -236,6 +245,17 @@ class VacciAlertViewController: UIViewController, TimePeriodCollectionViewDelega
         }
     }
     
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        
+        // Ensure large title is set when this view appears
+        navigationController?.navigationBar.prefersLargeTitles = true
+        navigationItem.largeTitleDisplayMode = .always
+        
+        // Force the title display
+        setNavigationTitle()
+    }
+    
     private func setupNotifications() {
         NotificationCenter.default.addObserver(
             self,
@@ -279,8 +299,8 @@ class VacciAlertViewController: UIViewController, TimePeriodCollectionViewDelega
         // Setup time period collection view with new component
         timePeriodCollectionView = TimePeriodCollectionView(
             timePeriods: timePeriods,
-            itemSize: CGSize(width: 85, height: 85),
-            lineSpacing: 8
+            itemSize: CGSize(width: 90, height: 90),  // Increased card size
+            lineSpacing: 10  // Slightly increased spacing
         )
         timePeriodCollectionView.delegate = self
         view.addSubview(timePeriodCollectionView)
@@ -292,17 +312,25 @@ class VacciAlertViewController: UIViewController, TimePeriodCollectionViewDelega
         emptyStateLabel.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(emptyStateLabel)
         
+        // Add loading indicator to view
+        view.addSubview(loadingIndicator)
+        
         // Apply consistent spacing per HIG
         NSLayoutConstraint.activate([
-            timePeriodCollectionView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            timePeriodCollectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            // Move the collection view down a bit and start from the leading edge
+            timePeriodCollectionView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16),
+            timePeriodCollectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             timePeriodCollectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            timePeriodCollectionView.heightAnchor.constraint(equalToConstant: 90),
+            timePeriodCollectionView.heightAnchor.constraint(equalToConstant: 110),  // Increased height
             
             emptyStateLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            emptyStateLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-            emptyStateLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
-            emptyStateLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24)
+            emptyStateLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor, constant: 20),
+            emptyStateLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 32),
+            emptyStateLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -32),
+            
+            // Loading indicator constraints - centered in the content area
+            loadingIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            loadingIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor),
         ])
         
         // Initialize the SwiftUI hosting controller with empty data
@@ -444,6 +472,11 @@ class VacciAlertViewController: UIViewController, TimePeriodCollectionViewDelega
             currentLoadingTask?.cancel()
         }
         
+        // Show loading indicator on main thread
+        DispatchQueue.main.async { [weak self] in
+            self?.loadingIndicator.startAnimating()
+        }
+        
         // Create new loading task
         currentLoadingTask = Task { [weak self] in
             guard let self = self else {
@@ -484,6 +517,9 @@ class VacciAlertViewController: UIViewController, TimePeriodCollectionViewDelega
                 
                 await MainActor.run {
                     print("🎯 DEBUG: Updating UI with vaccines")
+                    // Stop the loading indicator
+                    self.loadingIndicator.stopAnimating()
+                    
                     if availableVaccines.isEmpty {
                         self.updateEmptyState("No vaccines found for \(period)")
                     } else {
@@ -496,6 +532,8 @@ class VacciAlertViewController: UIViewController, TimePeriodCollectionViewDelega
                 print("❌ DEBUG: Error loading vaccines: \(error)")
                 if !Task.isCancelled {
                     await MainActor.run {
+                        // Stop the loading indicator on error
+                        self.loadingIndicator.stopAnimating()
                         self.updateEmptyState("Error loading vaccines: \(error.localizedDescription)")
                     }
                 }
@@ -608,4 +646,3 @@ class VacciAlertViewController: UIViewController, TimePeriodCollectionViewDelega
         }
     }
 }
-

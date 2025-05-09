@@ -23,14 +23,14 @@ struct Vaccine: Identifiable, Codable, Equatable {
 }
 
 /// Record representing a vaccine schedule
-struct VaccineSchedule: Codable, Identifiable {
+struct VaccineSchedule: Codable, Identifiable, Equatable {
     let id: UUID
     let babyID: UUID
     let vaccineId: UUID
     var hospital: String
     var date: Date
     var location: String
-    let isAdministered: Bool
+    var isAdministered: Bool
     
     // Add CodingKeys to map between Swift property names and database column names
     enum CodingKeys: String, CodingKey {
@@ -58,7 +58,8 @@ struct VaccineAdministered: Identifiable, Codable {
         case babyId = "baby_id"
         case vaccineId = "vaccine_id"
         case scheduleId = "schedule_id"
-        case administeredDate = "administered_date"
+        case administeredDate = "administereddate"  // Without underscore
+    
     }
 }
 

@@ -36,7 +36,6 @@ class VaccineInputViewController: UIViewController, UISearchBarDelegate {
     
     private let titleLabel: UILabel = {
         let label = UILabel()
-//        label.text = "Mark the vaccines your child have recieved:"
         label.font = .systemFont(ofSize: 22, weight: .bold)
         label.textAlignment = .left
         label.translatesAutoresizingMaskIntoConstraints = false
@@ -366,16 +365,7 @@ class VaccineInputViewController: UIViewController, UISearchBarDelegate {
         currentPeriod = period
     }
 
-    // 1. Simplified saveButtonTapped method without baby ID check
-    // Update the saveButtonTapped method in VaccineInputViewController to pass selected dates to the SelectedVaccinesViewController
-
     @objc private func saveButtonTapped() {
-        // Check if any vaccines are selected
-//        if selectedVaccines.isEmpty {
-//            showAlert(title: "No Vaccines Selected", message: "Please select at least one vaccine before saving.")
-//            return
-//        }
-        
         // Get selected vaccine objects
         let selectedVaccineObjects = vaccineData.filter { selectedVaccines.contains($0.name) }
         
@@ -386,34 +376,7 @@ class VaccineInputViewController: UIViewController, UISearchBarDelegate {
         )
         navigationController?.pushViewController(selectedVaccinesVC, animated: true)
     }
-    // 3. Ensure the navigation bar is correctly set up and the button is visible
-//    private func configureNavigationBar() {
-//        navigationController?.navigationBar.prefersLargeTitles = true
-//        navigationItem.title = "VacciTime"
-//        
-//        // Make sure the saveButton is more prominent
-//        let saveButton = UIBarButtonItem(
-//            title: "Save",
-//            style: .done,
-//            target: self,
-//            action: #selector(saveButtonTapped)
-//        )
-//        // Set a more visible color
-//        saveButton.tintColor = .systemBlue
-//        navigationItem.rightBarButtonItem = saveButton
-//        
-//        if #available(iOS 13.0, *) {
-//            let appearance = UINavigationBarAppearance()
-//            appearance.configureWithDefaultBackground() // Use default background instead of transparent
-//            appearance.backgroundColor = .systemBackground
-//            appearance.shadowColor = .systemGray5  // Add a subtle shadow for better visibility
-//            appearance.largeTitleTextAttributes = [.foregroundColor: UIColor.label]
-//            appearance.titleTextAttributes = [.foregroundColor: UIColor.label]
-//            navigationController?.navigationBar.standardAppearance = appearance
-//            navigationController?.navigationBar.compactAppearance = appearance
-//            navigationController?.navigationBar.scrollEdgeAppearance = appearance
-//        }
-//    }
+
     // MARK: - UISearchBarDelegate
     func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
         self.searchText = searchText
@@ -512,7 +475,7 @@ extension VaccineInputViewController: VaccineCellDelegate {
         alertController.view.addConstraint(heightConstraint)
         
         // Add actions
-        let scheduleAction = UIAlertAction(title: "Schedule", style: .default) { [weak self] _ in
+        let scheduleAction = UIAlertAction(title: "Set", style: .default) { [weak self] _ in
             self?.handleDateSelection(date: datePicker.date, for: selectedVaccine)
         }
         
@@ -544,25 +507,19 @@ extension VaccineInputViewController: VaccineCellDelegate {
         // Store the selected date for the vaccine
         selectedDates[vaccine.name] = date
         
-        // Reload the table to show the selected date
+        // Automatically select the vaccine if it's not already selected
+        if !selectedVaccines.contains(vaccine.name) {
+            selectedVaccines.append(vaccine.name)
+        }
+        
+        // Add haptic feedback for confirmation
+        let generator = UIImpactFeedbackGenerator(style: .light)
+        generator.impactOccurred()
+        
+        // Reload the table to show the selected date and checked status
         tableView.reloadData()
         
-        // Show success message
-        showSuccessAlert(for: vaccine.name, on: date)
-    }
-    
-    private func showSuccessAlert(for vaccineName: String, on date: Date) {
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateStyle = .medium
-        
-        let alert = UIAlertController(
-            title: "Vaccination Scheduled",
-            message: "\(vaccineName) has been scheduled for \(dateFormatter.string(from: date))",
-            preferredStyle: .alert
-        )
-
-        alert.addAction(UIAlertAction(title: "OK", style: .default))
-        present(alert, animated: true)
+        // No success alert popup anymore
     }
 }
 
@@ -728,7 +685,6 @@ class VaccineCell: UITableViewCell {
         delegate?.didTapScheduleButton(for: vaccineName)
     }
     
-    
     @objc private func checkmarkTapped() {
         checkmarkButton.isSelected.toggle()
         checkmarkButton.tintColor = checkmarkButton.isSelected ? .systemBlue : .systemGray3
@@ -739,8 +695,4 @@ class VaccineCell: UITableViewCell {
         
         delegate?.didTapCheckbox(for: vaccineName)
     }
-    
-//    @objc private func removeScheduleButtonTapped() {
-//        delegate?.didTapRemoveScheduleButton(for: vaccineName)
-//    }
 }

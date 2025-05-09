@@ -266,13 +266,13 @@ class AdministeredVaccineManager {
         
         return rawAdministered.map { raw in
             let dateFormatter = ISO8601DateFormatter()
-            let administeredDate = dateFormatter.date(from: raw.administered_date) ?? Date()
+            let administeredDate = dateFormatter.date(from: raw.administeredDate) ?? Date()
             
             return VaccineAdministered(
                 id: UUID(uuidString: raw.id) ?? UUID(),
                 babyId: UUID(uuidString: raw.baby_id) ?? UUID(),
-                vaccineId: UUID(uuidString: raw.vaccine_id) ?? UUID(),
-                scheduleId: UUID(uuidString: raw.schedule_id) ?? UUID(),
+                vaccineId: UUID(uuidString: raw.vaccineID) ?? UUID(),
+                scheduleId: UUID(uuidString: raw.scheduleId) ?? UUID(),
                 administeredDate: administeredDate
             )
         }
@@ -291,12 +291,12 @@ class AdministeredVaccineManager {
         let rawAdministered = try JSONDecoder().decode([SupabaseVaccineAdministered].self, from: data)
         return rawAdministered.map { raw in
             let dateFormatter = ISO8601DateFormatter()
-            let administeredDate = dateFormatter.date(from: raw.administered_date) ?? Date()
+            let administeredDate = dateFormatter.date(from: raw.administeredDate) ?? Date()
             return VaccineAdministered(
                 id: UUID(uuidString: raw.id) ?? UUID(),
                 babyId: UUID(uuidString: raw.baby_id) ?? UUID(),
-                vaccineId: UUID(uuidString: raw.vaccine_id) ?? UUID(),
-                scheduleId: UUID(uuidString: raw.schedule_id) ?? UUID(),
+                vaccineId: UUID(uuidString: raw.vaccineID) ?? UUID(),
+                scheduleId: UUID(uuidString: raw.scheduleId) ?? UUID(),
                 administeredDate: administeredDate
             )
         }
