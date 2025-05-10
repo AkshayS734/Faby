@@ -64,11 +64,8 @@ class PostViewController: UIViewController, UITextViewDelegate, UIImagePickerCon
         label.font = .systemFont(ofSize: 18, weight: .semibold)
         label.textColor = .label
         
-        if let currentParent = ParentDataModel.shared.currentParent {
-            label.text = currentParent.name
-        } else {
-            label.text = "Anonymous"
-        }
+        // Default to Anonymous, will be updated in viewDidLoad
+        label.text = "Anonymous"
         
         return label
     }()
@@ -307,6 +304,20 @@ class PostViewController: UIViewController, UITextViewDelegate, UIImagePickerCon
     private func setupDelegates() {
         contentTextView.delegate = self
         titleTextField.delegate = self
+        
+        // Update username label with current parent data
+        if let currentParent = ParentDataModel.shared.currentParent {
+            usernameLabel.text = currentParent.name
+        } else if let userId = SupabaseManager.shared.userID {
+            // If parent data isn't loaded yet but we have a user ID, try to fetch it
+            ParentDataModel.shared.updateCurrentParent(userId: userId) { [weak self] success in
+                if success, let currentParent = ParentDataModel.shared.currentParent {
+                    DispatchQueue.main.async {
+                        self?.usernameLabel.text = currentParent.name
+                    }
+                }
+            }
+        }
     }
     
     private func setupInitialState() {
@@ -394,13 +405,16 @@ class PostViewController: UIViewController, UITextViewDelegate, UIImagePickerCon
                 return
             }
 
-        print("⚠️ Checking for parent...")
-        guard let currentParent = ParentDataModel.shared.currentParent else {
-            showAlert(message: "Error: No parent found!")
+        print("⚠️ Checking for user ID...")
+        guard let userId = SupabaseManager.shared.userID else {
+            showAlert(message: "Error: You need to be logged in to create a post!")
             return
         }
             
-        print("⚠️ Parent found: \(currentParent.name), ID: \(currentParent.id)")
+        print("⚠️ User ID found: \(userId)")
+        
+        // Get parent name for display
+        let parentName = ParentDataModel.shared.currentParent?.name ?? "Anonymous"
 
         print("⚠️ Checking for category...")
         guard let category = selectedCategory else {
@@ -423,45 +437,40 @@ class PostViewController: UIViewController, UITextViewDelegate, UIImagePickerCon
             do {
                 print("⚠️ Checking if parent exists in Supabase...")
                 
-                // Try to find parent first
+                // We already have the userId from SupabaseManager, so we'll use that directly
+                let parentId = userId
+                print("✅ Using logged-in user ID: \(parentId)")
+                
+                // Check if parent exists in the database
                 let parentResponse = try await client.database
                     .from("parents")
                     .select("uid, name")
-                    .eq("name", value: currentParent.name)
+                    .eq("uid", value: parentId)
                     .limit(1)
                     .execute()
                 
-                var parentId: String
-                
-                if let parentData = String(data: parentResponse.data, encoding: .utf8), !parentData.contains("[]") {
-                    // Parent found, extract ID
-                    print("✅ Parent found in Supabase!")
-                    parentId = currentParent.id
-                    
-                    if let jsonData = try? JSONSerialization.jsonObject(with: parentResponse.data) as? [[String: Any]],
-                       let firstParent = jsonData.first,
-                       let extractedId = firstParent["uid"] as? String {
-                        parentId = extractedId
-                        print("✅ Using existing parent ID: \(parentId)")
-                    }
-                } else {
+                // If parent doesn't exist in database, create one
+                if let parentData = String(data: parentResponse.data, encoding: .utf8), parentData.contains("[]") {
                     // Parent not found, create one
                     print("⚠️ Parent not found in Supabase, creating new parent...")
                     
-                    parentId = currentParent.id
                     try await client.database
                         .from("parents")
                         .insert([
                             "uid": parentId,
-                            "name": currentParent.name
+                            "name": parentName,
+                            "gender": "male",  // Default values
+                            "relation": "guardian"
                         ])
                         .execute()
                     
                     print("✅ Created new parent with ID: \(parentId)")
+                } else {
+                    print("✅ Parent already exists in database")
                 }
                 
                 // Create post with image if available
-                guard let parentUUID = UUID(uuidString: parentId),
+                guard let userUUID = UUID(uuidString: parentId),
                       let categoryUUID = UUID(uuidString: category) else {
                     throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid UUID format"])
                 }
@@ -470,7 +479,7 @@ class PostViewController: UIViewController, UITextViewDelegate, UIImagePickerCon
                     title: title,
                     content: text,
                     topicID: categoryUUID,
-                    userID: parentUUID,
+                    userID: userUUID,
                     imageData: imageData
                 ) { success, error in
                     DispatchQueue.main.async {

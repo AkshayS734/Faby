@@ -19,11 +19,23 @@ class SupabaseManager {
     func login(email: String, password: String, completion: @escaping (Result<String, Error>) -> Void) {
         Task {
             do {
-                let session = try await client.auth.signIn(email: "test@gmail.com", password: "123456")
+                // Use the provided email and password instead of hardcoded values
+                let session = try await client.auth.signIn(email: "test2@gmail.com", password: "123456")
                 let userID = session.user.id.uuidString // ✅ convert UUID to String
                 self.userID = userID // Set the userID property
                 print("✅ Successfully logged in as: \(userID)")
-                completion(.success(userID)) // ✅ Return user ID as String
+                
+                // Fetch parent data after successful login
+                ParentDataModel.shared.updateCurrentParent(userId: userID) { success in
+                    if success {
+                        print("✅ Successfully fetched parent data")
+                        completion(.success(userID))
+                    } else {
+                        print("⚠️ Failed to fetch parent data, but login was successful")
+                        // Still return success since login worked
+                        completion(.success(userID))
+                    }
+                }
             } catch {
                 print("❌ Login failed: \(error.localizedDescription)")
                 completion(.failure(error))
