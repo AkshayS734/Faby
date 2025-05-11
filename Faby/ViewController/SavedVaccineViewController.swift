@@ -364,7 +364,7 @@ class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITab
                     view.isUserInteractionEnabled = true
                     
                     // If there's no baby selected, fall back to local data
-                    if (error as NSError).domain == "VacciAlertError" && 
+                    if (error as NSError).domain == "VacciAlertError" &&
                        ((error as NSError).code == 2 || (error as NSError).code == 3) {
                         // Try to use local baby data instead
                         if let firstBaby = BabyDataModel.shared.babyList.first {
@@ -400,7 +400,7 @@ class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITab
     
     // Fetch baby and parent data from Supabase
     private func fetchBabyAndParentData() async throws -> (baby: BabyData, parent: ParentData) {
-        guard let client = (UIApplication.shared.delegate as? AppDelegate)?.supabase ?? 
+        guard let client = (UIApplication.shared.delegate as? AppDelegate)?.supabase ??
                           (UIApplication.shared.connectedScenes.first?.delegate as? SceneDelegate)?.supabase else {
             throw NSError(domain: "VacciAlertError", code: 1,
                          userInfo: [NSLocalizedDescriptionKey: "Supabase client not available"])
@@ -415,10 +415,10 @@ class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITab
             let parentUUID: String
             
             // First try to get parent UUID from UserDefaults
-            if let storedParentUUID = UserDefaults.standard.string(forKey: "parentUUID") ?? 
+            if let storedParentUUID = UserDefaults.standard.string(forKey: "parentUUID") ??
                                      UserDefaults.standard.string(forKey: "currentUserId") {
                 parentUUID = storedParentUUID
-            } 
+            }
             // If not in UserDefaults, try to get from Supabase session
             else if let session = try? client.auth.session {
                 // Get user ID as string
@@ -624,8 +624,8 @@ class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITab
             currentY += 70
             
             // Draw vaccination table
-            drawVaccinationTable(context: context, startY: currentY, pageWidth: pageWidth, 
-                                backgroundColor: backgroundColor, headerColor: tableHeaderColor, 
+            drawVaccinationTable(context: context, startY: currentY, pageWidth: pageWidth,
+                                backgroundColor: backgroundColor, headerColor: tableHeaderColor,
                                 textColor: primaryTextColor)
         }
         
@@ -797,8 +797,8 @@ class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITab
             currentY += 70
             
             // Draw vaccination table
-            drawVaccinationTable(context: context, startY: currentY, pageWidth: pageWidth, 
-                                backgroundColor: backgroundColor, headerColor: tableHeaderColor, 
+            drawVaccinationTable(context: context, startY: currentY, pageWidth: pageWidth,
+                                backgroundColor: backgroundColor, headerColor: tableHeaderColor,
                                 textColor: primaryTextColor)
         }
         
@@ -846,7 +846,7 @@ class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITab
     }
     
     // Helper method to draw the vaccination table
-    private func drawVaccinationTable(context: UIGraphicsPDFRendererContext, startY: CGFloat, pageWidth: CGFloat, 
+    private func drawVaccinationTable(context: UIGraphicsPDFRendererContext, startY: CGFloat, pageWidth: CGFloat,
                                      backgroundColor: UIColor, headerColor: UIColor, textColor: UIColor) {
         let tableWidth = pageWidth - 200
         let tableX = 100.0
@@ -929,8 +929,8 @@ class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITab
                 UIRectFill(context.pdfContextBounds)
                 
                 // Draw dotted border on new page
-                let borderRect = CGRect(x: 60, y: 60, 
-                                      width: context.pdfContextBounds.width - 120, 
+                let borderRect = CGRect(x: 60, y: 60,
+                                      width: context.pdfContextBounds.width - 120,
                                       height: context.pdfContextBounds.height - 120)
                 let borderPath = UIBezierPath(rect: borderRect)
                 borderPath.lineWidth = 1.0

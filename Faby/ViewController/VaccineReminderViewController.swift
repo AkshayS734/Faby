@@ -616,7 +616,7 @@ class VaccineReminderViewController: UIViewController, UISearchBarDelegate, UISc
         print("🔄 Toggling calendar size - minimize: \(minimize), current state minimized: \(isCalendarMinimized)")
         
         // Skip if already in the requested state
-        if isCalendarMinimized == minimize { 
+        if isCalendarMinimized == minimize {
             return
         }
         

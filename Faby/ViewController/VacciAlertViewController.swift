@@ -495,7 +495,7 @@ class VacciAlertViewController: UIViewController, TimePeriodCollectionViewDelega
                 print("📊 DEBUG: Fetching vaccines for weeks \(lowerWeeks)-\(upperWeeks)")
                 
                 async let allVaccinesTask = self.getAllVaccines()
-                async let scheduledVaccinesTask = VaccineScheduleManager.shared.fetchSchedules(forBaby: currentBabyId)
+                async let scheduledVaccinesTask = VaccineScheduleManager.shared.fetchSchedules(forId: currentBabyId)
                 
                 let (allVaccines, scheduledVaccines) = try await (allVaccinesTask, scheduledVaccinesTask)
                 
