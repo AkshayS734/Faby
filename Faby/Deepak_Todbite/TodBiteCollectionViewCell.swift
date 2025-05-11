@@ -111,7 +111,19 @@ class TodBiteCollectionViewCell: UICollectionViewCell {
         // Update UI with item details
         foodNameLabel.text = item.name
         nutritionLabel.text = item.description
-        myImageView.image = UIImage(named: item.image)
+        if let url = URL(string: item.image_url) {
+            // Show a placeholder while loading
+            myImageView.image = UIImage(named: "placeholder")
+            URLSession.shared.dataTask(with: url) { data, _, _ in
+                if let data = data, let image = UIImage(data: data) {
+                    DispatchQueue.main.async {
+                        self.myImageView.image = image
+                    }
+                }
+            }.resume()
+        } else {
+            myImageView.image = UIImage(named: "placeholder")
+        }
 
         // Update button state (Plus or Tick)
         let buttonImage = isAdded ? "checkmark.circle.fill" : "plus.square.fill"

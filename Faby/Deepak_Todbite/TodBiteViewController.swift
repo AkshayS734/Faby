@@ -1,4 +1,6 @@
 import UIKit
+import Supabase
+
 class TodBiteViewController: UIViewController, UITableViewDelegate, UISearchBarDelegate, HeaderCollectionReusableViewDelegate {
 
     // MARK: - UI Components
@@ -21,13 +23,33 @@ class TodBiteViewController: UIViewController, UITableViewDelegate, UISearchBarD
     var selectedCategory: BiteType? = nil
     var selectedContinent: ContinentType = .asia
     var selectedCountry: CountryType = .india
-    var selectedRegion: RegionType? = nil
+    var selectedRegion: RegionType = .north
     var selectedAgeGroup: AgeGroup = .months12to15
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         
         navigationItem.searchController = searchController
         navigationItem.hidesSearchBarWhenScrolling = false
+        
+        // Ensure data is loaded when tab appears
+        if segmentedControl.selectedSegmentIndex == 0 && filteredMeals.isEmpty {
+            // Show loading indicator
+            let activityIndicator = UIActivityIndicatorView(style: .large)
+            activityIndicator.center = view.center
+            activityIndicator.startAnimating()
+            view.addSubview(activityIndicator)
+            
+            // Reload data
+            Task {
+                await fetchAndPopulateMealData()
+                await MainActor.run {
+                    activityIndicator.stopAnimating()
+                    activityIndicator.removeFromSuperview()
+                    applyDefaultFilters()
+                    collectionView.reloadData()
+                }
+            }
+        }
     }
 
     // Items for MyBowl grouped by category
@@ -57,7 +79,38 @@ class TodBiteViewController: UIViewController, UITableViewDelegate, UISearchBarD
         setupSearchBar()
         setupPlaceholderLabel()
         loadDefaultContent()
+        
+        // Load saved My Bowl meals
+        Task {
+            await loadSavedMyBowlMeals()
+        }
     }
+    
+    // Load saved My Bowl meals from database
+    private func loadSavedMyBowlMeals() async {
+        if let sceneDelegate = UIApplication.shared.connectedScenes.first?.delegate as? SceneDelegate {
+            let savedMeals = await SupabaseManager.loadMyBowlMealsFromDatabase(using: sceneDelegate.supabase)
+            
+            // Add each meal to myBowlItemsDict
+            for meal in savedMeals {
+                if myBowlItemsDict[meal.category] == nil {
+                    myBowlItemsDict[meal.category] = []
+                }
+                
+                // Only add if not already in the list
+                if !myBowlItemsDict[meal.category]!.contains(where: { $0.id == meal.id }) {
+                    myBowlItemsDict[meal.category]?.append(meal)
+                }
+            }
+            
+            // Update UI on main thread
+            await MainActor.run {
+                print("✅ Loaded \(savedMeals.count) saved meals")
+                updateMyBowlUI()
+            }
+        }
+    }
+
     private let searchController = UISearchController(searchResultsController: nil)
 
     // Add this method to ensure the filter button is added after layout
@@ -195,8 +248,49 @@ class TodBiteViewController: UIViewController, UITableViewDelegate, UISearchBarD
     }
 
     private func loadDefaultContent() {
+        // First load UI components
         collectionView.isHidden = false
         tableView.isHidden = true
+        
+        // Show loading indicator
+        let activityIndicator = UIActivityIndicatorView(style: .large)
+        activityIndicator.center = view.center
+        activityIndicator.startAnimating()
+        view.addSubview(activityIndicator)
+        
+        // Fetch data from Supabase
+        Task {
+            // Call the populateMealData function to get data from Supabase
+            await fetchAndPopulateMealData()
+            
+            // Update filter and UI on main thread
+            await MainActor.run {
+                activityIndicator.stopAnimating()
+                activityIndicator.removeFromSuperview()
+                
+                // Apply default filters: Asia, India, North, 12-15 months
+                applyDefaultFilters()
+                
+                print("✅ UI updated with data from Supabase")
+            }
+        }
+    }
+    
+    // New function to apply default filters automatically
+    private func applyDefaultFilters() {
+        print("\n✅ Applying Default Filters - Continent: \(selectedContinent.rawValue), Country: \(selectedCountry.rawValue), Region: \(selectedRegion.rawValue), Age Group: \(selectedAgeGroup.rawValue)")
+
+        filteredMeals = [:]
+        for category in BiteType.predefinedCases {
+            let meals = BiteSampleData.shared.getItems(for: category, in: selectedContinent, in: selectedCountry, in: selectedRegion, for: selectedAgeGroup)
+            filteredMeals[category] = meals
+            
+            print("🔄 Category: \(category.rawValue) - Meals Count: \(meals.count)")
+            for meal in meals {
+                print("🍽️ Meal: \(meal.name) - Age: \(meal.ageGroup.rawValue) - Region: \(meal.region.rawValue)")
+            }
+        }
+
         collectionView.reloadData()
     }
     @objc private func createCustomBiteTapped() {
@@ -262,6 +356,29 @@ class TodBiteViewController: UIViewController, UITableViewDelegate, UISearchBarD
             // Add filter button with delay to ensure search bar is fully loaded
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
                 self?.updateSearchBarWithFilterButton()
+            }
+            
+            // Ensure we have data loaded for Recommended Meal tab
+            if filteredMeals.isEmpty {
+                // Show loading indicator
+                let activityIndicator = UIActivityIndicatorView(style: .large)
+                activityIndicator.center = view.center
+                activityIndicator.startAnimating()
+                view.addSubview(activityIndicator)
+                
+                // Reload data if it's empty
+                Task {
+                    await fetchAndPopulateMealData()
+                    await MainActor.run {
+                        activityIndicator.stopAnimating()
+                        activityIndicator.removeFromSuperview()
+                        applyDefaultFilters()
+                        collectionView.reloadData()
+                    }
+                }
+            } else {
+                // Just reload the collection view with existing data
+                collectionView.reloadData()
             }
 
         case 1: // MyBowl
@@ -374,27 +491,14 @@ class TodBiteViewController: UIViewController, UITableViewDelegate, UISearchBarD
         navigationItem.rightBarButtonItems = barButtonItems
     }
     private func updateFilteredMeals() {
-        print("�� Updating Meals for Continent: \(selectedContinent.rawValue), Country: \(selectedCountry.rawValue), Region: \(selectedRegion?.rawValue ?? "Default"), Age: \(selectedAgeGroup.rawValue)")
+        print("�� Updating Meals for Continent: \(selectedContinent.rawValue), Country: \(selectedCountry.rawValue), Region: \(selectedRegion.rawValue), Age: \(selectedAgeGroup.rawValue)")
 
         filteredMeals.removeAll()
         
         for category in BiteType.predefinedCases {
-            // If region is selected, use the full filtering hierarchy
-            if let region = selectedRegion {
-                let meals = BiteSampleData.shared.getItems(for: category, in: selectedContinent, in: selectedCountry, in: region, for: selectedAgeGroup)
+            // Get meals using the full filtering hierarchy
+            let meals = BiteSampleData.shared.getItems(for: category, in: selectedContinent, in: selectedCountry, in: selectedRegion, for: selectedAgeGroup)
                 filteredMeals[category] = meals
-            } else {
-                // If no region selected, get meals for the selected country
-                let allRegions = RegionType.allCases.filter { $0.country == selectedCountry }
-                var meals: [FeedingMeal] = []
-                
-                for region in allRegions {
-                    let regionMeals = BiteSampleData.shared.getItems(for: category, in: selectedContinent, in: selectedCountry, in: region, for: selectedAgeGroup)
-                    meals.append(contentsOf: regionMeals)
-                }
-                
-                filteredMeals[category] = meals
-            }
         }
 
         collectionView.reloadData()
@@ -521,22 +625,31 @@ class TodBiteViewController: UIViewController, UITableViewDelegate, UISearchBarD
 
 
     private func moveItem(_ item: FeedingMeal, from oldCategory: BiteType, to newCategory: BiteType, at indexPath: IndexPath) {
+        // Create a new copy of the item with the new category
+        let updatedItem = FeedingMeal(from: item, withNewCategory: newCategory)
        
-        
+        // Remove from old category in local data
         myBowlItemsDict[oldCategory]?.remove(at: indexPath.row)
         if myBowlItemsDict[oldCategory]?.isEmpty == true {
             myBowlItemsDict.removeValue(forKey: oldCategory)
         }
 
-       
-        
+        // Add to new category in local data
         if myBowlItemsDict[newCategory] == nil {
             myBowlItemsDict[newCategory] = []
         }
-        myBowlItemsDict[newCategory]?.append(item)
+        myBowlItemsDict[newCategory]?.append(updatedItem)
 
+        // Update UI
         MealItemDetails(message: "\(item.name) moved to \(newCategory.rawValue)!")
         tableView.reloadData()
+        
+        // Update in Supabase
+        Task {
+            if let sceneDelegate = UIApplication.shared.connectedScenes.first?.delegate as? SceneDelegate {
+                await SupabaseManager.updateBiteTypeInMyBowlDatabase(meal: updatedItem, using: sceneDelegate.supabase)
+            }
+        }
     }
 
     private func showCategorySelection(for item: FeedingMeal, from currentCategory: BiteType, at indexPath: IndexPath) {
@@ -552,32 +665,8 @@ class TodBiteViewController: UIViewController, UITableViewDelegate, UISearchBarD
         present(categorySelection, animated: true, completion: nil)
     }
 
-
-
-    private func handleMoreOptions(for item: FeedingMeal, in category: BiteType, at indexPath: IndexPath) {
-        let alert = UIAlertController(title: "Manage Item", message: "Choose an action for \(item.name)", preferredStyle: .actionSheet)
-
-        alert.addAction(UIAlertAction(title: "Delete", style: .destructive, handler: { _ in
-            self.myBowlItemsDict[category]?.remove(at: indexPath.row)
-            if self.myBowlItemsDict[category]?.isEmpty == true {
-                self.myBowlItemsDict.removeValue(forKey: category)
-            }
-            self.updatePlaceholderVisibility()
-            self.tableView.reloadData()
-        }))
-
-        alert.addAction(UIAlertAction(title: "Add to Favorites", style: .default, handler: { _ in
-            self.MealItemDetails(message: "\(item.name) added to favorites!")
-        }))
-
-        alert.addAction(UIAlertAction(title: "Add to Other Bites", style: .default, handler: { _ in
-            self.showCategorySelection(for: item, from: category, at: indexPath)
-        }))
-
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
-        present(alert, animated: true, completion: nil)
-    }
-
+    // Note: The old handleMoreOptions method was replaced with moreOptionsTapped method
+    // which implements the same functionality with Supabase syncing
 
     func addItemToMyBowl(item: FeedingMeal) {
         if myBowlItemsDict[.SnackBite] == nil {
@@ -596,7 +685,7 @@ class TodBiteViewController: UIViewController, UITableViewDelegate, UISearchBarD
         }
         
         // Get all meals for this category
-        let meals = BiteSampleData.shared.getItems(for: biteType, in: selectedRegion ?? .east, for: selectedAgeGroup)
+        let meals = BiteSampleData.shared.getItems(for: biteType, in: selectedRegion, for: selectedAgeGroup)
         
         // Use the existing MealDetailViewController to show the first meal in the category
         if let firstMeal = meals.first {
@@ -634,8 +723,8 @@ extension TodBiteViewController: UICollectionViewDataSource {
         
        
         
-        let meals = BiteSampleData.shared.getItems(for: category, in: selectedRegion ?? .east, for: selectedAgeGroup)
-        print("🔄 Displaying \(meals.count) meals for \(category.rawValue) in \(selectedRegion ?? .east) & Age: \(selectedAgeGroup)")
+        let meals = BiteSampleData.shared.getItems(for: category, in: selectedRegion, for: selectedAgeGroup)
+        print("🔄 Displaying \(meals.count) meals for \(category.rawValue) in \(selectedRegion) & Age: \(selectedAgeGroup)")
         
         return meals.count
     }
@@ -654,7 +743,7 @@ extension TodBiteViewController: UICollectionViewDataSource {
             items = filteredMeals[category] ?? []
         } else {
             items = !filteredMeals.isEmpty ? (filteredMeals[category] ?? []) :
-                     BiteSampleData.shared.getItems(for: category, in: selectedContinent, in: selectedCountry, in: selectedRegion ?? .east, for: selectedAgeGroup)
+                     BiteSampleData.shared.getItems(for: category, in: selectedContinent, in: selectedCountry, in: selectedRegion, for: selectedAgeGroup)
         }
 
         let item = items[indexPath.row]
@@ -700,7 +789,7 @@ extension TodBiteViewController: UICollectionViewDataSource {
 extension TodBiteViewController: UICollectionViewDelegate {
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         let category = BiteType.predefinedCases[indexPath.section]
-        let items = BiteSampleData.shared.getItems(for: category, in: selectedRegion ?? .east, for: selectedAgeGroup)
+        let items = BiteSampleData.shared.getItems(for: category, in: selectedRegion, for: selectedAgeGroup)
         let selectedItem = items[indexPath.row]
         
         // Navigate to detail view with category name in the title
@@ -757,12 +846,33 @@ extension TodBiteViewController: UITableViewDataSource {
     func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
         if editingStyle == .delete {
             let category = Array(myBowlItemsDict.keys)[indexPath.section]
+            guard let item = myBowlItemsDict[category]?[indexPath.row] else { return }
+            
+            // Remove from local data
             myBowlItemsDict[category]?.remove(at: indexPath.row)
             if myBowlItemsDict[category]?.isEmpty == true {
                 myBowlItemsDict.removeValue(forKey: category)
             }
+            
+            // Update UI
             updatePlaceholderVisibility()
             tableView.reloadData()
+            
+            // Delete from Supabase
+            guard let mealId = item.id else {
+                MealItemDetails(message: "❌ Error: Cannot delete meal without ID")
+                return
+            }
+            
+            Task {
+                if let sceneDelegate = UIApplication.shared.connectedScenes.first?.delegate as? SceneDelegate {
+                    await SupabaseManager.deleteFromMyBowlDatabase(mealId: mealId, using: sceneDelegate.supabase)
+                    
+                    DispatchQueue.main.async {
+                        self.MealItemDetails(message: "✅ Deleted \"\(item.name)\" from My Bowl")
+                    }
+                }
+            }
         }
     }
 
@@ -772,7 +882,113 @@ extension TodBiteViewController: UITableViewDataSource {
 
         let category = Array(myBowlItemsDict.keys)[indexPath.section]
         let item = myBowlItemsDict[category]?[indexPath.row]
-        handleMoreOptions(for: item!, in: category, at: indexPath)
+        
+        // Create an action sheet with options
+        let actionSheet = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
+        
+        // Add to Favorites option
+        actionSheet.addAction(UIAlertAction(title: "Add to Favorites", style: .default, handler: { [weak self] _ in
+            guard let self = self, let item = item else { return }
+            // Handle adding to favorites
+            self.MealItemDetails(message: "Added to favorites!")
+        }))
+        
+        // Add to Other Bites option (change bite type)
+        actionSheet.addAction(UIAlertAction(title: "Add to Other Bites", style: .default, handler: { [weak self] _ in
+            guard let self = self, let item = item else { return }
+            self.showBiteTypeOptions(for: item, currentCategory: category, at: indexPath)
+        }))
+        
+        // Delete option
+        actionSheet.addAction(UIAlertAction(title: "Delete", style: .destructive, handler: { [weak self] _ in
+            guard let self = self, let item = item else { return }
+            self.deleteItem(item, from: category, at: indexPath)
+        }))
+        
+        // Cancel option
+        actionSheet.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
+        
+        // Present the action sheet
+        present(actionSheet, animated: true)
+    }
+    
+    private func deleteItem(_ item: FeedingMeal, from category: BiteType, at indexPath: IndexPath) {
+        // Remove from local data
+        myBowlItemsDict[category]?.remove(at: indexPath.row)
+        if myBowlItemsDict[category]?.isEmpty == true {
+            myBowlItemsDict.removeValue(forKey: category)
+        }
+        
+        // Update UI
+        updatePlaceholderVisibility()
+        tableView.reloadData()
+        
+        // Delete from Supabase
+        guard let mealId = item.id else {
+            MealItemDetails(message: "❌ Error: Cannot delete meal without ID")
+            return
+        }
+        
+        Task {
+            if let sceneDelegate = UIApplication.shared.connectedScenes.first?.delegate as? SceneDelegate {
+                await SupabaseManager.deleteFromMyBowlDatabase(mealId: mealId, using: sceneDelegate.supabase)
+                
+                DispatchQueue.main.async {
+                    self.MealItemDetails(message: "✅ Deleted \"\(item.name)\" from My Bowl")
+                }
+            }
+        }
+    }
+    
+    private func showBiteTypeOptions(for item: FeedingMeal, currentCategory: BiteType, at indexPath: IndexPath) {
+        // Create an alert controller to select a new bite type
+        let alertController = UIAlertController(title: "Select Bite Type", message: nil, preferredStyle: .actionSheet)
+        
+        // Add all bite types as options except the current one
+        for biteType in BiteType.predefinedCases where biteType != currentCategory {
+            alertController.addAction(UIAlertAction(title: biteType.rawValue, style: .default) { [weak self] _ in
+                guard let self = self else { return }
+                self.moveItemToBiteType(item, from: currentCategory, to: biteType, at: indexPath)
+            })
+        }
+        
+        // Add cancel action
+        alertController.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        
+        // Present the alert controller
+        present(alertController, animated: true)
+    }
+    
+    private func moveItemToBiteType(_ item: FeedingMeal, from oldCategory: BiteType, to newCategory: BiteType, at indexPath: IndexPath) {
+        // Create a new copy of the item with the new category
+        let updatedItem = FeedingMeal(from: item, withNewCategory: newCategory)
+        
+        // Remove from old category
+        myBowlItemsDict[oldCategory]?.remove(at: indexPath.row)
+        if myBowlItemsDict[oldCategory]?.isEmpty == true {
+            myBowlItemsDict.removeValue(forKey: oldCategory)
+        }
+        
+        // Add to new category
+        if myBowlItemsDict[newCategory] == nil {
+            myBowlItemsDict[newCategory] = []
+        }
+        myBowlItemsDict[newCategory]?.append(updatedItem)
+        
+        // Update UI
+        updatePlaceholderVisibility()
+        tableView.reloadData()
+        
+        // Update in Supabase
+        Task {
+            if let sceneDelegate = UIApplication.shared.connectedScenes.first?.delegate as? SceneDelegate {
+                await SupabaseManager.updateBiteTypeInMyBowlDatabase(meal: updatedItem, using: sceneDelegate.supabase)
+                
+                DispatchQueue.main.async {
+                    self.MealItemDetails(message: "✅ Moved \"\(item.name)\" to \(newCategory.rawValue)")
+                }
+            }
+        }
     }
 }
 
@@ -792,6 +1008,13 @@ extension TodBiteViewController: TodBiteCollectionViewCellDelegate {
             myBowlItemsDict[category]?.append(item)
             MealItemDetails(message: "\"\(item.name)\" added to MyBowl!")
 
+            // Save to Supabase my_Bowl table
+            Task {
+                // Get client from SceneDelegate
+                if let sceneDelegate = UIApplication.shared.connectedScenes.first?.delegate as? SceneDelegate {
+                    await SupabaseManager.saveToMyBowlDatabase(item, using: sceneDelegate.supabase)
+                }
+            }
         
             if let indexPath = indexPathForItem(item, in: category) {
                 collectionView.reloadItems(at: [indexPath])
@@ -807,7 +1030,7 @@ extension TodBiteViewController: TodBiteCollectionViewCellDelegate {
 
     private func indexPathForItem(_ item: FeedingMeal, in category: BiteType) -> IndexPath? {
         guard let section = BiteType.predefinedCases.firstIndex(of: category),
-              let row = BiteSampleData.shared.getItems(for: category, in: selectedContinent, in: selectedCountry, in: selectedRegion ?? .east, for: selectedAgeGroup).firstIndex(where: { $0.name == item.name }) else {
+              let row = BiteSampleData.shared.getItems(for: category, in: selectedContinent, in: selectedCountry, in: selectedRegion, for: selectedAgeGroup).firstIndex(where: { $0.name == item.name }) else {
             return nil
         }
         return IndexPath(row: row, section: section)
@@ -825,18 +1048,7 @@ extension TodBiteViewController: UISearchResultsUpdating {
 
         for category in BiteType.predefinedCases {
             // Get meals using the three-level geographical hierarchy
-            var allMeals: [FeedingMeal] = []
-            
-            if let region = selectedRegion {
-                // If region is selected, get meals for that specific region
-                allMeals = BiteSampleData.shared.getItems(for: category, in: selectedContinent, in: selectedCountry, in: region, for: selectedAgeGroup)
-            } else {
-                // If no region selected, get all meals for the country
-                for region in RegionType.allCases where region.country == selectedCountry {
-                    let regionMeals = BiteSampleData.shared.getItems(for: category, in: selectedContinent, in: selectedCountry, in: region, for: selectedAgeGroup)
-                    allMeals.append(contentsOf: regionMeals)
-                }
-            }
+            let allMeals = BiteSampleData.shared.getItems(for: category, in: selectedContinent, in: selectedCountry, in: selectedRegion, for: selectedAgeGroup)
             
             // Filter by search text
             filteredMeals[category] = allMeals.filter { $0.name.lowercased().contains(searchText.lowercased()) }
@@ -866,6 +1078,19 @@ extension TodBiteViewController: FilterViewControllerDelegate {
         }
 
         collectionView.reloadData()
+    }
+}
+
+// Add populateMealData function inside the TodBiteViewController class
+extension TodBiteViewController {
+    // Function to populate meal data from the TodBiteDataController
+    private func fetchAndPopulateMealData() async {
+        // Implementation that directly calls the global function
+        print("📲 Starting to populate meal data...")
+        
+        // Get the global module function
+        // Directly call the async version that doesn't require a namespace
+        await populateMealData()
     }
 }
 

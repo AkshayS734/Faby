@@ -71,7 +71,19 @@ class TodBiteTableViewCell: UITableViewCell {
     }
     
     func configure(with item: FeedingMeal) {
-        itemImageView.image = UIImage(named: item.image)
+        if let url = URL(string: item.image_url) {
+                    // Show a placeholder while loading
+            itemImageView.image = UIImage(named: "placeholder")
+                    URLSession.shared.dataTask(with: url) { data, _, _ in
+                        if let data = data, let image = UIImage(data: data) {
+                            DispatchQueue.main.async {
+                                self.itemImageView.image = image
+                            }
+                        }
+                    }.resume()
+                } else {
+                    itemImageView.image = UIImage(named: "placeholder")
+                }
         nameLabel.text = item.name
         descriptionLabel.text = item.description
     }

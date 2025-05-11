@@ -1,4 +1,6 @@
 import UIKit
+
+
 class FeedingHistoryCell: UITableViewCell {
     
     private let mealImageView: UIImageView = {
@@ -41,10 +43,26 @@ class FeedingHistoryCell: UITableViewCell {
         titleLabel.text = foodName
         subtitleLabel.text = "\(category) - \(time)"
         
+        // First try loading as a local asset
         if let image = UIImage(named: imageName) {
             mealImageView.image = image
+            setupUI()
+            return
+        }
+        
+        // Then try loading from URL if it looks like a URL
+        if imageName.hasPrefix("http://") || imageName.hasPrefix("https://") {
+            loadImageFromURL(imageUrlString: imageName)
+        } else if imageName.contains("/") {
+            // Might be a local file path
+            if let image = UIImage(contentsOfFile: imageName) {
+                mealImageView.image = image
+            } else {
+                mealImageView.image = UIImage(named: "placeholder") ?? UIImage(systemName: "photo")
+            }
         } else {
-            mealImageView.image = UIImage(named: "placeholder") // ✅ Placeholder for missing images
+            // Default placeholder
+            mealImageView.image = UIImage(named: "placeholder") ?? UIImage(systemName: "photo")
         }
         
         setupUI()
@@ -67,4 +85,29 @@ class FeedingHistoryCell: UITableViewCell {
             stackView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -10)
         ])
     }
+    
+    private func loadImageFromURL(imageUrlString: String) {
+        // Show a placeholder or loading indicator while fetching
+        mealImageView.image = UIImage(named: "placeholder") ?? UIImage(systemName: "photo")
+        
+        guard let url = URL(string: imageUrlString) else { return }
+        
+        // Create a URLSession task to fetch the image
+        let task = URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
+            guard let self = self,
+                  error == nil,
+                  let data = data,
+                  let image = UIImage(data: data) else {
+                return
+            }
+            
+            // Update UI on main thread
+            DispatchQueue.main.async {
+                self.mealImageView.image = image
+            }
+        }
+        
+        task.resume()
+    }
 }
+

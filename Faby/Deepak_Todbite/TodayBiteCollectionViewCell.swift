@@ -75,6 +75,47 @@ class TodayBiteCollectionViewCell: UICollectionViewCell {
     func configure(with bite: TodayBite) {
         titleLabel.text = bite.title
         timeLabel.text = bite.time
-        imageView.image = UIImage(named: bite.imageName)
+        
+        // Set a placeholder image while loading
+        imageView.image = UIImage(named: "placeholder") ?? UIImage(systemName: "photo")
+        
+        let imageName = bite.imageName
+        
+        // Handle different image source types
+        if let image = UIImage(named: imageName) {
+            // Local asset case
+            imageView.image = image
+        } else if imageName.hasPrefix("http://") || imageName.hasPrefix("https://") {
+            // URL case - load asynchronously
+            loadImageFromURL(imageUrl: imageName)
+        } else if imageName.contains("/") {
+            // Local file path case
+            if let image = UIImage(contentsOfFile: imageName) {
+                imageView.image = image
+            }
+        } else {
+            // If none of the above worked, keep the placeholder
+            imageView.image = UIImage(named: "placeholder") ?? UIImage(systemName: "photo")
+        }
+    }
+    
+    private func loadImageFromURL(imageUrl: String) {
+        guard let url = URL(string: imageUrl) else { return }
+        
+        let task = URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
+            guard let self = self,
+                  error == nil,
+                  let data = data,
+                  let image = UIImage(data: data) else {
+                return
+            }
+            
+            // Update UI on main thread
+            DispatchQueue.main.async {
+                self.imageView.image = image
+            }
+        }
+        
+        task.resume()
     }
 }

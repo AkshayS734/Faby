@@ -14,6 +14,18 @@ class FeedingPlanHistoryViewController: UIViewController {
         setupNavigationBar()
         loadFeedingHistory()
         updateTitle()
+        
+        // Set default filter values
+        let defaultContinent: ContinentType = .asia
+        let defaultCountry: CountryType = .india
+        let defaultRegion: RegionType = .north
+        let defaultAgeGroup: AgeGroup = .months12to15
+        
+        // Apply filters automatically without showing filter screen
+        applyFilters(continent: defaultContinent, 
+                    country: defaultCountry, 
+                    region: defaultRegion, 
+                    ageGroup: defaultAgeGroup)
     }
 
     private func setupTableView() {
@@ -82,6 +94,13 @@ class FeedingPlanHistoryViewController: UIViewController {
         let activityVC = UIActivityViewController(activityItems: [historyText], applicationActivities: nil)
         present(activityVC, animated: true)
     }
+
+    func applyFilters(continent: ContinentType, country: CountryType, region: RegionType, ageGroup: AgeGroup) {
+        // Yahan pe aapka existing filter logic hoga jo abhi Apply Filters button click pe run hota hai
+        // Vo same logic yahan call kar dein
+        
+        // fetchMeals() ya jo bhi function meals load karta hai
+    }
 }
 
 // MARK: - TableView Delegate & DataSource
@@ -110,7 +129,7 @@ extension FeedingPlanHistoryViewController: UITableViewDelegate, UITableViewData
                 category: meal["category"] ?? "Unknown",
                 time: meal["time"] ?? "",
                 foodName: meal["name"] ?? "Meal",
-                imageName: meal["image"] ?? ""
+                imageName: meal["image"] ?? meal["image_url"] ?? ""
             )
         }
         return cell

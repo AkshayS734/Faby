@@ -1,5 +1,6 @@
 import UIKit
 
+// Import Deepak_Todbite module to access FeedingPlanHistoryViewController
 class SettingsViewController: UIViewController, UICollectionViewDelegate, UICollectionViewDataSource, UITableViewDelegate, UITableViewDataSource, UISearchBarDelegate {
     
     var collectionView: UICollectionView!
@@ -178,6 +179,18 @@ class SettingsViewController: UIViewController, UICollectionViewDelegate, UIColl
         case ("GROWTRACK", "Milestone track"):
             let milestoneOverviewVC = MilestonesOverviewViewController()
             navigationController?.pushViewController(milestoneOverviewVC, animated: true)
+            
+        case ("TODBITE", "Today's meal"):
+            // Navigate to Today's meal
+            if let tabBarController = self.tabBarController {
+                tabBarController.selectedIndex = 4 // TodBite tab
+                navigationController?.popToRootViewController(animated: true)
+            }
+            
+        case ("TODBITE", "Your plan"):
+            // Navigate to Feeding Plan History
+            let feedingPlanHistoryVC = FeedingPlanHistoryViewController()
+            navigationController?.pushViewController(feedingPlanHistoryVC, animated: true)
             
         default:
             break

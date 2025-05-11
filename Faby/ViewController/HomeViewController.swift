@@ -59,14 +59,38 @@ class HomeViewController: UIViewController {
         chevronIcon.translatesAutoresizingMaskIntoConstraints = false
         chevronIcon.widthAnchor.constraint(equalToConstant: 16).isActive = true
         
+        // Make sure chevron can receive touches
+        chevronIcon.isUserInteractionEnabled = true
+        
+        // Add specific tap gesture to the chevron icon
+        let chevronTapGesture = UITapGestureRecognizer(target: self, action: #selector(openTodBiteViewController))
+        chevronIcon.addGestureRecognizer(chevronTapGesture)
+        
         let stackView = UIStackView(arrangedSubviews: [label, chevronIcon])
         stackView.axis = .horizontal
         stackView.spacing = 1
         stackView.alignment = .center
         stackView.translatesAutoresizingMaskIntoConstraints = false
         
+        // Keep the general tap gesture on the whole stack view too for better UX
+        stackView.isUserInteractionEnabled = true
+        let stackTapGesture = UITapGestureRecognizer(target: self, action: #selector(openTodBiteViewController))
+        stackView.addGestureRecognizer(stackTapGesture)
+        
         return stackView
     }()
+    
+    // Separate edit button that will be positioned at the far right
+    private let todaysBitesEditButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.setTitle("Edit", for: .normal)
+        button.setTitleColor(.black, for: .normal)
+        button.titleLabel?.font = UIFont.systemFont(ofSize: 16)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.addTarget(self, action: #selector(editTodaysBitesTapped), for: .touchUpInside)
+        return button
+    }()
+    
     private var todaysBitesCollectionView: UICollectionView = {
         let layout = UICollectionViewFlowLayout()
         layout.scrollDirection = .horizontal
@@ -179,8 +203,6 @@ class HomeViewController: UIViewController {
         todaysBitesCollectionView.delegate = self
         todaysBitesCollectionView.dataSource = self
         todaysBitesCollectionView.register(TodayBiteCollectionViewCell.self, forCellWithReuseIdentifier: "BitesCell")
-        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(openTodBiteViewController))
-                todaysBitesLabel.addGestureRecognizer(tapGesture)
         
         setupUI()
         setupDelegates()
@@ -223,6 +245,7 @@ class HomeViewController: UIViewController {
         contentView.addSubview(specialMomentsLabel)
         contentView.addSubview(specialMomentsContainerView)
         contentView.addSubview(todaysBitesLabel)
+        contentView.addSubview(todaysBitesEditButton)
         contentView.addSubview(todaysBitesCollectionView)
         
         // Add empty state views with proper hierarchy
@@ -288,7 +311,13 @@ class HomeViewController: UIViewController {
             
             // Button constraints
             addMealPlanButton.heightAnchor.constraint(equalToConstant: 44),
-            addMealPlanButton.widthAnchor.constraint(equalToConstant: 160)
+            addMealPlanButton.widthAnchor.constraint(equalToConstant: 160),
+            
+            // Edit button constraints
+            todaysBitesEditButton.topAnchor.constraint(equalTo: todaysBitesLabel.topAnchor),
+            todaysBitesEditButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+            todaysBitesEditButton.heightAnchor.constraint(equalToConstant: 44),
+            todaysBitesEditButton.widthAnchor.constraint(equalToConstant: 60)
         ])
         
         addMealPlanButton.addTarget(self, action: #selector(addMealPlanTapped), for: .touchUpInside)
@@ -389,43 +418,161 @@ class HomeViewController: UIViewController {
         }
     }
     @objc private func openTodBiteViewController() {
-        if let tabBarController = self.tabBarController {
-            tabBarController.selectedIndex = 4
-        } else {
-            print("⚠️ TabBarController not found")
-        }
+        // Create a new view controller to show all of today's bites
+        let todaysBitesListVC = TodaysBitesListViewController()
+        
+        // Pass the current meal data to the list view controller
+        todaysBitesListVC.meals = todaysBitesData
+        
+        // Push the view controller onto the navigation stack
+        navigationController?.pushViewController(todaysBitesListVC, animated: true)
     }
     @objc private func updateTodaysBites() {
-        print("✅ Fetching Today's Bites from UserDefaults...")
-        
-        // Force reload the data from UserDefaults
-        let savedMeals = UserDefaults.standard.array(forKey: "todaysBites") as? [[String: String]]
-        let savedDate = UserDefaults.standard.string(forKey: "selectedDay")
+        print("✅ Fetching Today's Bites...")
         
         // Clear existing data
         todaysBitesData.removeAll()
         
-        if savedMeals == nil || savedMeals!.isEmpty || savedDate == nil {
-            print("⚠️ No saved meals found!")
-            // Update UI on main thread
+        // STEP 1: First load from UserDefaults
+        let savedMeals = UserDefaults.standard.array(forKey: "todaysBites") as? [[String: String]]
+        let savedDate = UserDefaults.standard.string(forKey: "selectedDay")
+        
+        // Get today's date in the same format as stored in meal history
+        let today = Date()
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "E d MMM" // e.g. "Wed 7 May"
+        let todayFormattedDate = dateFormatter.string(from: today)
+        
+        // STEP 2: Load from meal history for today's date
+        // This handles cases where a weekly plan is stored but today's date is different from selected date
+        let mealHistory = UserDefaults.standard.dictionary(forKey: "mealPlanHistory") as? [String: [[String: String]]] ?? [:]
+        
+        var todaysMeals: [[String: String]] = []
+        
+        // First try to get today's meals from history
+        if let mealsForToday = mealHistory[todayFormattedDate] {
+            print("📌 Found meals for today (\(todayFormattedDate)): \(mealsForToday.count) meals")
+            todaysMeals = mealsForToday
+        } 
+        // If not found, use saved meals from todaysBites
+        else if let savedMeals = savedMeals, !savedMeals.isEmpty {
+            print("📌 Using saved meals from todaysBites")
+            todaysMeals = savedMeals
+        }
+        
+        // If we still have no meals, try to get from Supabase asynchronously
+        if todaysMeals.isEmpty {
+            print("⚠️ No meals found in UserDefaults for today, trying to fetch from Supabase...")
+            // This would ideally fetch from Supabase, but for now we'll show empty state
+            loadMealsFromSupabase()
+        } else {
+            // Process and display meals
+            processMealsForDisplay(todaysMeals)
+        }
+    }
+    
+    // New helper method to load meals from Supabase
+    private func loadMealsFromSupabase() {
+        // Check if we can access the Supabase client
+        guard let sceneDelegate = UIApplication.shared.connectedScenes.first?.delegate as? SceneDelegate else {
+            print("❌ Could not access SceneDelegate for Supabase client")
             DispatchQueue.main.async {
-                self.todaysBitesCollectionView.reloadData()
                 self.updateTodaysBitesEmptyState()
             }
             return
         }
         
-        print("📌 Saved Meals: \(savedMeals!)")
-        print("📌 Saved Date: \(savedDate!)")
+        // Get Supabase client
+        let supabaseClient = sceneDelegate.supabase
         
+        // Create date range (today)
+        let today = Date()
+        
+        // Asynchronously load feeding plans
+        Task {
+            do {
+                print("🔄 Attempting to load meals from Supabase...")
+                
+                // This assumes you have a SupabaseManager.loadFeedingPlansWithMeals method
+                // that returns meals organized by date and category
+                if let feedingPlans = try? await SupabaseManager.loadFeedingPlansWithMeals(
+                    startDate: today,
+                    endDate: today, 
+                    using: supabaseClient
+                ) {
+                    // Convert Supabase response to meal dictionaries
+                    let dateFormatter = DateFormatter()
+                    dateFormatter.dateFormat = "E d MMM"
+                    let todayKey = dateFormatter.string(from: today)
+                    
+                    if let todayPlans = feedingPlans[todayKey], !todayPlans.isEmpty {
+                        // Convert to array of meal dictionaries
+                        var mealsArray: [[String: String]] = []
+                        
+                        for (category, meals) in todayPlans {
+                            for meal in meals {
+                                var mealDict: [String: String] = [
+                                    "category": category.rawValue,
+                                    "time": getTimeInterval(for: category),
+                                    "name": meal.name,
+                                    "image": meal.image_url,
+                                    "description": meal.description
+                                ]
+                                mealsArray.append(mealDict)
+                            }
+                        }
+                        
+                        // Process and display on main thread
+                        DispatchQueue.main.async {
+                            self.processMealsForDisplay(mealsArray)
+                        }
+                        
+                        // Save to UserDefaults for future use
+                        UserDefaults.standard.set(mealsArray, forKey: "todaysBites")
+                        return
+                    }
+                }
+                
+                // If we get here, no meals were found in Supabase
+                print("⚠️ No meals found in Supabase for today")
+                DispatchQueue.main.async {
+                    self.updateTodaysBitesEmptyState()
+                }
+            } catch {
+                print("❌ Error loading meals from Supabase: \(error)")
+                DispatchQueue.main.async {
+                    self.updateTodaysBitesEmptyState()
+                }
+            }
+        }
+    }
+    
+    // Helper method to get time interval string for category
+    private func getTimeInterval(for category: BiteType) -> String {
+        switch category {
+        case .EarlyBite: return "7:30 AM - 8:00 AM"
+        case .NourishBite: return "10:00 AM - 10:30 AM"
+        case .MidDayBite: return "12:30 PM - 1:00 PM"
+        case .SnackBite: return "4:00 PM - 4:30 PM"
+        case .NightBite: return "8:00 PM - 8:30 PM"
+        case .custom(_): return "No Time Set"
+        }
+    }
+    
+    // Helper method to process meals and display them
+    private func processMealsForDisplay(_ meals: [[String: String]]) {
         var updatedBites: [TodayBite] = []
         
-        for meal in savedMeals! {
-            if let title = meal["category"], let time = meal["time"], let imageName = meal["image"] {
-                updatedBites.append(TodayBite(title: title, time: time, imageName: imageName))
+        for meal in meals {
+            // Try both "image" and "image_url" keys for backward compatibility
+            let imageKey = meal["image"] ?? meal["image_url"] ?? ""
+            
+            if let title = meal["category"], let time = meal["time"] {
+                updatedBites.append(TodayBite(title: title, time: time, imageName: imageKey))
             }
         }
         
+        // Sort bites by predefined mealtime order
         let predefinedOrder: [String] = ["EarlyBite", "NourishBite", "MidDayBite", "SnackBite", "NightBite"]
         updatedBites.sort { (a, b) -> Bool in
             let indexA = predefinedOrder.firstIndex(of: a.title) ?? predefinedOrder.count
@@ -435,9 +582,9 @@ class HomeViewController: UIViewController {
         
         todaysBitesData = updatedBites
         
-        // Ensure UI updates happen on main thread
+        // Update UI on main thread
         DispatchQueue.main.async {
-            // Force the collection view to reload with animation
+            // Force collection view to reload with animation
             UIView.transition(with: self.todaysBitesCollectionView,
                             duration: 0.35,
                              options: .transitionCrossDissolve,
@@ -445,10 +592,11 @@ class HomeViewController: UIViewController {
                               self.todaysBitesCollectionView.reloadData()
                           })
             
-            // Update the empty state
+            // Update empty state visibility
             self.updateTodaysBitesEmptyState()
         }
     }
+    
     @objc private func handleNewVaccineScheduled(_ notification: Notification) {
         loadVaccinations()
     }
@@ -493,6 +641,14 @@ class HomeViewController: UIViewController {
         } else {
             todaysBitesCollectionView.isHidden = false
             todaysBitesEmptyStateView.isHidden = true
+        }
+    }
+    
+    @objc private func editTodaysBitesTapped() {
+        if let tabBarController = self.tabBarController {
+            tabBarController.selectedIndex = 4  // Switch to TodBite tab
+        } else {
+            print("⚠️ TabBarController not found")
         }
     }
     

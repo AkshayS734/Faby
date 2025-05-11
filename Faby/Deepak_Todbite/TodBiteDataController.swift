@@ -1,42 +1,12 @@
 import Foundation
+import Supabase
 
 class BiteSampleData {
     static let shared = BiteSampleData()
     private init() {}
 
     // MARK: - Predefined Categories
-    var categories: [BiteType: [FeedingMeal]] = [
-        .EarlyBite: [
-            FeedingMeal(name: "Ragi Porridge", description: "Softened ragi porridge, easy to digest for little ones.", image: "Ragi Porridge", category: .EarlyBite, region: .north, ageGroup: .months12to15),
-            FeedingMeal(name: "Banana Pancakes", description: "Banana pancakes cut into small, easy-to-eat pieces.", image: "Banana Pancakes", category: .EarlyBite, region: .north, ageGroup: .months12to15),
-            FeedingMeal(name: "Aloo Paratha", description: "Soft whole wheat paratha with mashed potato filling.", image: "Aloo Paratha", category: .EarlyBite, region: .north, ageGroup: .months12to15),
-            FeedingMeal(name: "Moong Dal Cheela", description: "Soft moong dal pancakes, gentle on the tummy.", image: "Moong Dal Cheela", category: .EarlyBite, region: .north, ageGroup: .months12to15)
-        ],
-        .NourishBite: [
-            FeedingMeal(name: "Suji Halwa", description: "Semolina halwa with minimal sugar, soft and nutritious.", image: "Suji Halwa", category: .NourishBite, region: .north, ageGroup: .months12to15),
-            FeedingMeal(name: "Besan Cheela", description: "Soft gram flour pancakes, easy to chew.", image: "Besan Cheela", category: .NourishBite, region: .north, ageGroup: .months12to15),
-            FeedingMeal(name: "Soft Poha Vegetable", description: "Flattened rice cooked soft with mild veggies.", image: "Soft Poha Vegetable", category: .NourishBite, region: .north, ageGroup: .months12to15),
-            FeedingMeal(name: "Milk with Almonds", description: "Warm milk with finely ground almonds for nutrition.", image: "Milk with Almonds", category: .NourishBite, region: .north, ageGroup: .months12to15)
-        ],
-        .MidDayBite: [
-            FeedingMeal(name: "Vegetable Upma", description: "Soft semolina upma with finely chopped vegetables.", image: "Vegetable Upma", category: .MidDayBite, region: .north, ageGroup: .months12to15),
-            FeedingMeal(name: "Oats Porridge", description: "Creamy oats porridge, gentle and filling.", image: "Oats Porridge", category: .MidDayBite, region: .north, ageGroup: .months12to15),
-            FeedingMeal(name: "Dal Khichdi", description: "Lentil and rice khichdi, mashed for easy eating.", image: "Dal Khichdi", category: .MidDayBite, region: .north, ageGroup: .months12to15),
-            FeedingMeal(name: "Curd Rice", description: "Soft rice mixed with curd for a cooling meal.", image: "Curd Rice", category: .MidDayBite, region: .north, ageGroup: .months12to15)
-        ],
-        .SnackBite: [
-            FeedingMeal(name: "Soft Vegetable Pulav", description: "Soft vegetable pulao with mild spices.", image: "Soft Vegetable Pulav", category: .SnackBite, region: .north, ageGroup: .months12to15),
-            FeedingMeal(name: "Rajma Chawal", description: "Kidney beans and rice, mashed for easy chewing.", image: "Rajma Chawal", category: .SnackBite, region: .north, ageGroup: .months12to15),
-            FeedingMeal(name: "Paneer Bhurji with Roti", description: "Soft paneer bhurji served with soft roti.", image: "Paneer Bhurji with Roti", category: .SnackBite, region: .north, ageGroup: .months12to15),
-            FeedingMeal(name: "Mixed Vegetable Curry", description: "Mixed vegetable curry, mashed for little ones.", image: "Mixed Vegetable Curry", category: .SnackBite, region: .north, ageGroup: .months12to15)
-        ],
-        .NightBite: [
-            FeedingMeal(name: "Aloo Gobi with Rice", description: "Potato and cauliflower curry with rice, mashed.", image: "Aloo Gobi with Rice", category: .NightBite, region: .north, ageGroup: .months12to15),
-            FeedingMeal(name: "Mashed Apple", description: "Nutritious Mashed Apple", image: "Mashed Apple", category: .NightBite, region: .north, ageGroup: .months12to15),
-            FeedingMeal(name: "Cereal with Milk", description: "Mild hot milk with cereal.", image: "Cereal with Milk", category: .NightBite, region: .north, ageGroup: .months12to15),
-            FeedingMeal(name: "Soya Milk", description: "Milk with Protein", image: "Soya Milk", category: .NightBite, region: .north, ageGroup: .months12to15)
-        ]
-    ]
+    var categories: [BiteType: [FeedingMeal]] = [:]
 
     // MARK: - User-Defined Data
     var userAddedMeals: [FeedingMeal] = []
@@ -50,26 +20,26 @@ class BiteSampleData {
         let filteredItems = allItems.filter { meal in
             return meal.region == region && meal.ageGroup == ageGroup
         }
-
+     
         print("\n📌 Fetching Meals for \(category.rawValue), Region: \(region.rawValue), Age: \(ageGroup.rawValue)")
         print("🔍 Found \(filteredItems.count) meals.")
 
         return filteredItems
     }
     
-    // New method that includes country filtering
-    func getItems(for category: BiteType, in country: CountryType, in region: RegionType, for ageGroup: AgeGroup) -> [FeedingMeal] {
-        let allItems = categories[category] ?? []
-
-        let filteredItems = allItems.filter { meal in
-            return meal.region.country == country && meal.region == region && meal.ageGroup == ageGroup
-        }
-
-        print("\n📌 Fetching Meals for \(category.rawValue), Country: \(country.rawValue), Region: \(region.rawValue), Age: \(ageGroup.rawValue)")
-        print("🔍 Found \(filteredItems.count) meals.")
-
-        return filteredItems
-    }
+//    // New method that includes country filtering
+//    func getItems(for category: BiteType, in country: CountryType, in region: RegionType, for ageGroup: AgeGroup) -> [FeedingMeal] {
+//        let allItems = categories[category] ?? []
+//
+//        let filteredItems = allItems.filter { meal in
+//            return meal.region.country == country && meal.region == region && meal.ageGroup == ageGroup
+//        }
+//
+//        print("\n📌 Fetching Meals for \(category.rawValue), Country: \(country.rawValue), Region: \(region.rawValue), Age: \(ageGroup.rawValue)")
+//        print("🔍 Found \(filteredItems.count) meals.")
+//
+//        return filteredItems
+//    }
 
    
    func addToMyBowl(_ item: FeedingMeal) {
@@ -207,6 +177,162 @@ extension BiteSampleData {
         }
         
         return organizedMeals
+    }
+}
+
+let client = SupabaseClient(supabaseURL: URL(string: "https://hlkmrimpxzsnxzrgofes.supabase.co")!, supabaseKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhsa21yaW1weHpzbnh6cmdvZmVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDAwNzI1MjgsImV4cCI6MjA1NTY0ODUyOH0.6mvladJjLsy4Q7DTs7x6jnQrLaKrlsnwDUlN-x_ZcFY")
+
+func fetchMeals() async -> [FeedingMeal] {
+    do {
+        print("🔄 Starting to fetch meals from Supabase...")
+        
+        let response = try await client.database
+            .from("feeding_meals")
+            .select()
+            .execute()
+        
+        print("✅ Received response from Supabase")
+        
+        // Print raw response for debugging
+        if let dataString = String(data: response.data, encoding: .utf8) {
+            print("📊 Raw response data: \(dataString)")
+        } else {
+            print("⚠️ Could not decode response data as string")
+        }
+        
+        do {
+            let meals = try JSONDecoder().decode([FeedingMeal].self, from: response.data)
+            print("🍽️ Successfully decoded \(meals.count) meals")
+            
+            // Print first meal for debugging if available
+            if let firstMeal = meals.first {
+                print("📝 First meal: \(firstMeal.name), Category: \(firstMeal.category.rawValue), Region: \(firstMeal.region.rawValue)")
+            }
+            
+            return meals
+        } catch let decodingError {
+            print("❌ JSON Decoding error: \(decodingError)")
+            
+            // Print more details about the decoding error
+            if let decodingError = decodingError as? DecodingError {
+                switch decodingError {
+                case .typeMismatch(let type, let context):
+                    print("Type mismatch: Expected \(type), at path: \(context.codingPath)")
+                case .valueNotFound(let type, let context):
+                    print("Value not found: \(type), at path: \(context.codingPath)")
+                case .keyNotFound(let key, let context):
+                    print("Key not found: \(key), at path: \(context.codingPath)")
+                case .dataCorrupted(let context):
+                    print("Data corrupted: \(context)")
+                @unknown default:
+                    print("Unknown decoding error")
+                }
+            }
+            
+            // Try to decode as a different structure to see what's coming back
+            if let json = try? JSONSerialization.jsonObject(with: response.data, options: []) as? [[String: Any]] {
+                print("🔍 JSON structure received:")
+                
+                if let firstObject = json.first {
+                    for (key, value) in firstObject {
+                        let valueType = type(of: value)
+                        print("   Key: \(key), Value: \(value), Type: \(valueType)")
+                    }
+                }
+            }
+            
+            return []
+        }
+    } catch let networkError {
+        print("❌ Network error while fetching meals: \(networkError)")
+        return []
+    }
+}
+
+// Helper function to load sample data if Supabase fails
+func loadSampleMeals() -> [FeedingMeal] {
+    // Create some sample meals for testing
+    let sampleMeals = [
+        FeedingMeal(
+            name: "Rice Pudding",
+            description: "Sweet rice pudding with milk and sugar",
+            image: "Asia/India/East/12-15months/EarlyBite/rice_pudding.jpg",
+            category: .EarlyBite,
+            region: .east,
+            ageGroup: .months12to15
+        ),
+        FeedingMeal(
+            name: "Vegetable Khichdi",
+            description: "Rice and lentil dish with vegetables",
+            image: "Asia/India/North/12-15months/NourishBite/khichdi.jpg",
+            category: .NourishBite,
+            region: .north,
+            ageGroup: .months12to15
+        )
+    ]
+    
+    return sampleMeals
+}
+
+func getImageURL(for meal: FeedingMeal) -> URL? {
+    let baseURL = "https://hlkmrimpxzsnxzrgofes.supabase.co/storage/v1/object/public/meal-images"
+    
+    // The image path is already complete from the database
+    if meal.image_url.lowercased().starts(with: "http") {
+        // If it's already a full URL, use it directly
+        return URL(string: meal.image_url)
+    } else {
+        // Otherwise, construct URL from base and path
+        return URL(string: "\(baseURL)/\(meal.image_url)")
+    }
+}
+
+// Function to populate the data model with meals from Supabase
+func populateMealData() async {
+    print("📲 Starting to populate meal data...")
+    
+    // Fetch meals from Supabase
+    var meals = await fetchMeals()
+    
+    // If no meals returned from Supabase, use sample data
+    if meals.isEmpty {
+        print("⚠️ No meals returned from Supabase, using sample data instead")
+        meals = loadSampleMeals()
+        
+        // Show alert or log for debugging in production
+        DispatchQueue.main.async {
+            // You can show an alert here in the UI if needed
+            print("⚠️ ALERT: Could not load meals from Supabase. Using sample data instead.")
+        }
+    }
+    
+    print("🍴 Populating data model with \(meals.count) meals")
+    
+    // Group meals by category
+    var categorizedMeals: [BiteType: [FeedingMeal]] = [:]
+    
+    for meal in meals {
+        if categorizedMeals[meal.category] == nil {
+            categorizedMeals[meal.category] = []
+        }
+        categorizedMeals[meal.category]?.append(meal)
+    }
+    
+    // Update the shared data model
+    BiteSampleData.shared.categories = categorizedMeals
+    
+    print("✅ Data model populated successfully")
+    
+    // Print summary of what was loaded
+    for (category, meals) in categorizedMeals {
+        print("📊 Category: \(category.rawValue) - \(meals.count) meals")
+        
+        // Print a few examples from each category
+        let exampleCount = min(2, meals.count)
+        for i in 0..<exampleCount {
+            let meal = meals[i]
+            print("   - \(meal.name) (Region: \(meal.region.rawValue), Age: \(meal.ageGroup.rawValue))")
+        }
     }
 }
 

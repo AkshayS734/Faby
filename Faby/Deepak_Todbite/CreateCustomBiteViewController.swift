@@ -1,4 +1,5 @@
 import UIKit
+import Supabase
 
 class CreateCustomBiteViewController: UIViewController {
 
@@ -156,7 +157,7 @@ class CreateCustomBiteViewController: UIViewController {
         let newItem = FeedingMeal(
             name: meal.name,
             description: meal.description,
-            image: meal.image,
+            image: meal.image_url,
             category: newBiteType,
             region: meal.region,
             ageGroup: meal.ageGroup
@@ -167,6 +168,14 @@ class CreateCustomBiteViewController: UIViewController {
         print("✅ Save tapped, new meal: \(newItem.name) with category: \(newBiteType.rawValue), Time: \(timeInterval)")
 
         onSave?(newItem, timeInterval)
+        
+        // Save to Supabase my_Bowl table
+        Task {
+            // Get client from SceneDelegate
+            if let sceneDelegate = UIApplication.shared.connectedScenes.first?.delegate as? SceneDelegate {
+                await SupabaseManager.saveToMyBowlDatabase(newItem, using: sceneDelegate.supabase)
+            }
+        }
 
         showAlert(title: "🎉 Success", message: "\"\(newItem.name)\" has been added to MyBowl!")
     }

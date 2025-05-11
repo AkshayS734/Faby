@@ -12,16 +12,44 @@ let fixedBiteOrder: [BiteType] = [.EarlyBite, .NourishBite, .MidDayBite, .SnackB
 class FeedingPlanViewController: UIViewController {
     
     // MARK: - UI Elements
-    private let segmentedControl: UISegmentedControl = {
-        let control = UISegmentedControl(items: ["Daily Plan", "Weekly Plan"])
-        control.selectedSegmentIndex = 0
-        control.addTarget(self, action: #selector(segmentChanged), for: .valueChanged)
-        return control
+    // New UI elements - Two separate buttons
+    private let dailyPlanButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.setTitle("Daily Plan", for: .normal)
+        button.titleLabel?.font = UIFont.systemFont(ofSize: 16, weight: .medium)
+        button.backgroundColor = .systemBlue
+        button.setTitleColor(.white, for: .normal)
+        button.layer.cornerRadius = 10
+        button.addTarget(self, action: #selector(planButtonTapped(_:)), for: .touchUpInside)
+        button.tag = 0 // Tag for Daily Plan
+        return button
+    }()
+    
+    private let weeklyPlanButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.setTitle("Weekly Plan", for: .normal)
+        button.titleLabel?.font = UIFont.systemFont(ofSize: 16, weight: .medium)
+        button.backgroundColor = .lightGray
+        button.setTitleColor(.darkGray, for: .normal)
+        button.layer.cornerRadius = 10
+        button.addTarget(self, action: #selector(planButtonTapped(_:)), for: .touchUpInside)
+        button.tag = 1 // Tag for Weekly Plan
+        return button
+    }()
+    
+    private let buttonStackView: UIStackView = {
+        let stackView = UIStackView()
+        stackView.axis = .horizontal
+        stackView.distribution = .fillEqually
+        stackView.spacing = 12
+        stackView.translatesAutoresizingMaskIntoConstraints = false
+        return stackView
     }()
     
     private let tableView = UITableView(frame: .zero, style: .grouped)
 
     private var collectionView: UICollectionView!
+    private var collectionViewHeightConstraint: NSLayoutConstraint!
     private var selectedDateIndex: Int = 0 // Stores selected date index
     private var weekDates: [String] = [] // Stores formatted dates
 
@@ -61,8 +89,9 @@ class FeedingPlanViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
+        // Create all UI components first
         setupCollectionView()
-        setupUI()
+        setupUI()  // This will arrange all components with proper constraints
         setupTableView()
 
         tableView.register(FeedingPlanCell.self, forCellReuseIdentifier: "FeedingPlanCell")
@@ -89,24 +118,90 @@ class FeedingPlanViewController: UIViewController {
             selectedDay = weekDays.first ?? ""
             selectedDateIndex = 0
         }
+        
+        // Load existing feeding plans for the current date range
+        loadExistingFeedingPlans()
 
-       
         DispatchQueue.main.async {
             self.collectionView.reloadData()
             self.tableView.reloadData()
         }
 
-       
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             if self.selectedDateIndex < self.collectionView.numberOfItems(inSection: 0) {
                 let indexPath = IndexPath(item: self.selectedDateIndex, section: 0)
-                
-                
                 self.collectionView.scrollToItem(at: indexPath, at: .left, animated: true)
             }
         }
     }
 
+    // Method to load existing feeding plans from Supabase
+    private func loadExistingFeedingPlans() {
+        // Show loading indicator
+        let activityIndicator = UIActivityIndicatorView(style: .large)
+        activityIndicator.center = view.center
+        activityIndicator.startAnimating()
+        view.addSubview(activityIndicator)
+        
+        // Get date range (use past 7 days as default)
+        let today = Date()
+        let calendar = Calendar.current
+        let oneWeekAgo = calendar.date(byAdding: .day, value: -7, to: today) ?? today
+        
+        Task {
+            if let sceneDelegate = UIApplication.shared.connectedScenes.first?.delegate as? SceneDelegate {
+                let supabaseClient = sceneDelegate.supabase
+                
+                // Load feeding plans with meal details
+                let loadedPlans = await SupabaseManager.loadFeedingPlansWithMeals(
+                    startDate: oneWeekAgo,
+                    endDate: today,
+                    using: supabaseClient
+                )
+                
+                await MainActor.run {
+                    print("📌 Loaded feeding plans for \(loadedPlans.count) days from Supabase")
+                    
+                    // Merge loaded plans with weeklyPlan 
+                    if !loadedPlans.isEmpty {
+                        // Merge with any existing plans
+                        for (dateKey, mealsByCategory) in loadedPlans {
+                            if weeklyPlan[dateKey] == nil {
+                                weeklyPlan[dateKey] = mealsByCategory
+                            } else {
+                                // Merge categories
+                                for (category, meals) in mealsByCategory {
+                                    if weeklyPlan[dateKey]?[category] == nil {
+                                        weeklyPlan[dateKey]?[category] = meals
+                                    } else {
+                                        // Append meals, avoiding duplicates by ID
+                                        let existingIds = Set(weeklyPlan[dateKey]?[category]?.compactMap { $0.id } ?? [])
+                                        let newMeals = meals.filter { !existingIds.contains($0.id ?? -1) }
+                                        weeklyPlan[dateKey]?[category]?.append(contentsOf: newMeals)
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // If we loaded plans for the selected day, use those for MyBowl
+                        if let selectedDayPlans = loadedPlans[selectedDay] {
+                            // Only replace myBowlItemsDict if it's empty or if we have data for the selected day
+                            if myBowlItemsDict.isEmpty || !selectedDayPlans.isEmpty {
+                                myBowlItemsDict = selectedDayPlans
+                            }
+                        }
+                        
+                        // Reload UI
+                        collectionView.reloadData()
+                        tableView.reloadData()
+                    }
+                    
+                    activityIndicator.stopAnimating()
+                    activityIndicator.removeFromSuperview()
+                }
+            }
+        }
+    }
 
     private func getWeekDaysWithDates() -> [String] {
             let calendar = Calendar.current
@@ -166,15 +261,9 @@ class FeedingPlanViewController: UIViewController {
         collectionView.delegate = self
         collectionView.showsHorizontalScrollIndicator = false
         collectionView.backgroundColor = .clear
-
-        view.addSubview(collectionView)
-
-        NSLayoutConstraint.activate([
-            collectionView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
-            collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            collectionView.heightAnchor.constraint(equalToConstant: 60) // ✅ Increased for better UI
-        ])
+        
+        // Create height constraint for collection view (we'll activate it in setupUI)
+        collectionViewHeightConstraint = collectionView.heightAnchor.constraint(equalToConstant: 60)
     }
 
 
@@ -186,30 +275,41 @@ class FeedingPlanViewController: UIViewController {
 
         navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Save", style: .done, target: self, action: #selector(savePlanTapped))
 
-    
-        let stackView = UIStackView(arrangedSubviews: [segmentedControl, collectionView])
-        stackView.axis = .vertical
-        stackView.spacing = 8
-
-        view.addSubview(stackView)
+        // Setup button stack view
+        buttonStackView.addArrangedSubview(dailyPlanButton)
+        buttonStackView.addArrangedSubview(weeklyPlanButton)
+        
+        // Add all UI elements to the view
+        view.addSubview(buttonStackView)
+        view.addSubview(collectionView)
         view.addSubview(tableView)
 
-        stackView.translatesAutoresizingMaskIntoConstraints = false
+        buttonStackView.translatesAutoresizingMaskIntoConstraints = false
         tableView.translatesAutoresizingMaskIntoConstraints = false
 
         NSLayoutConstraint.activate([
-            stackView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
-            stackView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            stackView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            // First: Position button stack view
+            buttonStackView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
+            buttonStackView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            buttonStackView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            buttonStackView.heightAnchor.constraint(equalToConstant: 44),
+            
+            // Second: Position collection view BELOW buttons
+            collectionView.topAnchor.constraint(equalTo: buttonStackView.bottomAnchor, constant: 10),
+            collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            collectionViewHeightConstraint,
 
-            tableView.topAnchor.constraint(equalTo: stackView.bottomAnchor, constant: 10),
+            // Third: Position table view BELOW collection view 
+            tableView.topAnchor.constraint(equalTo: collectionView.bottomAnchor, constant: 0), // Reduced spacing
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
 
-       
+        // Initially hide collection view for daily plan and set height to 0
         collectionView.isHidden = true
+        collectionViewHeightConstraint.constant = 0
     }
 
 
@@ -221,17 +321,45 @@ class FeedingPlanViewController: UIViewController {
     }
     
     // MARK: - Actions
-    @objc private func segmentChanged() {
-        selectedPlanType = segmentedControl.selectedSegmentIndex == 0 ? .daily : .weekly
+    @objc private func planButtonTapped(_ sender: UIButton) {
+        // Update button appearances
+        dailyPlanButton.backgroundColor = sender.tag == 0 ? .systemBlue : .lightGray
+        dailyPlanButton.setTitleColor(sender.tag == 0 ? .white : .darkGray, for: .normal)
+        
+        weeklyPlanButton.backgroundColor = sender.tag == 1 ? .systemBlue : .lightGray
+        weeklyPlanButton.setTitleColor(sender.tag == 1 ? .white : .darkGray, for: .normal)
+        
+        // Update selected plan type
+        selectedPlanType = sender.tag == 0 ? .daily : .weekly
         
         if selectedPlanType == .weekly {
             print("📌 Switching to Weekly Plan")
             
+            // Initialize weekly plan with current daily plan data
+            if weeklyPlan.isEmpty {
+                // Copy current daily plan to all days in the week
+                let weekDays = getWeekDaysWithDates()
+                for day in weekDays {
+                    weeklyPlan[day] = myBowlItemsDict
+                }
+            }
+            
+            // Show collection view with animation
+            UIView.animate(withDuration: 0.3) {
+                self.collectionView.isHidden = false
+                self.collectionViewHeightConstraint.constant = 60
+                self.view.layoutIfNeeded()
+            }
+            
             // Show date range picker
             showDateRangePicker()
         } else {
-            // Daily plan selected
-            collectionView.isHidden = true
+            // Daily plan selected - hide collection view with animation
+            UIView.animate(withDuration: 0.3) {
+                self.collectionView.isHidden = true
+                self.collectionViewHeightConstraint.constant = 0
+                self.view.layoutIfNeeded()
+            }
             tableView.reloadData()
         }
     }
@@ -266,18 +394,24 @@ class FeedingPlanViewController: UIViewController {
 
         var encodedMeals: [[String: String]] = []
 
+        // Collect all meals to save to Supabase
+        var mealsToSave: [FeedingMeal] = []
+        
         for (category, meals) in summaryVC.savedPlan {
             for meal in meals {
                 var mealDict: [String: String] = [
                     "category": category.rawValue,
                     "time": getTimeInterval(for: category),
                     "name": meal.name,
-                    "image": meal.image,
+                    "image": meal.image_url,
                     "description": meal.description,
                     "region": meal.region.rawValue,
                     "ageGroup": meal.ageGroup.rawValue
                 ]
                 encodedMeals.append(mealDict)
+                
+                // Add to meals to save to Supabase
+                mealsToSave.append(meal)
             }
         }
 
@@ -299,6 +433,39 @@ class FeedingPlanViewController: UIViewController {
         NotificationCenter.default.post(name: NSNotification.Name("FeedingPlanUpdated"), object: nil)
 
         print("✅ Stored Meals in UserDefaults:", encodedMeals)  // 🔍 Debugging print
+        
+        // Save to Supabase
+        Task {
+            if let sceneDelegate = UIApplication.shared.connectedScenes.first?.delegate as? SceneDelegate {
+                let supabaseClient = sceneDelegate.supabase
+                
+                // Determine plan type for Supabase
+                let planTypeForDB: FeedingPlanType = (selectedPlanType == .daily) ? .daily : .weekly
+                
+                // Set date range
+                let today = Date()
+                let calendar = Calendar.current
+                let endDate = selectedPlanType == .daily 
+                    ? today // Same day for daily plan
+                    : calendar.date(byAdding: .day, value: 7, to: today) ?? today // 7 days for weekly
+                
+                // Save to Supabase
+                let success = await SupabaseManager.saveFeedingPlan(
+                    meals: mealsToSave,
+                    planType: planTypeForDB,
+                    startDate: today,
+                    endDate: endDate,
+                    using: supabaseClient
+                )
+                
+                if !success {
+                    // If there was an error, show an error message
+                    DispatchQueue.main.async {
+                        self.showErrorAlert(message: "Failed to save feeding plan to database. Your plan is saved locally.")
+                    }
+                }
+            }
+        }
 
         // Show success message
         let alert = UIAlertController(
@@ -317,6 +484,18 @@ class FeedingPlanViewController: UIViewController {
             self.navigateToHomeTab()
         })
         
+        present(alert, animated: true)
+    }
+
+    // Helper function to show error alert
+    private func showErrorAlert(message: String) {
+        let alert = UIAlertController(
+            title: "Error",
+            message: message,
+            preferredStyle: .alert
+        )
+        
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
         present(alert, animated: true)
     }
 
@@ -415,15 +594,31 @@ class FeedingPlanViewController: UIViewController {
         // Add cancel button
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel) { _ in
             // If canceled, revert to Daily Plan
-            self.segmentedControl.selectedSegmentIndex = 0
             self.selectedPlanType = .daily
-            self.collectionView.isHidden = true
+            self.dailyPlanButton.backgroundColor = .systemBlue
+            self.dailyPlanButton.setTitleColor(.white, for: .normal)
+            self.weeklyPlanButton.backgroundColor = .lightGray
+            self.weeklyPlanButton.setTitleColor(.darkGray, for: .normal)
+            
+            // Hide collection view with animation
+            UIView.animate(withDuration: 0.3) {
+                self.collectionView.isHidden = true
+                self.collectionViewHeightConstraint.constant = 0
+                self.view.layoutIfNeeded()
+            }
         })
         
         // Add continue button
         alert.addAction(UIAlertAction(title: "Continue", style: .default) { _ in
             self.generateWeeklyDates()
-            self.collectionView.isHidden = false
+            
+            // Show collection view with animation
+            UIView.animate(withDuration: 0.3) {
+                self.collectionView.isHidden = false
+                self.collectionViewHeightConstraint.constant = 60
+                self.view.layoutIfNeeded()
+            }
+            
             self.collectionView.reloadData()
             self.tableView.reloadData()
         })
@@ -604,51 +799,8 @@ extension FeedingPlanViewController: UITableViewDelegate, UITableViewDataSource 
 
         // Normal cell configuration for meals
         let meal = meals![indexPath.row]
-        cell.contentView.subviews.forEach { $0.removeFromSuperview() }
-
-        let contentStackView = UIStackView()
-        contentStackView.axis = .horizontal
-        contentStackView.alignment = .center
-        contentStackView.spacing = 10
-        contentStackView.translatesAutoresizingMaskIntoConstraints = false
-
-        let mealImageView = UIImageView()
-        mealImageView.contentMode = .scaleAspectFill
-        mealImageView.clipsToBounds = true
-        mealImageView.layer.cornerRadius = 8
-        mealImageView.translatesAutoresizingMaskIntoConstraints = false
-
-        let imageUrl = meal.image
-        if !imageUrl.isEmpty {
-            mealImageView.image = UIImage(named: imageUrl)
-        } else {
-            mealImageView.image = UIImage(named: "placeholder")
-        }
-
-        NSLayoutConstraint.activate([
-            mealImageView.widthAnchor.constraint(equalToConstant: 30),
-            mealImageView.heightAnchor.constraint(equalToConstant: 30)
-        ])
-
-        let mealLabel = UILabel()
-        mealLabel.text = meal.name
-        mealLabel.font = UIFont.systemFont(ofSize: 16, weight: .medium)
-        mealLabel.textColor = .black
-        mealLabel.numberOfLines = 1
-        mealLabel.translatesAutoresizingMaskIntoConstraints = false
-
-        contentStackView.addArrangedSubview(mealImageView)
-        contentStackView.addArrangedSubview(mealLabel)
-
-        cell.contentView.addSubview(contentStackView)
-
-        NSLayoutConstraint.activate([
-            contentStackView.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 10),
-            contentStackView.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -10),
-            contentStackView.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 5),
-            contentStackView.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -5)
-        ])
-
+        
+        cell.configure(with: meal)
         return cell
     }
     
@@ -795,7 +947,7 @@ extension FeedingMeal {
         return [
             "name": name,
             "description": description,
-            "image": image,
+            "image": image_url,
             "category": category.rawValue
         ]
     }

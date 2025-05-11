@@ -28,6 +28,12 @@ class FilterViewController: UIViewController {
         title = "Filter Meals"
         setupUI()
         setDefaultSelections()
+        // ✅ Load previously selected region
+            if let savedRegion = UserDefaults.standard.string(forKey: "SelectedRegion"),
+               let regions = RegionType(rawValue: savedRegion) {
+                self.selectedRegion = regions
+                self.regionButton.setTitle(regions.rawValue, for: .normal)
+            }
     }
     
     private func setupUI() {
@@ -204,8 +210,12 @@ class FilterViewController: UIViewController {
             alert.addAction(UIAlertAction(title: region.rawValue, style: .default, handler: { [weak self] _ in
                 self?.selectedRegion = region
                 self?.regionButton.setTitle(region.rawValue, for: .normal)
+
+                // ✅ Save to UserDefaults
+                UserDefaults.standard.set(region.rawValue, forKey: "SelectedRegion")
             }))
         }
+
         
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
         present(alert, animated: true)

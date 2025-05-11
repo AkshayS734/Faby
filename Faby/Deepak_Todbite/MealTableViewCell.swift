@@ -58,8 +58,20 @@ class MealTableViewCell: UITableViewCell {
         ])
     }
 
-    func configure(with meal: FeedingMeal) {
-        mealImageView.image = UIImage(named: meal.image)
+    func configure(with meal: FeedingMeal) {//mealImageView
+        if let url = URL(string: meal.image_url) {
+                    // Show a placeholder while loading
+            mealImageView.image = UIImage(named: "placeholder")
+                    URLSession.shared.dataTask(with: url) { data, _, _ in
+                        if let data = data, let image = UIImage(data: data) {
+                            DispatchQueue.main.async {
+                                self.mealImageView.image = image
+                            }
+                        }
+                    }.resume()
+                } else {
+                    mealImageView.image = UIImage(named: "placeholder")
+                }
         mealNameLabel.text = meal.name
         mealDetailsLabel.text = "\(meal.category.rawValue) • \(meal.region.rawValue) Region"
     }

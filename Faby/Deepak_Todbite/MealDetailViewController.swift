@@ -1,4 +1,5 @@
 import UIKit
+import Supabase
 
 class MealDetailViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
 
@@ -91,9 +92,27 @@ class MealDetailViewController: UIViewController, UITableViewDataSource, UITable
 
     // MARK: - Data Setup
     private func configureData() {
-        topImageView.image = UIImage(named: selectedItem.image)
-        titleLabel.text = selectedItem.name
-        descriptionLabel.text = selectedItem.description
+        configure(with: selectedItem)
+    }
+
+    // New reusable configure function for meal image and labels
+    func configure(with item: FeedingMeal) {
+        //currentItem = item//itemImageView
+        if let url = URL(string: item.image_url) {
+                    // Show a placeholder while loading
+            topImageView.image = UIImage(named: "placeholder")
+                    URLSession.shared.dataTask(with: url) { data, _, _ in
+                        if let data = data, let image = UIImage(data: data) {
+                            DispatchQueue.main.async {
+                                self.topImageView.image = image
+                            }
+                        }
+                    }.resume()
+                } else {
+                    topImageView.image = UIImage(named: "placeholder")
+                }
+        titleLabel.text = item.name
+        descriptionLabel.text = item.description
     }
 
     // MARK: - Like Button
@@ -121,7 +140,7 @@ class MealDetailViewController: UIViewController, UITableViewDataSource, UITable
             // Add to favorites if not already present
             let mealDict: [String: String] = [
                 "name": selectedItem.name,
-                "image": selectedItem.image,
+                "image": selectedItem.image_url,
                 "description": selectedItem.description
             ]
             if !favorites.contains(where: { $0["name"] == selectedItem.name }) {
@@ -208,6 +227,14 @@ extension MealDetailViewController: SectionItemTableViewCellDelegate {
 
                 //  Show success message
                 todBiteVC.MealItemDetails(message: "✅ \"\(item.name)\" added to MyBowl!")
+
+                // Save to Supabase my_Bowl table
+                Task {
+                    // Get client from SceneDelegate
+                    if let sceneDelegate = UIApplication.shared.connectedScenes.first?.delegate as? SceneDelegate {
+                        await SupabaseManager.saveToMyBowlDatabase(item, using: sceneDelegate.supabase)
+                    }
+                }
 
                 //  Reload table if needed
                 if todBiteVC.segmentedControl.selectedSegmentIndex == 1 {
