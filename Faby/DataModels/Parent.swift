@@ -8,10 +8,11 @@ struct Parent  {
     var gender : Gender
     var relation : Relation
     var babyIds: [String]
-    var postIds: [String] = [] // Store post IDs instead of full posts
-    var replyIds: [String] = [] // Store reply IDs separately
+    var parentimage_url: String?
+   // var postIds: [String] = [] // Store post IDs instead of full posts
+    //var replyIds: [String] = [] // Store reply IDs separately
     // Track all categories the parent has posted in
-    var categoriesPostedIn: Set<String> = []
+    //var categoriesPostedIn: Set<String> = []
     
 }
 

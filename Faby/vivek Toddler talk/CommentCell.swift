@@ -23,7 +23,7 @@ class CommentCell: UITableViewCell {
         imageView.translatesAutoresizingMaskIntoConstraints = false
         imageView.contentMode = .scaleAspectFill
         imageView.clipsToBounds = true
-        imageView.layer.cornerRadius = 16
+        imageView.layer.cornerRadius = 20
         imageView.backgroundColor = .systemGray6
         imageView.image = UIImage(systemName: "person.circle.fill")
         imageView.tintColor = .systemGray
@@ -41,7 +41,7 @@ class CommentCell: UITableViewCell {
     private let usernameLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.font = UIFont.systemFont(ofSize: 13, weight: .semibold)
+        label.font = UIFont.systemFont(ofSize: 15, weight: .semibold)
         label.textColor = .label
         return label
     }()
@@ -49,7 +49,7 @@ class CommentCell: UITableViewCell {
     private let commentLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.font = UIFont.systemFont(ofSize: 13)
+        label.font = UIFont.systemFont(ofSize: 15)
         label.textColor = .label
         label.numberOfLines = 0
         return label
@@ -63,12 +63,29 @@ class CommentCell: UITableViewCell {
         return label
     }()
     
+    private let likeButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.setImage(UIImage(systemName: "heart"), for: .normal)
+        button.tintColor = .systemGray
+        return button
+    }()
+    
+    private let likeCountLabel: UILabel = {
+        let label = UILabel()
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.font = .systemFont(ofSize: 12)
+        label.textColor = .systemGray
+        label.text = "0"
+        return label
+    }()
+    
     private let replyButton: UIButton = {
         let button = UIButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setTitle("Reply", for: .normal)
         button.titleLabel?.font = .systemFont(ofSize: 12)
-        button.setTitleColor(.systemGray, for: .normal)
+        button.setTitleColor(.systemBlue, for: .normal)
         return button
     }()
     
@@ -85,7 +102,7 @@ class CommentCell: UITableViewCell {
     private lazy var viewRepliesButton: UIButton = {
         let button = UIButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
-        button.setTitleColor(.systemGray, for: .normal)
+        button.setTitleColor(.systemBlue, for: .normal)
         button.titleLabel?.font = .systemFont(ofSize: 13)
         button.contentHorizontalAlignment = .left
         button.backgroundColor = .clear
@@ -135,12 +152,15 @@ class CommentCell: UITableViewCell {
         commentBubble.addSubview(usernameLabel)
         commentBubble.addSubview(commentLabel)
         containerView.addSubview(timeLabel)
+        containerView.addSubview(likeButton)
+        containerView.addSubview(likeCountLabel)
         containerView.addSubview(replyButton)
         containerView.addSubview(moreButton)
         containerView.addSubview(viewRepliesButton)
         containerView.addSubview(indentLineView)
         
         // Add tap targets
+        likeButton.addTarget(self, action: #selector(handleLike), for: .touchUpInside)
         replyButton.addTarget(self, action: #selector(handleReply), for: .touchUpInside)
         moreButton.addTarget(self, action: #selector(handleMore), for: .touchUpInside)
         
@@ -151,29 +171,39 @@ class CommentCell: UITableViewCell {
             containerView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
             containerView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
             
-            avatarImageView.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 12),
+            avatarImageView.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 16),
             avatarImageView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 16),
-            avatarImageView.widthAnchor.constraint(equalToConstant: 32),
-            avatarImageView.heightAnchor.constraint(equalToConstant: 32),
+            avatarImageView.widthAnchor.constraint(equalToConstant: 40),
+            avatarImageView.heightAnchor.constraint(equalToConstant: 40),
             
-            commentBubble.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 12),
-            commentBubble.leadingAnchor.constraint(equalTo: avatarImageView.trailingAnchor, constant: 8),
-            commentBubble.trailingAnchor.constraint(lessThanOrEqualTo: moreButton.leadingAnchor, constant: -8),
+            commentBubble.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 16),
+            commentBubble.leadingAnchor.constraint(equalTo: avatarImageView.trailingAnchor, constant: 12),
+            commentBubble.trailingAnchor.constraint(lessThanOrEqualTo: moreButton.leadingAnchor, constant: -12),
             
-            usernameLabel.topAnchor.constraint(equalTo: commentBubble.topAnchor, constant: 8),
-            usernameLabel.leadingAnchor.constraint(equalTo: commentBubble.leadingAnchor, constant: 12),
-            usernameLabel.trailingAnchor.constraint(equalTo: commentBubble.trailingAnchor, constant: -12),
+            usernameLabel.topAnchor.constraint(equalTo: commentBubble.topAnchor, constant: 10),
+            usernameLabel.leadingAnchor.constraint(equalTo: commentBubble.leadingAnchor, constant: 16),
+            usernameLabel.trailingAnchor.constraint(equalTo: commentBubble.trailingAnchor, constant: -16),
             
-            commentLabel.topAnchor.constraint(equalTo: usernameLabel.bottomAnchor, constant: 4),
-            commentLabel.leadingAnchor.constraint(equalTo: commentBubble.leadingAnchor, constant: 12),
-            commentLabel.trailingAnchor.constraint(equalTo: commentBubble.trailingAnchor, constant: -12),
-            commentLabel.bottomAnchor.constraint(equalTo: commentBubble.bottomAnchor, constant: -8),
+            commentLabel.topAnchor.constraint(equalTo: usernameLabel.bottomAnchor, constant: 6),
+            commentLabel.leadingAnchor.constraint(equalTo: commentBubble.leadingAnchor, constant: 16),
+            commentLabel.trailingAnchor.constraint(equalTo: commentBubble.trailingAnchor, constant: -16),
+            commentLabel.bottomAnchor.constraint(equalTo: commentBubble.bottomAnchor, constant: -10),
             
             timeLabel.topAnchor.constraint(equalTo: commentBubble.bottomAnchor, constant: 4),
             timeLabel.leadingAnchor.constraint(equalTo: commentBubble.leadingAnchor),
             
-            replyButton.centerYAnchor.constraint(equalTo: timeLabel.centerYAnchor),
-            replyButton.leadingAnchor.constraint(equalTo: timeLabel.trailingAnchor, constant: 16),
+            likeButton.centerYAnchor.constraint(equalTo: timeLabel.centerYAnchor, constant: 8),
+            likeButton.leadingAnchor.constraint(equalTo: timeLabel.trailingAnchor, constant: 16),
+            likeButton.widthAnchor.constraint(equalToConstant: 16),
+            likeButton.heightAnchor.constraint(equalToConstant: 16),
+
+
+            
+            likeCountLabel.centerYAnchor.constraint(equalTo: likeButton.centerYAnchor),
+            likeCountLabel.leadingAnchor.constraint(equalTo: likeButton.trailingAnchor, constant: 4),
+            
+            replyButton.centerYAnchor.constraint(equalTo: timeLabel.centerYAnchor, constant: 8),
+            replyButton.leadingAnchor.constraint(equalTo: likeCountLabel.trailingAnchor, constant: 16),
             replyButton.heightAnchor.constraint(equalToConstant: 22),
             
             moreButton.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 12),
@@ -182,9 +212,9 @@ class CommentCell: UITableViewCell {
             moreButton.heightAnchor.constraint(equalToConstant: 24),
             
             // View replies button - Instagram style
-            viewRepliesButton.topAnchor.constraint(equalTo: replyButton.bottomAnchor, constant: 8),
-            viewRepliesButton.leadingAnchor.constraint(equalTo: avatarImageView.trailingAnchor, constant: 20), // Indented
-            viewRepliesButton.heightAnchor.constraint(equalToConstant: 22),
+            viewRepliesButton.topAnchor.constraint(equalTo: replyButton.bottomAnchor, constant: 12),
+            viewRepliesButton.leadingAnchor.constraint(equalTo: avatarImageView.trailingAnchor, constant: 24), // Indented
+            viewRepliesButton.heightAnchor.constraint(equalToConstant: 24),
             viewRepliesButton.widthAnchor.constraint(lessThanOrEqualTo: contentView.widthAnchor, constant: -80),
             
             // Indent line for replies (Instagram style)
@@ -194,7 +224,7 @@ class CommentCell: UITableViewCell {
             indentLineView.bottomAnchor.constraint(equalTo: viewRepliesButton.bottomAnchor),
             
             // Bottom constraint (dynamic based on reply button visibility)
-            viewRepliesButton.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -8)
+            viewRepliesButton.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -12)
         ])
     }
     
@@ -205,6 +235,69 @@ class CommentCell: UITableViewCell {
         usernameLabel.text = comment.parentName ?? "Unknown User"
         commentLabel.text = comment.content
         self.isLiked = isLiked
+        
+        // Fetch parent profile image if available
+        let userId = comment.userId
+        print("🔍 CommentCell - Fetching profile image for userId: \(userId)")
+        Task {
+            do {
+                let client = SupabaseManager.shared.client
+                let response = try await client.database
+                    .from("parents")
+                    .select()
+                    .eq("uid", value: userId)
+                    .limit(1)
+                    .execute()
+                
+                if let jsonString = String(data: response.data, encoding: .utf8) {
+                    print("🔍 CommentCell - Parent data from Supabase: \(jsonString)")
+                }
+                
+                if let jsonData = try? JSONSerialization.jsonObject(with: response.data) as? [[String: Any]] {
+                    print("🔍 CommentCell - Found \(jsonData.count) parent records")
+                    
+                    if let firstParent = jsonData.first {
+                        print("🔍 CommentCell - Parent data: \(firstParent)")
+                        
+                        if let parentImageUrl = firstParent["parentimage_url"] as? String {
+                            print("✅ CommentCell - Found parentimage_url: \(parentImageUrl)")
+                            
+                            if let url = URL(string: parentImageUrl) {
+                    
+                                let (data, _) = try await URLSession.shared.data(from: url)
+                                if let image = UIImage(data: data) {
+                                    print("✅ CommentCell - Successfully loaded image")
+                                    DispatchQueue.main.async { [weak self] in
+                                        self?.avatarImageView.image = image
+                                    }
+                                } else {
+                                    print("⚠️ CommentCell - Failed to create image from data")
+                                }
+                            } else {
+                                print("⚠️ CommentCell - Invalid URL format for parentimage_url")
+                            }
+                        } else {
+                            print("⚠️ CommentCell - No parentimage_url found in parent data")
+                        }
+                    } else {
+                        print("⚠️ CommentCell - No parent record found")
+                    }
+                } else {
+                    print("⚠️ CommentCell - Failed to parse parent data from JSON")
+                }
+            } catch {
+                print("❌ Error fetching parent image: \(error.localizedDescription)")
+            }
+        }
+        
+        // Fetch like count for this comment
+        if let commentId = comment.commentId?.description {
+            SupabaseManager.shared.fetchCommentLikes(commentId: commentId) { [weak self] count, _ in
+                DispatchQueue.main.async {
+                    self?.likeCountLabel.text = count > 0 ? "\(count)" : ""
+                }
+            }
+        }
         
         // Show/hide view replies button based on replies count
         if let repliesCount = comment.repliesCount, repliesCount > 0 {
@@ -226,7 +319,7 @@ class CommentCell: UITableViewCell {
         }
         
         // Format time
-        timeLabel.text = formatTimeAgo(from: comment.createdAt)
+        timeLabel.text = DateFormatter.formatPostDate(comment.createdAt)
         
         // If this is a reply, adjust the UI accordingly
         if comment.isReply == true {
@@ -257,35 +350,23 @@ class CommentCell: UITableViewCell {
         delegate?.didTapViewReplies(for: comment)
     }
     
+    @objc private func handleLike() {
+        guard let comment = comment else { return }
+        delegate?.didTapLikeButton(for: comment)
+    }
+    
     private func updateLikeButtonAppearance() {
         // Update visual appearance based on like state
+        if isLiked {
+            likeButton.setImage(UIImage(systemName: "heart.fill"), for: .normal)
+            likeButton.tintColor = .systemRed
+        } else {
+            likeButton.setImage(UIImage(systemName: "heart"), for: .normal)
+            likeButton.tintColor = .systemGray
+        }
     }
     
     // MARK: - Helper Methods
-    private func formatTimeAgo(from timeString: String?) -> String {
-        guard let timeString = timeString,
-              let date = DateFormatter.iso8601Full.date(from: timeString) else {
-            return "Just now"
-        }
-        
-        let calendar = Calendar.current
-        let now = Date()
-        let components = calendar.dateComponents([.minute, .hour, .day, .weekOfYear], from: date, to: now)
-        
-        if let minutes = components.minute, minutes < 60 {
-            return minutes == 1 ? "1m" : "\(minutes)m"
-        } else if let hours = components.hour, hours < 24 {
-            return hours == 1 ? "1h" : "\(hours)h"
-        } else if let days = components.day, days < 7 {
-            return days == 1 ? "1d" : "\(days)d"
-        } else if let weeks = components.weekOfYear, weeks < 5 {
-            return weeks == 1 ? "1w" : "\(weeks)w"
-        } else {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "MMM d"
-            return formatter.string(from: date)
-        }
-    }
     
     override func prepareForReuse() {
         super.prepareForReuse()
@@ -295,3 +376,4 @@ class CommentCell: UITableViewCell {
         indentLineView.isHidden = true
     }
 }
+

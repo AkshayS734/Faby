@@ -795,7 +795,17 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
                 // Regular comment or reply
                 let cell = tableView.dequeueReusableCell(withIdentifier: "CommentCell", for: indexPath) as! CommentCell
                 cell.delegate = self
-                cell.configure(with: comment, isLiked: false)
+                
+                // Check if the user has liked this comment
+                if let commentId = comment.commentId?.description, let userId = SupabaseManager.shared.userID {
+                    SupabaseManager.shared.checkIfUserLikedComment(commentId: commentId, userId: userId) { isLiked, _ in
+                        DispatchQueue.main.async {
+                            cell.configure(with: comment, isLiked: isLiked)
+                        }
+                    }
+                } else {
+                    cell.configure(with: comment, isLiked: false)
+                }
                 
                 return cell
             }
@@ -843,6 +853,12 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
     // MARK: - PostCardCellDelegate
     func didTapComment(for post: Post) {
         showCommentInput(for: post)
+    }
+    
+    func didTapPostForDetails(_ post: Post) {
+        // Create and present the post details view controller
+        let detailsVC = PostDetailsViewController(post: post)
+        navigationController?.pushViewController(detailsVC, animated: true)
     }
     
     // Implement optional sharePost method for direct sharing
@@ -1191,8 +1207,62 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
     
     // Add missing method to conform to CommentCellDelegate
     func didTapLikeButton(for comment: Comment) {
-        // TODO: Implement comment like functionality
-        print("Like button tapped for comment: \(comment.content)")
+        guard let commentId = comment.commentId?.description else {
+            print("❌ Error: Comment ID is missing")
+            return
+        }
+        
+        guard let userId = SupabaseManager.shared.userID else {
+            print("❌ Error: User not logged in")
+            let alert = UIAlertController(
+                title: "Login Required",
+                message: "Please log in to like comments",
+                preferredStyle: .alert
+            )
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            present(alert, animated: true)
+            return
+        }
+        
+        // Provide haptic feedback
+        let generator = UIImpactFeedbackGenerator(style: .light)
+        generator.impactOccurred()
+        
+        // Check if already liked
+        SupabaseManager.shared.checkIfUserLikedComment(commentId: commentId, userId: userId) { [weak self] isLiked, error in
+            guard let self = self else { return }
+            
+            if let error = error {
+                print("❌ Error checking like status: \(error.localizedDescription)")
+                return
+            }
+            
+            if isLiked {
+                // Unlike comment
+                SupabaseManager.shared.removeCommentLike(commentId: commentId, userId: userId) { success, error in
+                    if success {
+                        print("✅ Successfully unliked comment")
+                        
+                        // Refresh comments to update UI
+                        self.fetchComments()
+                    } else if let error = error {
+                        print("❌ Error unliking comment: \(error.localizedDescription)")
+                    }
+                }
+            } else {
+                // Like comment
+                SupabaseManager.shared.addCommentLike(commentId: commentId, userId: userId) { success, error in
+                    if success {
+                        print("✅ Successfully liked comment")
+                        
+                        // Refresh comments to update UI
+                        self.fetchComments()
+                    } else if let error = error {
+                        print("❌ Error liking comment: \(error.localizedDescription)")
+                    }
+                }
+            }
+        }
     }
     
     // MARK: - Reply functionality

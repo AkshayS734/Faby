@@ -305,15 +305,59 @@ class PostViewController: UIViewController, UITextViewDelegate, UIImagePickerCon
         contentTextView.delegate = self
         titleTextField.delegate = self
         
-        // Update username label with current parent data
+        // Update username label and profile image with current parent data
         if let currentParent = ParentDataModel.shared.currentParent {
             usernameLabel.text = currentParent.name
+            
+            // Load profile image if available
+            if let parentImageUrl = currentParent.parentimage_url, !parentImageUrl.isEmpty {
+                print("✅ PostViewController - Found parentimage_url: \(parentImageUrl)")
+                if let url = URL(string: parentImageUrl) {
+                    URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
+                        DispatchQueue.main.async {
+                            if let data = data, let image = UIImage(data: data) {
+                                print("✅ PostViewController - Successfully loaded image")
+                                self?.profileImageView.image = image
+                            } else {
+                                print("⚠️ PostViewController - Failed to load image data")
+                                // Fallback to default image
+                                self?.profileImageView.image = UIImage(systemName: "person.circle.fill")
+                                self?.profileImageView.tintColor = .systemBlue
+                            }
+                        }
+                    }.resume()
+                } else {
+                    print("⚠️ PostViewController - Invalid URL format for parentimage_url")
+                }
+            }
         } else if let userId = SupabaseManager.shared.userID {
             // If parent data isn't loaded yet but we have a user ID, try to fetch it
             ParentDataModel.shared.updateCurrentParent(userId: userId) { [weak self] success in
                 if success, let currentParent = ParentDataModel.shared.currentParent {
                     DispatchQueue.main.async {
                         self?.usernameLabel.text = currentParent.name
+                        
+                        // Load profile image if available
+                        if let parentImageUrl = currentParent.parentimage_url, !parentImageUrl.isEmpty {
+                            print("✅ PostViewController - Found parentimage_url: \(parentImageUrl)")
+                            if let url = URL(string: parentImageUrl) {
+                                URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
+                                    DispatchQueue.main.async {
+                                        if let data = data, let image = UIImage(data: data) {
+                                            print("✅ PostViewController - Successfully loaded image")
+                                            self?.profileImageView.image = image
+                                        } else {
+                                            print("⚠️ PostViewController - Failed to load image data")
+                                            // Fallback to default image
+                                            self?.profileImageView.image = UIImage(systemName: "person.circle.fill")
+                                            self?.profileImageView.tintColor = .systemBlue
+                                        }
+                                    }
+                                }.resume()
+                            } else {
+                                print("⚠️ PostViewController - Invalid URL format for parentimage_url")
+                            }
+                        }
                     }
                 }
             }

@@ -219,9 +219,24 @@ class ModernCommentCell: UITableViewCell {
     
     // MARK: - Helper Methods
     private func formatTime(from timeString: String?) -> String {
-        guard let timeString = timeString,
-              let date = DateFormatter.iso8601Full.date(from: timeString) else {
-            return "Just now"
+        // If timeString is nil, create a new date with the current time
+        guard let timeString = timeString else {
+            // For new comments without a timestamp, use the current time
+            let now = Date()
+            let formatter = DateFormatter()
+            formatter.dateStyle = .short
+            formatter.timeStyle = .short
+            return formatter.string(from: now)
+        }
+        
+        // Try to parse the ISO date string
+        guard let date = DateFormatter.iso8601Full.date(from: timeString) else {
+            // If parsing fails, return a formatted current time
+            let now = Date()
+            let formatter = DateFormatter()
+            formatter.dateStyle = .short
+            formatter.timeStyle = .short
+            return formatter.string(from: now)
         }
         
         let calendar = Calendar.current

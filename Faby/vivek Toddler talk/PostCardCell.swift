@@ -259,6 +259,15 @@ class PostCardCell: UITableViewCell {
         let doubleTap = UITapGestureRecognizer(target: self, action: #selector(handleDoubleTap))
         doubleTap.numberOfTapsRequired = 2
         cardView.addGestureRecognizer(doubleTap)
+        
+        // Add single tap gesture for navigating to post details
+        let singleTap = UITapGestureRecognizer(target: self, action: #selector(handleSingleTap))
+        singleTap.numberOfTapsRequired = 1
+        cardView.addGestureRecognizer(singleTap)
+        
+        // Make sure single tap doesn't interfere with double tap
+        singleTap.require(toFail: doubleTap)
+        
         cardView.isUserInteractionEnabled = true
         
         likeButton.addTarget(self, action: #selector(handleLikeButton), for: .touchUpInside)
@@ -273,6 +282,12 @@ class PostCardCell: UITableViewCell {
     // MARK: - Actions
     @objc private func handleDoubleTap() {
         handleLikeButton()
+    }
+    
+    @objc private func handleSingleTap() {
+        if let post = post {
+            delegate?.didTapPostForDetails(post)
+        }
     }
     
     @objc private func handleLikeButton() {
@@ -370,6 +385,33 @@ class PostCardCell: UITableViewCell {
         
         // Format time
         timeLabel.text = DateFormatter.formatPostDate(post.createdAt)
+        
+        // Load parent profile image if available
+        print("🔍 PostCardCell - Parents data: \(String(describing: post.parents))")
+        if let parentImageUrl = post.parents?.first?.parentimage_url {
+            print("✅ PostCardCell - Found parentimage_url: \(parentImageUrl)")
+            if let url = URL(string: parentImageUrl) {
+                URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
+                    DispatchQueue.main.async {
+                        if let data = data, let image = UIImage(data: data) {
+                            print("✅ PostCardCell - Successfully loaded image")
+                            self?.userImageView.image = image
+                        } else {
+                            print("⚠️ PostCardCell - Failed to load image data")
+                            // Fallback to default image
+                            self?.userImageView.image = UIImage(systemName: "person.circle.fill")
+                            self?.userImageView.tintColor = .systemBlue
+                        }
+                    }
+                }.resume()
+            } else {
+                print("⚠️ PostCardCell - Invalid URL format for parentimage_url")
+            }
+        } else {
+            // Use default image
+            userImageView.image = UIImage(systemName: "person.circle.fill")
+            userImageView.tintColor = .systemBlue
+        }
         
         // Set card style
         let hasImage = post.image_url != nil

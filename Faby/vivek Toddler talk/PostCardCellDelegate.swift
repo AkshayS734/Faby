@@ -15,4 +15,7 @@ protocol PostCardCellDelegate: AnyObject {
     
     // Optional method to handle share functionality directly
     func sharePost(_ post: Post, from viewController: UIViewController)
+    
+    // Method to handle navigation to post details
+    func didTapPostForDetails(_ post: Post)
 }

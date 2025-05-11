@@ -20,7 +20,7 @@ class SupabaseManager {
         Task {
             do {
                 // Use the provided email and password instead of hardcoded values
-                let session = try await client.auth.signIn(email: "test2@gmail.com", password: "123456")
+                let session = try await client.auth.signIn(email: "test@gmail.com", password: "123456")
                 let userID = session.user.id.uuidString // ✅ convert UUID to String
                 self.userID = userID // Set the userID property
                 print("✅ Successfully logged in as: \(userID)")
@@ -90,7 +90,7 @@ class SupabaseManager {
                         userId, 
                         createdAt, 
                         image_url,
-                        parents(name)
+                        parents(name, parentimage_url)
                     """)
                     .eq("topicId", value: topicId.uuidString)
                     .order("createdAt", ascending: false)  // Sort by creation date, newest first
@@ -130,7 +130,7 @@ class SupabaseManager {
                         userId, 
                         createdAt, 
                         image_url,
-                        parents(name)
+                        parents(name, parentimage_url)
                     """)
                     .eq("userId", value: userId.uuidString)
                     .order("createdAt", ascending: false)
@@ -665,7 +665,7 @@ class SupabaseManager {
                         user_id, 
                         Comment_content, 
                         created_at,
-                        parents(name)
+                        parents(name, parentimage_url)
                     """)
                     .eq("post_id", value: postId)
                     .order("created_at", ascending: false)
@@ -1043,7 +1043,7 @@ class SupabaseManager {
                         user_id, 
                         reply_content, 
                         created_at,
-                        parents(name)
+                        parents(name, parentimage_url)
                     """)
                     .eq("comment_id", value: commentId)
                     .order("created_at", ascending: true) // Show oldest replies first
@@ -1089,7 +1089,7 @@ class SupabaseManager {
                         user_id, 
                         reply_content, 
                         created_at,
-                        parents(name)
+                        parents(name, parentimage_url)
                     """)
                     .eq("post_id", value: postId)
                     .order("created_at", ascending: false)
@@ -1386,7 +1386,7 @@ class SupabaseManager {
                     userId, 
                     createdAt, 
                     image_url,
-                    parents(name)
+                    parents(name, parentimage_url)
                 """)
                 
                 // Use in() filter with the list of post IDs
