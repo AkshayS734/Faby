@@ -10,6 +10,19 @@ import CoreLocation
 import Supabase
 import MapKit
 
+// MARK: - Supabase Data Models
+
+/// Struct for inserting vaccination schedules into Supabase
+struct InsertVaccineSchedule: Codable {
+    let id: String
+    let baby_id: String
+    let vaccine_id: String
+    let hospital: String
+    let date: String
+    let location: String
+    let is_administered: Bool
+}
+
 // MARK: - Vaccines (Fetch)
 class FetchingVaccines{
     static let shared = FetchingVaccines()
@@ -82,25 +95,29 @@ class VaccineScheduleManager {
         }
         
         // Check for existing schedule to prevent duplicates
-        let existingSchedules = try await fetchSchedules(forBaby: babyId)
+        let existingSchedules = try await fetchSchedules(forId: babyId)
         if existingSchedules.contains(where: { $0.vaccineId == vaccineId && !$0.isAdministered }) {
             throw NSError(domain: "VacciAlertError", code: 3,
                          userInfo: [NSLocalizedDescriptionKey: "This vaccine is already scheduled"])
         }
         
         // Create record with the structure needed for the vaccination_schedules table
-        let record = VaccineSchedule(
-            id: UUID(),
-            babyID: babyId,
-            vaccineId: vaccineId,
+        let recordId = UUID()
+        let dateFormatter = ISO8601DateFormatter()
+        
+        // Use InsertVaccineSchedule struct for proper database insertion
+        let supabaseRecord = InsertVaccineSchedule(
+            id: recordId.uuidString,
+            baby_id: babyId.uuidString, // Use the existing baby_id from the parent-baby relationship
+            vaccine_id: vaccineId.uuidString,
             hospital: hospital,
-            date: date,
+            date: dateFormatter.string(from: date),
             location: location,
-            isAdministered: false
+            is_administered: false
         )
 
         try await supabase.from("vaccination_schedules")
-            .insert(record)
+            .insert(supabaseRecord)
             .execute()
         
         // Notify listeners only after successful save
@@ -109,8 +126,8 @@ class VaccineScheduleManager {
         }
     }
     
-    /// Fetch all scheduled vaccinations for a baby
-    func fetchSchedules(forBaby babyId: UUID) async throws -> [VaccineSchedule] {
+    /// Fetch all scheduled vaccinations for a user
+    func fetchSchedules(forId id: UUID) async throws -> [VaccineSchedule] {
         guard let supabase = getSupabaseClient() else {
             throw NSError(domain: "VacciAlertError", code: 1,
                          userInfo: [NSLocalizedDescriptionKey: "Supabase client not available"])
@@ -118,7 +135,7 @@ class VaccineScheduleManager {
         
         let response = try await supabase.from("vaccination_schedules")
             .select()
-            .eq("baby_id", value: babyId.uuidString)
+            .eq("baby_id", value: id.uuidString) // Using baby_id field in database for isolation
             .execute()
         
         let data = response.data
