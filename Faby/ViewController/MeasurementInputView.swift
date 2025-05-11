@@ -31,7 +31,7 @@ struct MeasurementInputView: View {
                 }
                 
                 Section(header: Text("Measurement Date")) {
-                    DatePicker("Date", selection: $selectedDate, displayedComponents: .date)
+                    DatePicker("Date", selection: $selectedDate, in: ...Date(), displayedComponents: .date)
                         .datePickerStyle(GraphicalDatePickerStyle())
                 }
                 

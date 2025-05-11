@@ -4,7 +4,10 @@ import Combine
 class MeasurementDetailsViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
     
     @IBOutlet weak var timeSpanSegmentedControl: UISegmentedControl!
-    
+    var dataController: DataController {
+        return DataController.shared
+    }
+    var measurements: [BabyMeasurement] = []
     var measurementType: String?
     var currentGrowthData: [Double] = []
     var currentTimeLabels: [String] = []
@@ -12,7 +15,7 @@ class MeasurementDetailsViewController: UIViewController, UITableViewDelegate, U
     var unitSettings = UnitSettingsViewModel.shared
     private var cancellables: Set<AnyCancellable> = []
     var baby: Baby? {
-        return BabyDataModel.shared.babyList.first
+        return dataController.baby
     }
     private var hostingController: UIHostingController<AnyView>?
     private var tableViewHeightConstraint: NSLayoutConstraint?
@@ -41,7 +44,14 @@ class MeasurementDetailsViewController: UIViewController, UITableViewDelegate, U
         setupMeasurementLabels()
         embedSwiftUIView()
         setupTableView()
-        setupDataForTimeSpan()
+        guard let baby = baby else { return }
+
+        dataController.loadMeasurements(for: baby.babyID) {
+            DispatchQueue.main.async {
+                self.setupDataForTimeSpan()
+            }
+        }
+        observeUnitChanges()
     }
     private func observeUnitChanges() {
         unitSettings.$selectedUnit
@@ -78,7 +88,7 @@ class MeasurementDetailsViewController: UIViewController, UITableViewDelegate, U
     
     private func embedSwiftUIView() {
         let swiftUIView = AnyView(
-            MeasurementDetailsView(measurementType: measurementType ?? "", baby: baby)
+            MeasurementDetailsView(measurementType: measurementType ?? "", measurements: measurements)
                 .environmentObject(unitSettings)
         )
 
@@ -145,42 +155,28 @@ class MeasurementDetailsViewController: UIViewController, UITableViewDelegate, U
     }
     
     private func setupDataForTimeSpan() {
-        guard let baby = baby else { return }
+        guard baby != nil else { return }
 
         let calendar = Calendar.current
         let now = Date()
-        
-        var dataDict: [Double: Date] = [:]
-        
-        switch measurementType {
-        case "Height":
-            dataDict = baby.height
-        case "Weight":
-            dataDict = baby.weight
-        case "Head Circumference":
-            dataDict = baby.headCircumference
-        default:
-            break
-        }
-
-        let filteredData = dataDict.filter { _, date in
+        let filteredData = measurements.filter { measurement in
             switch selectedTimeSpan {
             case "Week":
-                return date >= calendar.date(byAdding: .day, value: -7, to: now)!
+                return measurement.date >= calendar.date(byAdding: .day, value: -7, to: now)!
             case "Month":
-                return date >= calendar.date(byAdding: .month, value: -1, to: now)!
+                return measurement.date >= calendar.date(byAdding: .month, value: -1, to: now)!
             case "6 Months":
-                return date >= calendar.date(byAdding: .month, value: -6, to: now)!
+                return measurement.date >= calendar.date(byAdding: .month, value: -6, to: now)!
             case "Year":
-                return date >= calendar.date(byAdding: .year, value: -1, to: now)!
+                return measurement.date >= calendar.date(byAdding: .year, value: -1, to: now)!
             default:
                 return true
             }
         }
 
-        currentGrowthData = Array(filteredData.keys).sorted()
-        currentTimeLabels = Array(filteredData.values).map {
-            DateFormatter.localizedString(from: $0, dateStyle: .short, timeStyle: .none)
+        currentGrowthData = filteredData.sorted { $0.date < $1.date }.map { $0.value }
+        currentTimeLabels = filteredData.sorted { $0.date < $1.date }.map {
+            DateFormatter.localizedString(from: $0.date, dateStyle: .short, timeStyle: .none)
         }
 
         updateLatestMeasurementLabel()
@@ -212,54 +208,42 @@ class MeasurementDetailsViewController: UIViewController, UITableViewDelegate, U
     @IBAction func addButtonTapped(_ sender: UIBarButtonItem) {
         presentMeasurementInputView()
     }
-    
+
     func presentMeasurementInputView() {
-        let _: (String, Date) -> Void = { [weak self] inputMeasurement, date in
-            guard let self = self, let baby = self.baby else { return }
-            if let measurement = Double(inputMeasurement) {
-                let convertedMeasurement = self.convertToBaseUnit(measurement)
-                switch self.measurementType {
-                case "Height":
-                    baby.updateHeight(convertedMeasurement, date: date)
-                case "Weight":
-                    baby.updateWeight(convertedMeasurement, date: date)
-                case "Head Circumference":
-                    baby.updateHeadCircumference(convertedMeasurement, date: date)
-                default:
-                    break
-                }
-                self.setupDataForTimeSpan()
-                self.embedSwiftUIView()
-                self.updateLatestMeasurementLabel()
-            }
-        }
-        
         let measurementInputView = MeasurementInputView(
             measurementType: measurementType ?? "",
-            saveMeasurement: { measurement, date, unit in
-                let convertedMeasurement: Double
-                if unit == "inches" {
-                    convertedMeasurement = measurement * 2.54
-                } else if unit == "lbs" {
-                    convertedMeasurement = measurement / 2.20462
-                } else {
-                    convertedMeasurement = measurement
+            saveMeasurement: { [weak self] measurement, date, unit in
+                guard let self = self else { return }
+
+                Task {
+                    let convertedMeasurement: Double
+                    if unit == "inches" {
+                        convertedMeasurement = measurement * 2.54
+                    } else if unit == "lbs" {
+                        convertedMeasurement = measurement / 2.20462
+                    } else {
+                        convertedMeasurement = measurement
+                    }
+
+                    do {
+                        switch self.measurementType {
+                        case "Height":
+                            try await self.dataController.addHeight(convertedMeasurement, date: date)
+                        case "Weight":
+                            try await self.dataController.addWeight(convertedMeasurement, date: date)
+                        case "Head Circumference":
+                            try await self.dataController.addHeadCircumference(convertedMeasurement, date: date)
+                        default:
+                            break
+                        }
+
+                        self.setupDataForTimeSpan()
+                        self.updateLatestMeasurementLabel()
+                        self.embedSwiftUIView()
+                    } catch {
+                        print("❌ Failed to save measurement:", error.localizedDescription)
+                    }
                 }
-                
-                switch self.measurementType {
-                case "Height":
-                    self.baby?.updateHeight(convertedMeasurement, date: date)
-                case "Weight":
-                    self.baby?.updateWeight(convertedMeasurement, date: date)
-                case "Head Circumference":
-                    self.baby?.updateHeadCircumference(convertedMeasurement, date: date)
-                default:
-                    break
-                }
-                
-                self.setupDataForTimeSpan()
-                self.embedSwiftUIView()
-                self.updateLatestMeasurementLabel()
             }
         )
         
@@ -267,7 +251,6 @@ class MeasurementDetailsViewController: UIViewController, UITableViewDelegate, U
         hostingController.modalPresentationStyle = .formSheet
         present(hostingController, animated: true, completion: nil)
     }
-    
     private func convertToBaseUnit(_ value: Double) -> Double {
         switch measurementType {
         case "Height", "Head Circumference":
@@ -306,14 +289,15 @@ class MeasurementDetailsViewController: UIViewController, UITableViewDelegate, U
         tableView.deselectRow(at: indexPath, animated: true)
         
         if indexPath.row == 0 {
-            let allDataVC = MeasurementDataViewController(
-                measurementType: measurementType ?? "Height",
-                baby: baby,
-                onDataChanged: { [weak self] in
-                    self?.reloadChartView()
+            let storyboard = UIStoryboard(name: "GrowTrack", bundle: nil)
+            if let allDataVC = storyboard.instantiateViewController(withIdentifier: "MeasurementDataViewController") as? MeasurementDataViewController {
+                allDataVC.measurementType = self.measurementType ?? "Height"
+                allDataVC.measurements = self.measurements
+                allDataVC.onDataChanged = { [weak self] in
+                    self?.setupDataForTimeSpan()
                 }
-            )
-            navigationController?.pushViewController(allDataVC, animated: true)
+                navigationController?.pushViewController(allDataVC, animated: true)
+            }
         } else if indexPath.row == 1 {
             let unitSettingsVC = UnitSettingsViewController(measurementType: measurementType ?? "Height") { [weak self] newUnit in
                 if self?.measurementType == "Weight" {

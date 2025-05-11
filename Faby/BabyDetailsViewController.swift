@@ -3,19 +3,23 @@ import UIKit
 class BabyDetailsViewController: UIViewController, UIImagePickerControllerDelegate, UINavigationControllerDelegate, UIPickerViewDelegate, UIPickerViewDataSource {
     
     @IBOutlet weak var babyNameTextField: UITextField!
-    @IBOutlet weak var babyAgeTextField: UITextField!
+    @IBOutlet weak var babyDOBTextField: UITextField!
     @IBOutlet weak var genderTextField: UITextField!
     @IBOutlet weak var babyImageView: UIImageView!
+    
     var selectedImage: UIImage?
     var hasUserSelectedImage = false
     let genderPicker = UIPickerView()
     let genderOptions = ["Male", "Female", "Other"]
+    let dobDatePicker = UIDatePicker()
     
     override func viewDidLoad() {
         super.viewDidLoad()
         setupGenderPicker()
+        setupDOBPicker()
         setupBabyImageView()
     }
+    
     func setupBabyImageView() {
         babyImageView.clipsToBounds = true
         babyImageView.contentMode = .scaleAspectFit
@@ -28,21 +32,72 @@ class BabyDetailsViewController: UIViewController, UIImagePickerControllerDelega
         babyImageView.addGestureRecognizer(tapGesture)
         babyImageView.isUserInteractionEnabled = true
     }
+    
     func setupGenderPicker() {
         genderPicker.delegate = self
         genderPicker.dataSource = self
         genderTextField.inputView = genderPicker
         genderTextField.text = genderOptions[0]
-        
+
         let toolbar = UIToolbar()
         toolbar.sizeToFit()
-        
+        toolbar.backgroundColor = .systemBackground
+        toolbar.layer.cornerRadius = 10
+        toolbar.clipsToBounds = true
+
         let doneButton = UIBarButtonItem(title: "Done", style: .plain, target: self, action: #selector(doneGenderSelection))
+        doneButton.tintColor = .systemBlue
+
         let space = UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil)
         let cancelButton = UIBarButtonItem(title: "Cancel", style: .plain, target: self, action: #selector(cancelGenderSelection))
-        
+        cancelButton.tintColor = .systemRed
+
         toolbar.setItems([cancelButton, space, doneButton], animated: true)
         genderTextField.inputAccessoryView = toolbar
+    }
+
+    func setupDOBPicker() {
+        dobDatePicker.datePickerMode = .date
+        dobDatePicker.preferredDatePickerStyle = .wheels
+        dobDatePicker.maximumDate = Date()
+        dobDatePicker.addTarget(self, action: #selector(dobChanged), for: .valueChanged)
+
+        babyDOBTextField.inputView = dobDatePicker
+        babyDOBTextField.text = "Select Date of Birth"
+        babyDOBTextField.textColor = .systemGray
+
+        let toolbar = UIToolbar()
+        toolbar.sizeToFit()
+        toolbar.backgroundColor = .systemBackground
+        toolbar.layer.cornerRadius = 10
+        toolbar.clipsToBounds = true
+
+        let doneButton = UIBarButtonItem(title: "Done", style: .plain, target: self, action: #selector(doneDOBSelection))
+        doneButton.tintColor = .systemBlue
+
+        let space = UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil)
+        let cancelButton = UIBarButtonItem(title: "Cancel", style: .plain, target: self, action: #selector(cancelDOBSelection))
+        cancelButton.tintColor = .systemRed
+
+        toolbar.setItems([cancelButton, space, doneButton], animated: true)
+        babyDOBTextField.inputAccessoryView = toolbar
+    }
+
+    @objc func dobChanged() {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        babyDOBTextField.text = formatter.string(from: dobDatePicker.date)
+        babyDOBTextField.textColor = .label
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    }
+    
+    @objc func doneDOBSelection() {
+        dobChanged()
+        babyDOBTextField.resignFirstResponder()
+    }
+    
+    @objc func cancelDOBSelection() {
+        babyDOBTextField.resignFirstResponder()
     }
     
     @objc func doneGenderSelection() {
@@ -100,20 +155,19 @@ class BabyDetailsViewController: UIViewController, UIImagePickerControllerDelega
     
     @IBAction func continueTapped(_ sender: UIButton) {
         guard let name = babyNameTextField.text, !name.isEmpty,
-                let age = babyAgeTextField.text, !age.isEmpty,
-                let gender = genderTextField.text, !gender.isEmpty else {
-                showAlert("Please fill in all baby details.")
-                return
+              let dob = babyDOBTextField.text, !dob.isEmpty,
+              let gender = genderTextField.text, !gender.isEmpty else {
+            showAlert("Please fill in all baby details.")
+            return
         }
 
         if let parentVC = self.parent as? SignUpViewController {
             parentVC.babyName = name
-            parentVC.babyAge = age
+            parentVC.babyAge = dob  // Store date of birth (YYYY-MM-DD)
             parentVC.babyGender = gender
             parentVC.babyImage = hasUserSelectedImage ? selectedImage : nil
                 
             parentVC.setViewControllers([parentVC.pages[1]], direction: .forward, animated: false, completion: nil)
-//            parentVC.updateProgressBar(progress: 1.0)
         }
     }
     
@@ -132,6 +186,7 @@ class BabyDetailsViewController: UIViewController, UIImagePickerControllerDelega
     func pickerView(_ pickerView: UIPickerView, didSelectRow row: Int, inComponent component: Int) {
         genderTextField.text = genderOptions[row]
     }
+    
     func showAlert(_ message: String) {
         let alert = UIAlertController(title: "Error", message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "OK", style: .default))

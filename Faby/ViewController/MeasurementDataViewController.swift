@@ -1,37 +1,47 @@
 import UIKit
+import SwiftUI
 
 class MeasurementDataViewController: UIViewController {
-    var baby: Baby?
-    var measurementType: String
+    var measurements: [BabyMeasurement] = []
+    var measurementType: String?
     var onDataChanged: (() -> Void)?
-    
+    var dataController: DataController {
+        return DataController.shared
+    }
     private var tableView: UITableView!
     private var noDataLabel: UILabel!
     private var tableViewHeightConstraint: NSLayoutConstraint?
 
-    init(measurementType: String, baby: Baby?, onDataChanged: (() -> Void)?) {
-        self.measurementType = measurementType
-        self.baby = baby
-        self.onDataChanged = onDataChanged
-        super.init(nibName: nil, bundle: nil)
+    private var baby: Baby? {
+        return dataController.baby
     }
-
+    func dataWasUpdated() {
+        onDataChanged?()
+    }
+    
     required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
+        super.init(coder: coder)
     }
-
-
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemGray6
-        title = "\(measurementType) Data"
-
         setupNoDataLabel()
         setupTableView()
         setupNavigationBar()
-        updateUI()
     }
 
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+
+        guard let measurementType = measurementType else {
+            print("❌ Measurement type not set")
+            return
+        }
+        title = "\(measurementType.capitalized) Data"
+        updateUI()
+    }
+    
     private func setupNoDataLabel() {
         noDataLabel = UILabel()
         noDataLabel.text = "No data"
@@ -55,22 +65,26 @@ class MeasurementDataViewController: UIViewController {
         tableView.backgroundColor = .white
         tableView.layer.cornerRadius = 12
         tableView.separatorInset = UIEdgeInsets(top: 0, left: 16, bottom: 0, right: 16)
-        tableView.tableFooterView = UIView()
+        tableView.tableFooterView = UIView(frame: .zero)
         tableView.register(MeasurementDataTableViewCell.self, forCellReuseIdentifier: "DataCell")
         tableView.allowsSelectionDuringEditing = true
         tableView.sectionHeaderHeight = 0
         tableView.contentInset = UIEdgeInsets(top: -1, left: 0, bottom: 0, right: 0)
         tableView.isScrollEnabled = false
-
+        tableView.rowHeight = UITableView.automaticDimension
+        tableView.estimatedRowHeight = 44
+        tableViewHeightConstraint = tableView.heightAnchor.constraint(equalToConstant: 0)
+        tableViewHeightConstraint?.isActive = true
+        tableView.separatorStyle = .singleLine
         view.addSubview(tableView)
 
-        tableViewHeightConstraint = tableView.heightAnchor.constraint(equalToConstant: 0)
+//        tableViewHeightConstraint = tableView.heightAnchor.constraint(equalToConstant: 0)
 
         NSLayoutConstraint.activate([
             tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            tableViewHeightConstraint!
+//            tableViewHeightConstraint!
         ])
     }
 
@@ -90,14 +104,20 @@ class MeasurementDataViewController: UIViewController {
 
     private func updateUI() {
         let dataCount = dataCountForSelectedMeasurementType()
-        
+
         if dataCount == 0 {
             noDataLabel.isHidden = false
             tableView.isHidden = true
+            tableViewHeightConstraint?.constant = 0
         } else {
             noDataLabel.isHidden = true
             tableView.isHidden = false
-            tableViewHeightConstraint?.constant = CGFloat(dataCount) * 50
+            tableView.reloadData()
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
+                self.tableView.layoutIfNeeded()
+                self.tableViewHeightConstraint?.constant = self.tableView.contentSize.height
+            }
         }
     }
 
@@ -110,31 +130,28 @@ class MeasurementDataViewController: UIViewController {
     }
 
     private func dataCountForSelectedMeasurementType() -> Int {
-        switch measurementType {
-        case "Height": return baby?.height.count ?? 0
-        case "Weight": return baby?.weight.count ?? 0
-        case "Head Circumference": return baby?.headCircumference.count ?? 0
-        default: return 0
-        }
+        return measurements.count
     }
 
     private func deleteEntry(at index: Int) {
-        switch measurementType {
-        case "Height":
-            let values = Array(baby?.height.keys.sorted() ?? [])
-            baby?.removeHeight(values[index])
-        case "Weight":
-            let values = Array(baby?.weight.keys.sorted() ?? [])
-            baby?.removeWeight(values[index])
-        case "Head Circumference":
-            let values = Array(baby?.headCircumference.keys.sorted() ?? [])
-            baby?.removeHeadCircumference(values[index])
-        default:
-            break
+        guard index < measurements.count else { return }
+        let measurement = measurements.sorted { $0.date > $1.date }[index]
+
+        Task {
+            do {
+                try await dataController.deleteMeasurement(id: measurement.id)
+                print(measurement.id)
+                if let idx = measurements.firstIndex(where: { $0.id == measurement.id }) {
+                    print("Inside : \(idx)")
+                    measurements.remove(at: idx)
+                }
+                onDataChanged?()
+                tableView.reloadData()
+                updateUI()
+            } catch {
+                print("❌ Failed to delete measurement:", error.localizedDescription)
+            }
         }
-        onDataChanged?()
-        tableView.reloadData()
-        updateUI()
     }
 }
 
@@ -149,28 +166,27 @@ extension MeasurementDataViewController: UITableViewDataSource, UITableViewDeleg
         }
 
         let unit = unitForMeasurementType()
-        let values: [(Double, Date)] = {
-            switch measurementType {
-            case "Height":
-                return baby?.height.map { ($0.key, $0.value) } ?? []
-            case "Weight":
-                return baby?.weight.map { ($0.key, $0.value) } ?? []
-            case "Head Circumference":
-                return baby?.headCircumference.map { ($0.key, $0.value) } ?? []
-            default:
-                return []
-            }
-        }()
-        
-        if indexPath.row < values.count {
-            let (value, date) = values.sorted(by: { $0.1 > $1.1 })[indexPath.row]
-            cell.configure(value: value, unit: unit, date: date)
+
+        let sortedMeasurements = measurements.sorted(by: { $0.date > $1.date })
+
+        if indexPath.row < sortedMeasurements.count {
+            let measurement = sortedMeasurements[indexPath.row]
+            cell.configure(value: measurement.value, unit: unit, date: measurement.date)
         }
-        if indexPath.row == values.count - 1 {
-            cell.separatorInset = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: tableView.bounds.width)
-            cell.layoutMargins = .zero
-        }
+
         return cell
+    }
+    
+    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
+        return UITableView.automaticDimension
+    }
+
+    func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
+        if indexPath.row == measurements.count - 1 {
+            cell.separatorInset = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: cell.bounds.width)
+        } else {
+            cell.separatorInset = UIEdgeInsets(top: 0, left: 16, bottom: 0, right: 16)
+        }
     }
     
     func tableView(_ tableView: UITableView, canEditRowAt indexPath: IndexPath) -> Bool {

@@ -17,19 +17,32 @@ class UserDetailsViewController: UIViewController, UIPickerViewDelegate, UIPicke
     }
     
     func setupRelationshipPicker() {
-        relationshipPicker.delegate = self
-        relationshipPicker.dataSource = self
-        relationshipTextField.inputView = relationshipPicker
-        relationshipTextField.text = relationshipOptions[0]
-        
-        let toolbar = UIToolbar()
-        toolbar.sizeToFit()
-        let doneButton = UIBarButtonItem(title: "Done", style: .plain, target: self, action: #selector(doneRelationshipSelection))
-        toolbar.setItems([doneButton], animated: true)
-        relationshipTextField.inputAccessoryView = toolbar
-    }
+            relationshipPicker.delegate = self
+            relationshipPicker.dataSource = self
+            relationshipTextField.inputView = relationshipPicker
+            relationshipTextField.text = relationshipOptions[0]
+            let toolbar = UIToolbar()
+            toolbar.sizeToFit()
+            toolbar.backgroundColor = .systemBackground
+            toolbar.layer.cornerRadius = 10
+            toolbar.clipsToBounds = true
+            
+            let doneButton = UIBarButtonItem(title: "Done", style: .plain, target: self, action: #selector(doneRelationshipSelection))
+            doneButton.tintColor = .systemBlue
+            
+            let space = UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil)
+            
+            let cancelButton = UIBarButtonItem(title: "Cancel", style: .plain, target: self, action: #selector(cancelRelationshipSelection))
+            cancelButton.tintColor = .systemRed
+
+            toolbar.setItems([cancelButton, space, doneButton], animated: true)
+            relationshipTextField.inputAccessoryView = toolbar
+        }
     
     @objc func doneRelationshipSelection() {
+        relationshipTextField.resignFirstResponder()
+    }
+    @objc func cancelRelationshipSelection() {
         relationshipTextField.resignFirstResponder()
     }
     

@@ -14,7 +14,8 @@ enum Relation : String, Codable{
     case mother
     case guardian
 }
-enum Gender {
-    case male
-    case female
+enum Gender: String, Codable {
+    case male = "male"
+    case female = "female"
+    case other = "other"
 }

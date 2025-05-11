@@ -1,7 +1,6 @@
 import UIKit
 import Supabase
 class SignUpViewController: UIPageViewController, UIPageViewControllerDelegate {
-    
     var babyName: String?
     var babyAge: String?
     var babyGender: String?
@@ -11,9 +10,9 @@ class SignUpViewController: UIPageViewController, UIPageViewControllerDelegate {
     var userName: String?
     var userRelationship: String?
     var userPassword: String?
-    
+    let activityIndicator = UIActivityIndicatorView(style: .large)
+    let blurEffectView = UIVisualEffectView(effect: UIBlurEffect(style: .systemMaterial))
     var pages = [UIViewController]()
-    var progressBar: UIProgressView!
     let supabase = SupabaseClient(
         supabaseURL: URL(string: "https://hlkmrimpxzsnxzrgofes.supabase.co")!,
         supabaseKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhsa21yaW1weHpzbnh6cmdvZmVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDAwNzI1MjgsImV4cCI6MjA1NTY0ODUyOH0.6mvladJjLsy4Q7DTs7x6jnQrLaKrlsnwDUlN-x_ZcFY"
@@ -31,85 +30,96 @@ class SignUpViewController: UIPageViewController, UIPageViewControllerDelegate {
         pages.append(userDetailsVC)
         
         setViewControllers([babyDetailsVC], direction: .forward, animated: true, completion: nil)
+        setupActivityIndicator()
         
-//        setupProgressBar()
     }
-    
-//    func setupProgressBar() {
-//        progressBar = UIProgressView(progressViewStyle: .default)
-//        progressBar.progress = 0.5
-//        progressBar.translatesAutoresizingMaskIntoConstraints = false
-//        view.addSubview(progressBar)
-//        
-//        NSLayoutConstraint.activate([
-//            progressBar.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
-//            progressBar.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-//            progressBar.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
-//            progressBar.heightAnchor.constraint(equalToConstant: 4)
-//        ])
-//    }
-//    
-//    func updateProgressBar(progress: Float) {
-//        UIView.animate(withDuration: 0.3) {
-//            self.progressBar.progress = progress
-//        }
-//    }
     func submitDataToSupabase() {
         guard let email = userEmail, let password = userPassword,
               let name = userName, let relationship = userRelationship,
-              let babyName = babyName, let babyAge = babyAge, let babyGender = babyGender else {
+              let babyName = babyName, let babyDOB = babyAge, let babyGender = babyGender else {
             showAlert("Missing required fields.")
             return
         }
-
+        showLoading(true)
         Task {
             do {
-                let _ = try await supabase.auth.signUp(email: email, password: password)
+                let authResponse = try await supabase.auth.signUp(email: email, password: password)
+                let userID = authResponse.user.id.uuidString
                 
-                var babyData: [String: String] = [
-                    "name": babyName,
-                    "age": babyAge,
-                    "gender": babyGender
-                ]
+                let baby = Baby(babyId: UUID(), name: babyName, dateOfBirth: babyDOB, gender: Gender(rawValue: babyGender.lowercased()) ?? .other)
                 
                 if let image = babyImage, let imageData = image.jpegData(compressionQuality: 0.8) {
-                    let fileName = "baby_images/\(UUID().uuidString).jpg"
+                    let fileName = "\(UUID().uuidString).jpg"
                     
-                    let _ = try await supabase.storage.from("baby_images").upload(fileName, data: imageData)
+                    let _ = try await supabase.storage.from("profile-images").upload(fileName, data: imageData)
                     
-                    let imageUrl = "https://hlkmrimpxzsnxzrgofes.supabase.co/storage/v1/object/public/baby_images/\(fileName)"
-                    babyData["image_url"] = imageUrl
+                    let imageUrl = "https://faby.supabase.co/storage/v1/object/public/profile-images/\(fileName)"
+                    baby.imageURL = imageUrl
                 }
-
-                try await supabase.from("babies").insert([babyData]).execute()
                 
-                try await supabase.from("users").insert([
-                    ["email": email, "name": name, "relationship": relationship]
+                try await supabase.from("baby").insert([baby]).execute()
+                
+                _ = baby.babyID.uuidString
+                try await supabase.from("parents").insert([
+                    [
+                        "uid": userID,
+                        "email": email,
+                        "name": name,
+                        "relationship": relationship,
+                        "baby_uid": baby.babyID.uuidString
+                    ]
                 ]).execute()
-
-                showAlert("Signup successful!")
+                
+                DispatchQueue.main.async {
+                    self.showLoading(false)
+                    self.navigateToHome()
+                }
+                
             } catch {
-                showAlert("Signup failed: \(error.localizedDescription)")
+                DispatchQueue.main.async {
+                    self.showLoading(false)
+                    self.showAlert("Signup failed: \(error.localizedDescription)")
+                }
+                print("\(error.localizedDescription)")
             }
         }
     }
+    func navigateToHome() {
+        let storyboard = UIStoryboard(name: "Main", bundle: nil)
+        if let homeVC = storyboard.instantiateViewController(withIdentifier: "MainTabBarController") as? UITabBarController {
+            homeVC.modalPresentationStyle = .fullScreen
+            present(homeVC, animated: true, completion: nil)
+        }
+    }
     func showAlert(_ message: String) {
-        let alert = UIAlertController(title: "Error", message: message, preferredStyle: .alert)
+        let alert = UIAlertController(title: "Notification", message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "OK", style: .default))
         present(alert, animated: true)
     }
+    func setupActivityIndicator() {
+        blurEffectView.frame = view.bounds
+        blurEffectView.alpha = 0
+        view.addSubview(blurEffectView)
+        
+        activityIndicator.translatesAutoresizingMaskIntoConstraints = false
+        blurEffectView.contentView.addSubview(activityIndicator)
+        
+        NSLayoutConstraint.activate([
+            activityIndicator.centerXAnchor.constraint(equalTo: blurEffectView.centerXAnchor),
+            activityIndicator.centerYAnchor.constraint(equalTo: blurEffectView.centerYAnchor)
+        ])
+    }
+    func showLoading(_ isLoading: Bool) {
+        DispatchQueue.main.async {
+            if isLoading {
+                self.blurEffectView.alpha = 0.5
+                self.activityIndicator.startAnimating()
+                self.view.isUserInteractionEnabled = false
+            } else {
+                self.activityIndicator.stopAnimating()
+                self.blurEffectView.alpha = 0
+                self.view.isUserInteractionEnabled = true
+            }
+        }
+    }
 }
-//    func pageViewController(_ pageViewController: UIPageViewController, viewControllerBefore viewController: UIViewController) -> UIViewController? {
-//        guard let currentIndex = pages.firstIndex(of: viewController), currentIndex > 0 else {
-//            return nil
-//        }
-//        return pages[currentIndex - 1]
-//    }
-//
-//    func pageViewController(_ pageViewController: UIPageViewController, viewControllerAfter viewController: UIViewController) -> UIViewController? {
-//        guard let currentIndex = pages.firstIndex(of: viewController), currentIndex < pages.count - 1 else {
-//            return nil
-//        }
-//        return pages[currentIndex + 1]
-//    }
-//}

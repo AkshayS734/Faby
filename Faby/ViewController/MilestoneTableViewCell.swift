@@ -1,7 +1,9 @@
 import UIKit
 
 class MilestoneTableViewCell: UITableViewCell {
-    var baby: Baby = BabyDataModel.shared.babyList[0]
+    var dataController: DataController {
+        return DataController.shared
+    }
     
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: .subtitle, reuseIdentifier: reuseIdentifier)
@@ -25,7 +27,7 @@ class MilestoneTableViewCell: UITableViewCell {
         if let date = achievedDate {
             detailTextLabel?.text = "Achieved on \(date.formatted(date: .abbreviated, time: .omitted))"
         }
-        imageView?.image = baby.loadUserImage(for: milestone)
+        imageView?.image = dataController.loadMilestoneUserImage(for: milestone)
     }
     override func layoutSubviews() {
         super.layoutSubviews()

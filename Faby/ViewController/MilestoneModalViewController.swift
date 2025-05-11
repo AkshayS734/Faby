@@ -92,6 +92,7 @@ class MilestoneModalViewController: UIViewController {
         reachedOnLabel.translatesAutoresizingMaskIntoConstraints = false
         
         datePicker.datePickerMode = .date
+        datePicker.maximumDate = Date()
         cardView.addSubview(datePicker)
         datePicker.translatesAutoresizingMaskIntoConstraints = false
         
@@ -125,7 +126,7 @@ class MilestoneModalViewController: UIViewController {
         captionTextField.translatesAutoresizingMaskIntoConstraints = false
         let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleTextFieldTap))
         captionTextField.addGestureRecognizer(tapGesture)
-        print(captionTextField.frame)
+//        print(captionTextField.frame)
         cardView.addSubview(captionTextField)
         
         imageView.contentMode = .scaleToFill
@@ -137,7 +138,7 @@ class MilestoneModalViewController: UIViewController {
         imageView.translatesAutoresizingMaskIntoConstraints = false
         
         saveButton.setTitle("Save", for: .normal)
-        saveButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: saveButton.titleLabel?.font.pointSize ?? 17)
+        saveButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: saveButton.titleLabel?.font.pointSize ?? 20)
         saveButton.addTarget(self, action: #selector(saveTapped), for: .touchUpInside)
         view.addSubview(saveButton)
         saveButton.translatesAutoresizingMaskIntoConstraints = false
@@ -176,11 +177,11 @@ class MilestoneModalViewController: UIViewController {
             firstSeperatorLine.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -16),
             firstSeperatorLine.heightAnchor.constraint(equalToConstant: 1),
             
-            specialMomentLabel.topAnchor.constraint(equalTo: firstSeperatorLine.bottomAnchor, constant: 8),
+            specialMomentLabel.centerYAnchor.constraint(equalTo: addImageButton.centerYAnchor),
             specialMomentLabel.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 16),
 //            specialMomentLabel.bottomAnchor.constraint(equalTo: secondSeperatorLine.bottomAnchor, constant: -8),
             
-            addImageButton.topAnchor.constraint(equalTo: firstSeperatorLine.bottomAnchor, constant: 8),
+            addImageButton.topAnchor.constraint(equalTo: firstSeperatorLine.bottomAnchor, constant: 12),
             addImageButton.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -16),
             addImageButton.centerYAnchor.constraint(equalTo: specialMomentLabel.centerYAnchor),
             
@@ -189,7 +190,7 @@ class MilestoneModalViewController: UIViewController {
             secondSeperatorLine.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -16),
             secondSeperatorLine.heightAnchor.constraint(equalToConstant: 1),
             
-            imageView.topAnchor.constraint(equalTo: cardView.bottomAnchor, constant: 16),
+            imageView.topAnchor.constraint(equalTo: cardView.bottomAnchor, constant: 10),
             imageView.centerXAnchor.constraint(equalTo: cardView.centerXAnchor),
             imageView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             imageView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
@@ -210,7 +211,7 @@ class MilestoneModalViewController: UIViewController {
         ])
     }
     @objc func handleTextFieldTap() {
-        print("Caption TextField tapped!")
+//        print("Caption TextField tapped!")
     }
     @objc private func selectImage() {
         let alertController = UIAlertController(title: "Choose Media Source", message: nil, preferredStyle: .actionSheet)
@@ -262,7 +263,7 @@ class MilestoneModalViewController: UIViewController {
 
             confirmAlert.addAction(UIAlertAction(title: "Save Anyway", style: .default) { _ in
                 self.onSave?(self.datePicker.date, selectedImage, selectedVideoURL, nil)
-                self.delegate?.milestoneDidReach(milestone, image: selectedImage, videoURL: selectedVideoURL)  // Notify home screen
+                self.delegate?.milestoneDidReach(milestone, image: selectedImage, videoURL: selectedVideoURL)
                 self.dismiss(animated: true, completion: nil)
             })
 
@@ -270,7 +271,7 @@ class MilestoneModalViewController: UIViewController {
             present(confirmAlert, animated: true, completion: nil)
         } else {
             onSave?(datePicker.date, selectedImage, selectedVideoURL, caption)
-            delegate?.milestoneDidReach(milestone, image: selectedImage, videoURL: selectedVideoURL)  // Notify home screen
+            delegate?.milestoneDidReach(milestone, image: selectedImage, videoURL: selectedVideoURL)
             dismiss(animated: true, completion: nil)
         }
     }
@@ -290,11 +291,9 @@ extension MilestoneModalViewController: UIImagePickerControllerDelegate, UINavig
             videoURL = nil
             playerViewController?.view.removeFromSuperview()
             
-            // Update cardView height and show separator line
             cardViewHeightConstraint?.constant = 150
             secondSeperatorLine.isHidden = false
         } else if let videoURL = info[.mediaURL] as? URL {
-            // Video selected
             self.videoURL = videoURL
             imageView.isHidden = true
             playerViewController?.view.removeFromSuperview()
@@ -328,7 +327,6 @@ extension MilestoneModalViewController: UIImagePickerControllerDelegate, UINavig
             secondSeperatorLine.isHidden = true
         }
         
-        // Animate layout change
         UIView.animate(withDuration: 0.3) {
             self.view.layoutIfNeeded()
         }

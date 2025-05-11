@@ -105,16 +105,21 @@ class MilestoneCardCell: UICollectionViewCell {
     }
     
     func configure(with milestone: GrowthMilestone) {
-        milestoneImageView.image = UIImage(named: milestone.image)
+//        milestoneImageView.image = UIImage(named: milestone.image)
         titleLabel.text = milestone.subtitle
         queryLabel.text = milestone.query
-        
-        if milestone.isAchieved {
-            milestoneAchievedMark.isHidden = false
-            chevronButton.isHidden = true
-        } else {
-            milestoneAchievedMark.isHidden = true
-            chevronButton.isHidden = false
+        milestoneAchievedMark.isHidden = !milestone.isAchieved
+        chevronButton.isHidden = milestone.isAchieved
+        let imagePath = milestone.image
+//        print("📦 Attempting to load path: \(imagePath)")
+
+        SupabaseManager.shared.loadImageFromPublicBucket(
+            path: imagePath,
+            bucket: "milestone-images"
+        ) { [weak self] image in
+            DispatchQueue.main.async {
+                self?.milestoneImageView.image = image
+            }
         }
     }
 }

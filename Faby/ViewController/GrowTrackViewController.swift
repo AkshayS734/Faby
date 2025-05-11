@@ -1,8 +1,12 @@
 import UIKit
+import SwiftUI
 
 class GrowTrackViewController: UIViewController, MilestonesOverviewDelegate{
     
-    var baby: Baby! = BabyDataModel.shared.babyList[0]
+    var baby: Baby?
+    var dataController: DataController {
+        return DataController.shared
+    }
     
     @IBOutlet weak var topSegmentedControl: UISegmentedControl!
     
@@ -41,15 +45,50 @@ class GrowTrackViewController: UIViewController, MilestonesOverviewDelegate{
     }()
     
     @IBOutlet weak var bodyMeasurementCollectionView: UICollectionView!
-    private let bodyMeasurements = ["Height", "Weight", "Head Circumference"]
+    private var bodyMeasurements = ["Height", "Weight", "Head Circumference"]
+    private var measurements : [BabyMeasurement] = []
     let units = ["cm", "kg", "cm"]
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        guard let babyID = dataController.baby?.babyID else {
+            print("Baby not initialized")
+            return
+        }
+//        Task {
+//            await dataController.loadMeasurements(for: babyID)
+//        }
+        baby = dataController.baby
+//        print(baby!.babyID)
         view.backgroundColor = .systemGray6
-        if let baby = BabyDataModel.shared.babyList.first {
+        if let baby = baby {
             baby.measurementUpdated = { [weak self] in
-                self?.bodyMeasurementCollectionView.reloadData()
+                DispatchQueue.main.async {
+                    self?.bodyMeasurementCollectionView.reloadData()
+                }
+            }
+//            Task {
+//                print("Task started")
+//                await dataController.loadMeasurements(for: baby.babyID)
+//                self.measurements = dataController.measurements
+//                print("In task measurements \(measurements)")
+//                self.bodyMeasurementCollectionView.reloadData()
+//                print("Task ends")
+//            }
+        }
+        dataController.loadMeasurements(for: baby!.babyID) {
+            DispatchQueue.main.async {
+                self.measurements = self.dataController.measurements
+                self.bodyMeasurementCollectionView.reloadData()
+//                print("Measurements ready: \(self.measurements)")
+            }
+        }
+        dataController.loadMilestones(for: baby!.babyID.uuidString)  {
+            DispatchQueue.main.async {
+                self.filterMilestones(
+                    month: self.monthButtonTitles[0],
+                    category: self.categoryButtonTitles[0]
+                )
             }
         }
         let button = UIBarButtonItem(image: UIImage(systemName: "clock.arrow.trianglehead.counterclockwise.rotate.90")?.withRenderingMode(.alwaysOriginal), style: .plain, target: self, action: #selector(showMilestoneOverviewTapped))
@@ -57,7 +96,6 @@ class GrowTrackViewController: UIViewController, MilestonesOverviewDelegate{
         navigationItem.rightBarButtonItem = button
         
         view.addSubview(emptyLabel)
-
         emptyLabel.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             emptyLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
@@ -165,7 +203,7 @@ class GrowTrackViewController: UIViewController, MilestonesOverviewDelegate{
             milestonesCollectionView.isHidden = false
             bodyMeasurementCollectionView.isHidden = true
             bodyMeasurementCollectionView.reloadData()
-            emptyLabel.isHidden = !filteredMilestones.isEmpty
+            emptyLabel.isHidden = !dataController.milestones.isEmpty
             case 1:
             monthButtonCollectionView.isHidden = true
             categoryButtonCollectionView.isHidden = true
@@ -179,19 +217,20 @@ class GrowTrackViewController: UIViewController, MilestonesOverviewDelegate{
             milestonesCollectionView.isHidden = false
             bodyMeasurementCollectionView.isHidden = true
             bodyMeasurementCollectionView.reloadData()
-            emptyLabel.isHidden = !filteredMilestones.isEmpty
+            emptyLabel.isHidden = !dataController.milestones.isEmpty
             
         }
     }
     private func filterMilestones(month: String, category: String) {
-        guard let selectedBaby = BabyDataModel.shared.babyList.first else { return }
+        guard baby != nil else { return }
         let monthNumber = Int(month.split(separator: " ")[0]) ?? 0
             
-        filteredMilestones = selectedBaby.milestones.filter { milestone in
+        filteredMilestones = dataController.milestones.filter { milestone in
             let isMatchingMonth = milestone.milestoneMonth.rawValue == monthNumber
             let isMatchingCategory = milestone.category.rawValue == category.lowercased()
             return isMatchingMonth && isMatchingCategory
         }
+//        print("Filtered Milestones: \(filteredMilestones.count)")
         emptyLabel.isHidden = !filteredMilestones.isEmpty
         
         milestonesCollectionView.reloadData()
@@ -200,21 +239,23 @@ class GrowTrackViewController: UIViewController, MilestonesOverviewDelegate{
         milestonesCollectionView.reloadData()
     }
     
-    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        if segue.identifier == "showMeasurementDetail",
-           let destinationVC = segue.destination as? MeasurementDetailsViewController,
-           let measurementType = sender as? String {
-            destinationVC.measurementType = measurementType
-        }
-    }
+//    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+//        if segue.identifier == "showMeasurementDetail",
+//           let destinationVC = segue.destination as? UIHostingController<MeasurementDetailsView>,
+//           let senderData = sender as? MeasurementData {
+//            
+//            let measurementType = senderData.measurementType
+//            destinationVC.rootView = MeasurementDetailsView(measurementType: measurementType, baby: baby)
+//        }
+//    }
 }
 
 
 extension GrowTrackViewController: UICollectionViewDelegate {
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         if collectionView == milestonesCollectionView {
-            guard let selectedBaby = BabyDataModel.shared.babyList.first else { return }
-            let selectedMilestone = filteredMilestones[indexPath.row]
+            guard baby != nil else { return }
+            var selectedMilestone = filteredMilestones[indexPath.row]
             
             // Prevent navigation if milestone is already achieved
             if selectedMilestone.isAchieved {
@@ -231,7 +272,13 @@ extension GrowTrackViewController: UICollectionViewDelegate {
             modalVC.onSave = { [weak self] date, image, videoURL, caption in
                 guard let self = self else { return }
                 
-                selectedBaby.updateMilestonesAchieved(selectedMilestone, date: date)
+                dataController.updateMilestonesAchieved(
+                    &selectedMilestone, for: baby!,
+                    date: date,
+                    image: image,
+                    video: videoURL,
+                    caption: caption
+                )
                 
                 if let milestonesVC = self.navigationController?.viewControllers.first(where: { $0 is MilestonesOverviewViewController }) as? MilestonesOverviewViewController {
                     milestonesVC.reloadMilestones()
@@ -243,10 +290,10 @@ extension GrowTrackViewController: UICollectionViewDelegate {
                     category: self.categoryButtonTitles[self.categoryButtonCollectionView.selectedIndex ?? 0]
                 )
                 if let image = image {
-                    selectedBaby.saveMilestoneUserImage(for: selectedMilestone, image: image, caption: caption)
+                    dataController.saveMilestoneUserImage(for: selectedMilestone, image: image, caption: caption)
                 }
                 if let videoURL = videoURL {
-                    selectedBaby.saveMilestoneUserVideo(for: selectedMilestone, videoURL: videoURL, caption: caption)
+                    dataController.saveMilestoneUserVideo(for: selectedMilestone, videoURL: videoURL, caption: caption)
                 }
                 self.milestonesCollectionView.reloadData()
                 
@@ -257,13 +304,24 @@ extension GrowTrackViewController: UICollectionViewDelegate {
             modalVC.modalPresentationStyle = .formSheet
             present(modalVC, animated: true, completion: nil)
         } else if collectionView == bodyMeasurementCollectionView {
-            let titles = ["Height", "Weight", "Head Circumference"]
-            let selectedMeasurement = titles[indexPath.row]
+//            let titles = ["height", "weight", "head_circumference"]
+            let selectedMeasurement = bodyMeasurements[indexPath.row]
 
-            performSegue(withIdentifier: "showMeasurementDetail", sender: selectedMeasurement)
+            let storyboard = UIStoryboard(name: "GrowTrack", bundle: nil)
+            if let vc = storyboard.instantiateViewController(withIdentifier: "MeasurementDetailsViewController") as? MeasurementDetailsViewController {
+                vc.measurementType = selectedMeasurement
+//                print("Measurement type : \(selectedMeasurement)")
+                let allMeasurements = dataController.measurements
+//                print("All measurements : \(allMeasurements)")
+                let type = selectedMeasurement == "Head Circumference" ? "head_circumference" : selectedMeasurement.lowercased()
+                vc.measurements = allMeasurements.filter { $0.measurement_type == type }
+//                print("From Growtrack : \(vc.measurements)")
+
+                navigationController?.pushViewController(vc, animated: true)
+            }
         }
-        
     }
+    
     private func showCongratulationsAlert() {
         let alertController = UIAlertController(
             title: "🎉 Congratulations 🎉",
@@ -304,8 +362,8 @@ extension GrowTrackViewController: ButtonsCollectionViewDelegate {
 extension GrowTrackViewController: UICollectionViewDataSource {
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         if collectionView == bodyMeasurementCollectionView {
-            return 3
-        } else if collectionView == milestonesCollectionView{
+            return min(bodyMeasurements.count, 3)
+        } else if collectionView == milestonesCollectionView {
             return filteredMilestones.count
         }
         return 0
@@ -313,51 +371,48 @@ extension GrowTrackViewController: UICollectionViewDataSource {
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         if collectionView == bodyMeasurementCollectionView {
+            guard indexPath.row < bodyMeasurements.count else {
+                fatalError("Index out of bounds for bodyMeasurements at row \(indexPath.row)")
+            }
+
             let cell = collectionView.dequeueReusableCell(
                 withReuseIdentifier: "BodyMeasurementCollectionViewCell",
                 for: indexPath
             ) as! BodyMeasurementCollectionViewCell
+
             let units = ["cm", "kg", "cm"]
-            let measurementType = bodyMeasurements[indexPath.row]
-            let unit = units[indexPath.row]
             let titleColors: [UIColor] = [
                 UIColor(hex: "942192"),
                 UIColor(hex: "F27200"),
                 UIColor(hex: "AA7942")
             ]
-            
-            if let baby = BabyDataModel.shared.babyList.first {
-                let latestMeasurement: String
-                let latestDate: Date?
-                    
+
+            let measurementType = bodyMeasurements[indexPath.row]
+            let unit = indexPath.row < units.count ? units[indexPath.row] : ""
+            let titleColor = titleColors[indexPath.row % titleColors.count]
+
+            if let baby = baby {
+                var latestMeasurement = "0"
+                var latestDate: Date?
+
                 switch measurementType {
                 case "Height":
-                    if let latest = baby.height.max(by: { $0.key < $1.key }) {
-                        latestMeasurement = String(format: "%.2f", latest.key)
-                        latestDate = latest.value
-                    } else {
-                        latestMeasurement = "0"
-                        latestDate = nil
+                    if let latest = baby.heightMeasurements.sorted(by: { $0.date < $1.date }).last {
+                        latestMeasurement = String(format: "%.2f", latest.value)
+                        latestDate = latest.date
                     }
                 case "Weight":
-                    if let latest = baby.weight.max(by: { $0.key < $1.key }) {
-                        latestMeasurement = String(format: "%.2f", latest.key)
-                        latestDate = latest.value
-                    } else {
-                        latestMeasurement = "0"
-                        latestDate = nil
+                    if let latest = baby.weightMeasurements.sorted(by: { $0.date < $1.date }).last {
+                        latestMeasurement = String(format: "%.2f", latest.value)
+                        latestDate = latest.date
                     }
                 case "Head Circumference":
-                    if let latest = baby.headCircumference.max(by: { $0.key < $1.key }) {
-                        latestMeasurement = String(format: "%.2f", latest.key)
-                        latestDate = latest.value
-                    } else {
-                        latestMeasurement = "0"
-                        latestDate = nil
+                    if let latest = baby.headCircumferenceMeasurements.sorted(by: { $0.date < $1.date }).last {
+                        latestMeasurement = String(format: "%.2f", latest.value)
+                        latestDate = latest.date
                     }
                 default:
-                    latestMeasurement = "0"
-                    latestDate = nil
+                    break
                 }
 
                 cell.measurementNumberLabel.text = latestMeasurement
@@ -375,10 +430,12 @@ extension GrowTrackViewController: UICollectionViewDataSource {
 
             cell.titleLabel.text = measurementType
             cell.labelImage.image = UIImage(systemName: "figure.arms.open")
-            cell.labelImage.tintColor = titleColors[indexPath.row % titleColors.count]
-            cell.titleLabel.textColor = titleColors[indexPath.row % titleColors.count]
+            cell.labelImage.tintColor = titleColor
+            cell.titleLabel.textColor = titleColor
             cell.measurementUnitLabel.text = unit
+
             return cell
+
         } else if collectionView == milestonesCollectionView {
             let cell = collectionView.dequeueReusableCell(
                 withReuseIdentifier: MilestoneCardCell.identifier,
@@ -387,6 +444,8 @@ extension GrowTrackViewController: UICollectionViewDataSource {
             cell.configure(with: filteredMilestones[indexPath.row])
             return cell
         }
-        return UICollectionViewCell()
+
+        fatalError("Unhandled collectionView type or missing reuse identifier")
     }
+    
 }

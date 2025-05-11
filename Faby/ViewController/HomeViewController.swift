@@ -7,12 +7,14 @@ class HomeViewController: UIViewController {
     var scheduledVaccines: [[String: String]] = []
     private var completedVaccinesStorage: [[String: String]] = []
     var vaccineView: UIView?
-    var baby = BabyDataModel.shared.babyList[0]
+    var dataController: DataController {
+        return DataController.shared
+    }
+    var baby : Baby?
     
     private let scrollView: UIScrollView = {
         let scrollView = UIScrollView()
         scrollView.translatesAutoresizingMaskIntoConstraints = false
-        scrollView.showsVerticalScrollIndicator = false
         scrollView.showsVerticalScrollIndicator = false
         return scrollView
     }()
@@ -100,6 +102,7 @@ class HomeViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        baby = dataController.baby
         view.backgroundColor = .systemGray6
         navigationController?.navigationBar.prefersLargeTitles = false
         navigationItem.rightBarButtonItem = UIBarButtonItem(
@@ -129,7 +132,7 @@ class HomeViewController: UIViewController {
         todaysBitesCollectionView.dataSource = self
         todaysBitesCollectionView.register(TodayBiteCollectionViewCell.self, forCellWithReuseIdentifier: "BitesCell")
         let tapGesture = UITapGestureRecognizer(target: self, action: #selector(openTodBiteViewController))
-                todaysBitesLabel.addGestureRecognizer(tapGesture)
+        todaysBitesLabel.addGestureRecognizer(tapGesture)
         
         setupUI()
         setupDelegates()
@@ -197,13 +200,13 @@ class HomeViewController: UIViewController {
             specialMomentsContainerView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
             specialMomentsContainerView.heightAnchor.constraint(equalToConstant: 225),
             
-            todaysBitesLabel.topAnchor.constraint(equalTo: specialMomentsContainerView.bottomAnchor),
+            todaysBitesLabel.topAnchor.constraint(equalTo: specialMomentsContainerView.bottomAnchor, constant: -5),
             todaysBitesLabel.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
             
             todaysBitesCollectionView.topAnchor.constraint(equalTo: todaysBitesLabel.bottomAnchor, constant: 10),
             todaysBitesCollectionView.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
             todaysBitesCollectionView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
-            todaysBitesCollectionView.heightAnchor.constraint(equalToConstant: 225)
+            todaysBitesCollectionView.heightAnchor.constraint(equalToConstant: 190)
         ])
     }
     
@@ -216,6 +219,7 @@ class HomeViewController: UIViewController {
             oldVaccineViewController.removeFromParent()
         }
         
+        
         let vaccineCardsView = UIHostingController(rootView: VaccineCardsView(
             vaccines: scheduledVaccines,
             onVaccineCompleted: { [weak self] vaccine in
@@ -223,7 +227,8 @@ class HomeViewController: UIViewController {
                 
                 if let index = self.scheduledVaccines.firstIndex(where: { $0 == vaccine }) {
                     self.scheduledVaccines.remove(at: index)
-                    self.completedVaccinesStorage.append(vaccine)
+                    
+                    CompletedVaccineManager.shared.storeCompletedVaccine(vaccine)
                     
                     if let scheduleToRemove = self.storageManager.getAllSchedules().first(where: {
                         $0.type == vaccine["type"] &&
@@ -254,7 +259,7 @@ class HomeViewController: UIViewController {
         vaccineCardsView.didMove(toParent: self)
         
         NSLayoutConstraint.activate([
-            vaccineCardsView.view.topAnchor.constraint(equalTo: todaysBitesCollectionView.bottomAnchor, constant: 20),
+            vaccineCardsView.view.topAnchor.constraint(equalTo: todaysBitesCollectionView.bottomAnchor),
             vaccineCardsView.view.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
             vaccineCardsView.view.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
             vaccineCardsView.view.heightAnchor.constraint(equalToConstant: 200)
@@ -275,7 +280,7 @@ class HomeViewController: UIViewController {
     }
     
     private func updateNameLabel() {
-        nameLabel.text = baby.name
+        nameLabel.text = baby?.name
     }
     
     private func updateDateLabel() {
@@ -306,15 +311,15 @@ class HomeViewController: UIViewController {
         }
     }
     @objc private func updateTodaysBites() {
-        print("✅ Fetching Today's Bites from UserDefaults...")
-        
         guard let savedMeals = UserDefaults.standard.array(forKey: "todaysBites") as? [[String: String]],
               let savedDate = UserDefaults.standard.string(forKey: "selectedDay") else {
-            print("⚠️ No saved meals found!")
+//            print("⚠️ No saved meals found!")
             return
         }
-        print("📌 Saved Meals: \(savedMeals)")
-        print("📌 Saved Date: \(savedDate)")
+        
+//        print("📌 Saved Meals: \(savedMeals)")
+//        print("📌 Saved Date: \(savedDate)")
+//
         var updatedBites: [TodayBite] = []
         
         for meal in savedMeals {
@@ -418,7 +423,7 @@ struct VaccineCardsView: View {
                         ForEach(vaccines, id: \.self) { vaccine in
                             VaccineCard(
                                 vaccine: vaccine,
-                                onComplete: {
+                                onComplete: {_ in
                                     onVaccineCompleted(vaccine)
                                 }
                             )
@@ -456,9 +461,10 @@ struct UILabelRepresentable: UIViewRepresentable {
 
 struct VaccineCard: View {
     var vaccine: [String: String]
-    var onComplete: () -> Void
+    var onComplete: ([String: String]) -> Void
     @State private var isCompleted = false
     @State private var opacity = 1.0
+    @State private var showingConfirmation = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -471,13 +477,8 @@ struct VaccineCard: View {
                 Spacer()
                 
                 Button(action: {
-                    withAnimation(.easeOut(duration: 0.3)) {
-                        isCompleted = true
-                        opacity = 0
-                    }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        onComplete()
-                    }
+                    // Show confirmation alert instead of immediately marking as complete
+                    showingConfirmation = true
                 }) {
                     Image(systemName: isCompleted ? "checkmark.circle.fill" : "circle")
                         .foregroundColor(isCompleted ? .green : Color(.systemGray3))
@@ -513,9 +514,31 @@ struct VaccineCard: View {
         .cornerRadius(12)
         .shadow(color: Color(.systemGray4).opacity(0.5), radius: 4, x: 0, y: 2)
         .opacity(opacity)
+        .alert(isPresented: $showingConfirmation) {
+            Alert(
+                title: Text("Confirm Vaccination"),
+                message: Text("Did your child receive the \"\(vaccine["type"] ?? "Unknown")\" vaccine?"),
+                primaryButton: .default(Text("Yes")) {
+                    // User confirmed the vaccination
+                    withAnimation(.easeOut(duration: 0.3)) {
+                        isCompleted = true
+                        opacity = 0
+                    }
+                    
+                    // Pass the vaccine data to the parent for proper storage handling
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        onComplete(vaccine)
+                    }
+                },
+                secondaryButton: .cancel(Text("No")) {
+                    // User canceled, do nothing
+                    showingConfirmation = false
+                }
+            )
+        }
     }
 }
-// Make Dictionary conform to Hashable
+
 extension Dictionary: Hashable where Value: Hashable {
     public func hash(into hasher: inout Hasher) {
         hasher.combine(self.description)

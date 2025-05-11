@@ -9,7 +9,10 @@ class MilestonesOverviewViewController: UIViewController, UITableViewDelegate, U
         reloadMilestones()
     }
     
-    var baby: Baby = BabyDataModel.shared.babyList[0]
+    var baby: Baby?
+    var dataController: DataController {
+        return DataController.shared
+    }
     weak var delegate: MilestonesOverviewDelegate?
     
     private let segmentedControl = UISegmentedControl(items: ["Cognitive", "Language", "Physical", "Social"])
@@ -33,6 +36,7 @@ class MilestonesOverviewViewController: UIViewController, UITableViewDelegate, U
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        baby = dataController.baby
         view.backgroundColor = .systemGray6
         setupNavigationBar()
         setupUI()
@@ -47,13 +51,15 @@ class MilestonesOverviewViewController: UIViewController, UITableViewDelegate, U
     }
     
     func reloadMilestones() {
-        let categoryKey = categoryName[selectedCategory].lowercased()
-        milestones = baby.achievedMilestonesByCategory[categoryKey] ?? []
-        let allCategoryMilestones = GrowthMilestonesDataModel().milestones.filter {
-            $0.category.rawValue == categoryName[selectedCategory].lowercased()
+        let selectedCategoryName = categoryName[selectedCategory].lowercased()
+        milestones = dataController.milestones.filter {
+            $0.category.rawValue == selectedCategoryName && $0.isAchieved
         }
-        totalMilestones = allCategoryMilestones.count
+        totalMilestones = dataController.milestones.filter {
+            $0.category.rawValue == selectedCategoryName
+        }.count
         achievedMilestones = milestones.count
+
         updateDonutChart()
         tableView.reloadData()
         emptyLabel.isHidden = !milestones.isEmpty
@@ -126,20 +132,7 @@ class MilestonesOverviewViewController: UIViewController, UITableViewDelegate, U
 
     private func updateCategory(index: Int) {
         selectedCategory = index
-        let categoryKey = categoryName[selectedCategory].lowercased()
-        if baby.achievedMilestonesByCategory[categoryKey] == nil {
-            baby.achievedMilestonesByCategory[categoryKey] = []
-        }
-        
-        milestones = baby.achievedMilestonesByCategory[categoryKey] ?? []
-        let allCategoryMilestones = GrowthMilestonesDataModel().milestones.filter {
-            $0.category.rawValue == categoryName[selectedCategory].lowercased()
-        }
-        totalMilestones = allCategoryMilestones.count
-        achievedMilestones = milestones.count
-        updateDonutChart()
-        tableView.reloadData()
-        emptyLabel.isHidden = !milestones.isEmpty
+        reloadMilestones()
     }
     
     private func updateDonutChart() {
@@ -194,16 +187,15 @@ class MilestonesOverviewViewController: UIViewController, UITableViewDelegate, U
             default: return .cognitive
             }
         }()
-        let milestonesInCategory = GrowthMilestonesDataModel().milestones.filter {
-            $0.category == category
-        }
+        
+        let milestonesInCategory = dataController.milestones.filter { $0.category == category }
+        
         return milestonesInCategory.map { milestone in
-            let updatedMilestone = milestone
-            if let achievedDate = baby.milestonesAchieved[milestone] {
-                updatedMilestone.description += "\nAchieved on \(achievedDate.formatted())"
+            var updated = milestone
+            if updated.isAchieved, let date = updated.achievedDate {
+                updated.description += "\nAchieved on \(date.formatted())"
             }
-            
-            return updatedMilestone
+            return updated
         }
     }
 
@@ -250,9 +242,7 @@ class MilestonesOverviewViewController: UIViewController, UITableViewDelegate, U
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "MilestoneCell", for: indexPath) as! MilestoneTableViewCell
         let milestone = milestones[indexPath.row]
-        if let achievedDate = baby.milestonesAchieved[milestone] {
-            cell.configure(with: milestone, achievedDate: achievedDate)
-        }
+        cell.configure(with: milestone, achievedDate: milestone.achievedDate)
         return cell
     }
     

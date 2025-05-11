@@ -1,152 +1,148 @@
 import Foundation
 import UIKit
 
-class Baby {
+class Baby : Encodable{
     var babyID: UUID
     var name: String
     var dateOfBirth: String
     var gender: Gender
     var region: String?
-    var milestonesAchieved: [GrowthMilestone: Date] = [:]
-    var achievedMilestonesByCategory: [String: [GrowthMilestone]] = [
-        "cognitive": [],
-        "language": [],
-        "physical": [],
-        "social": []
-    ]
-    var milestones: [GrowthMilestone] = GrowthMilestonesDataModel().milestones
-    var height: [Double: Date] = [:]
-    var weight: [Double: Date] = [:]
-    var headCircumference: [Double: Date] = [:]
+    var imageURL: String?
+//    var milestonesAchieved: [GrowthMilestone: Date] = [:]
+//    var achievedMilestonesByCategory: [String: [GrowthMilestone]] = [
+//        "cognitive": [],
+//        "language": [],
+//        "physical": [],
+//        "social": []
+//    ]
+//    var milestones: [GrowthMilestone] = GrowthMilestonesDataModel.shared.milestones
+    var measurements: [BabyMeasurement] = []
     var measurementUpdated: (() -> Void)?
 
-    init(name: String, dateOfBirth: String, gender: Gender) {
-        self.babyID = UUID()
+    init(babyId : UUID,name: String, dateOfBirth: String, gender: Gender) {
+        self.babyID = babyId
         self.name = name
         self.dateOfBirth = dateOfBirth
         self.gender = gender
     }
-
-    func updateMilestonesAchieved(_ milestone: GrowthMilestone, date: Date, image: UIImage? = nil, videoURL: URL? = nil, caption: String? = nil) {
-        milestone.isAchieved = true
-        let categoryKey = milestone.category.rawValue
-
-        if achievedMilestonesByCategory[categoryKey] == nil {
-            achievedMilestonesByCategory[categoryKey] = []
-        }
-        achievedMilestonesByCategory[categoryKey]?.append(milestone)
-
-        if let image = image {
-            saveMilestoneUserImage(for: milestone, image: image, caption: caption)
-        }
-        
-        if let videoURL = videoURL {
-            saveMilestoneUserVideo(for: milestone, videoURL: videoURL, caption: caption)
-        }
-
-        milestonesAchieved[milestone] = date
-        NotificationCenter.default.post(name: .milestonesAchievedUpdated, object: nil)
+    
+    enum CodingKeys: String, CodingKey {
+        case babyID = "uid"
+        case name
+        case dateOfBirth = "dob"
+        case gender
+        case region
+    }
+    
+    var heightMeasurements: [BabyMeasurement] {
+        measurements.filter { $0.measurement_type.lowercased() == "height" }
     }
 
-    func saveMilestoneUserImage(for milestone: GrowthMilestone, image: UIImage, caption: String?) {
-        let filename = "\(milestone.id.uuidString)_userImage.jpg"
-        print("Saving image: \(filename)")
-
-        if let userImagePath = saveImageToDocumentsDirectory(image: image, filename: filename) {
-            milestone.userImagePath = userImagePath
-            milestone.caption = caption
-            print("Image saved at: \(userImagePath), Caption: \(caption ?? "No caption provided")")
-        }
+    var weightMeasurements: [BabyMeasurement] {
+        measurements.filter { $0.measurement_type.lowercased() == "weight" }
     }
 
-    func saveMilestoneUserVideo(for milestone: GrowthMilestone, videoURL: URL, caption: String?) {
-        let filename = "\(milestone.id.uuidString)_userVideo.mp4"
-        print("Saving video: \(filename)")
-
-        if let userVideoPath = saveVideoToDocumentsDirectory(videoURL: videoURL, filename: filename) {
-            milestone.userVideoPath = userVideoPath
-            milestone.caption = caption
-            print("Video saved at: \(userVideoPath), Caption: \(caption ?? "No caption provided")")
-        }
-    }
-
-    func saveImageToDocumentsDirectory(image: UIImage, filename: String) -> String? {
-        let fileManager = FileManager.default
-        let documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
-        let fileURL = documentsDirectory.appendingPathComponent(filename)
-
-        if let imageData = image.jpegData(compressionQuality: 1.0) {
-            do {
-                try imageData.write(to: fileURL)
-                return fileURL.path
-            } catch {
-                print("Error saving image: \(error)")
-            }
-        }
-        return nil
-    }
-
-    func saveVideoToDocumentsDirectory(videoURL: URL, filename: String) -> String? {
-        let fileManager = FileManager.default
-        let documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
-        let fileURL = documentsDirectory.appendingPathComponent(filename)
-
-        do {
-            try fileManager.copyItem(at: videoURL, to: fileURL)
-            return fileURL.path
-        } catch {
-            print("Error saving video: \(error)")
-        }
-        return nil
-    }
-
-    func loadPredefinedImage(for milestone: GrowthMilestone) -> UIImage? {
-        return UIImage(named: milestone.image)
-    }
-
-    func loadUserImage(for milestone: GrowthMilestone) -> UIImage? {
-        guard let filePath = milestone.userImagePath else {
-            return UIImage(named: milestone.image)
-        }
-
-        let fileManager = FileManager.default
-        if fileManager.fileExists(atPath: filePath) {
-            return UIImage(contentsOfFile: filePath)
-        }
-        return UIImage(named: milestone.image)
-    }
-
-    func updateHeight(_ height: Double, date: Date) {
-        self.height[height] = date
-        measurementUpdated?()
-    }
-
-    func updateWeight(_ weight: Double, date: Date) {
-        self.weight[weight] = date
-        measurementUpdated?()
-    }
-
-    func updateHeadCircumference(_ headCircumference: Double, date: Date) {
-        self.headCircumference[headCircumference] = date
-        measurementUpdated?()
-    }
-
-    func removeHeight(_ height: Double) {
-        self.height.removeValue(forKey: height)
-        measurementUpdated?()
-    }
-
-    func removeWeight(_ weight: Double) {
-        self.weight.removeValue(forKey: weight)
-        measurementUpdated?()
-    }
-
-    func removeHeadCircumference(_ headCircumference: Double) {
-        self.headCircumference.removeValue(forKey: headCircumference)
-        measurementUpdated?()
+    var headCircumferenceMeasurements: [BabyMeasurement] {
+        measurements.filter { $0.measurement_type.lowercased() == "head circumference" }
     }
 }
 
-extension Notification.Name {
-    static let milestonesAchievedUpdated = Notification.Name("milestonesAchievedUpdated")
+struct AchievedMilestone: Codable {
+    let baby_uid: String
+    let milestone_id: String
+    let achieved_date: String
+    let image_url: String?
+    let video_url: String?
+    let caption: String?
 }
+enum GrowthCategory: String, Codable {
+    case cognitive
+    case language
+    case physical
+    case social
+}
+enum MilestoneMonth: Int, Codable {
+    case month12 = 12
+    case month15 = 15
+    case month18 = 18
+    case month24 = 24
+    case month30 = 30
+    case month36 = 36
+}
+
+class GrowthMilestone: Hashable, Codable {
+    let id: UUID
+    var title: String
+    var subtitle: String
+    var query: String
+    var image: String
+    var userImagePath: String?
+    var userVideoPath: String?
+    var caption : String?
+    var milestoneMonth: MilestoneMonth
+    var achievedDate: Date? = nil
+    var description: String
+    var category: GrowthCategory
+    var isAchieved = false
+    
+    init(title: String,subtitle: String,query: String, image: String, milestoneMonth: MilestoneMonth, description: String, category: GrowthCategory) {
+        self.id = UUID()
+        self.title = title
+        self.subtitle = subtitle
+        self.query = query
+        self.image = image
+        self.milestoneMonth = milestoneMonth
+        self.description = description
+        self.category = category
+    }
+    
+    static func == (lhs: GrowthMilestone, rhs: GrowthMilestone) -> Bool {
+        return lhs.id == rhs.id
+    }
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+        hasher.combine(title)
+        hasher.combine(query)
+        hasher.combine(image)
+        hasher.combine(milestoneMonth)
+        hasher.combine(description)
+        hasher.combine(category)
+    }
+    
+    enum CodingKeys: String, CodingKey {
+        case id
+        case title
+        case subtitle
+        case query
+        case image
+        case milestoneMonth = "milestone_month"
+        case description
+        case category
+    }
+    required init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            id = try container.decode(UUID.self, forKey: .id)
+            title = try container.decode(String.self, forKey: .title)
+            subtitle = try container.decode(String.self, forKey: .subtitle)
+            query = try container.decode(String.self, forKey: .query)
+            image = try container.decode(String.self, forKey: .image)
+            milestoneMonth = try container.decode(MilestoneMonth.self, forKey: .milestoneMonth)
+            description = try container.decode(String.self, forKey: .description)
+            category = try container.decode(GrowthCategory.self, forKey: .category)
+        }
+    
+}
+struct BabyMeasurement: Codable {
+    let id: UUID
+    let baby_uid: UUID
+    let measurement_type: String
+    let value: Double
+    let date: Date
+}
+
+//struct NewBabyMeasurement: Encodable {
+//    let baby_uid: UUID
+//    let measurement_type: String
+//    let value: Double
+//    let date: Date
+//}

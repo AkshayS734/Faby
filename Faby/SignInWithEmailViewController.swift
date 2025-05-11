@@ -2,57 +2,65 @@ import UIKit
 import Supabase
 
 class SignInWithEmailViewController: UIViewController,UITextFieldDelegate {
-
+    
     @IBOutlet weak var emailText: UITextField!
     @IBOutlet weak var passwordText: UITextField!
+    let activityIndicator = UIActivityIndicatorView(style: .large)
+    let blurEffectView = UIVisualEffectView(effect: UIBlurEffect(style: .systemMaterial))
     override func viewDidLoad() {
         super.viewDidLoad()
         setupKeyboardObservers()
         emailText.delegate = self
         passwordText.delegate = self
-        
+        setupActivityIndicator()
     }
     deinit {
-           NotificationCenter.default.removeObserver(self)
-       }
-    let supabase = SupabaseClient(
-        supabaseURL: URL(string: "https://hlkmrimpxzsnxzrgofes.supabase.co")!,
-        supabaseKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhsa21yaW1weHpzbnh6cmdvZmVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDAwNzI1MjgsImV4cCI6MjA1NTY0ODUyOH0.6mvladJjLsy4Q7DTs7x6jnQrLaKrlsnwDUlN-x_ZcFY"
-    )
+        NotificationCenter.default.removeObserver(self)
+    }
+    let authManager = AuthManager.shared
     
     @IBAction func signInPressed(_ sender: UIButton) {
         guard let email = emailText.text, !email.isEmpty,
-            let password = passwordText.text, !password.isEmpty else {
+              let password = passwordText.text, !password.isEmpty else {
             showAlert(title: "Sign in failed", message: "Please enter email and password")
-                return
-            }
-                
-            Task {
-                do {
-                    let session = try await supabase.auth.signIn(email: email, password: password)
-                    navigateToHome()
-                } catch {
-                    showAlert(title: "Login failed", message: "\(error.localizedDescription)")
+            return
+        }
+        
+        showLoading(true)
+        
+        Task {
+            do {
+                try await authManager.signIn(email: email, password: password)
+                DataController.shared.loadBabyData()
+                DispatchQueue.main.async {
+                    self.showLoading(false)
+                    self.navigateToHome()
                 }
-            }
-    }
-    
-    func navigateToHome() {
-            DispatchQueue.main.async {
-                let storyboard = UIStoryboard(name: "Main", bundle: nil)
-                let homeVC = storyboard.instantiateViewController(withIdentifier: "MainTabBarController") as! UITabBarController
-                self.navigationController?.setNavigationBarHidden(true, animated: true)
-                if let navigationController = self.navigationController {
-                    navigationController.setViewControllers([homeVC], animated: true)
-                } else {
-                    if let sceneDelegate = UIApplication.shared.connectedScenes.first?.delegate as? SceneDelegate {
-                        let navController = UINavigationController(rootViewController: homeVC)
-                        sceneDelegate.window?.rootViewController = navController
-                        sceneDelegate.window?.makeKeyAndVisible()
-                    }
+            } catch {
+                DispatchQueue.main.async {
+                    self.showLoading(false)
+                    self.showAlert(title: "Login failed", message: "\(error.localizedDescription)")
                 }
             }
         }
+    }
+    
+    func navigateToHome() {
+        DispatchQueue.main.async {
+            let storyboard = UIStoryboard(name: "Main", bundle: nil)
+            let homeVC = storyboard.instantiateViewController(withIdentifier: "MainTabBarController") as! UITabBarController
+            self.navigationController?.setNavigationBarHidden(true, animated: true)
+            if let navigationController = self.navigationController {
+                navigationController.setViewControllers([homeVC], animated: true)
+            } else {
+                if let sceneDelegate = UIApplication.shared.connectedScenes.first?.delegate as? SceneDelegate {
+                    let navController = UINavigationController(rootViewController: homeVC)
+                    sceneDelegate.window?.rootViewController = navController
+                    sceneDelegate.window?.makeKeyAndVisible()
+                }
+            }
+        }
+    }
     
     @IBAction func forgotPasswordButtonPressed(_ sender: UIButton) {
         performSegue(withIdentifier: "forgotPassword", sender: nil)
@@ -63,23 +71,49 @@ class SignInWithEmailViewController: UIViewController,UITextFieldDelegate {
         present(alert, animated: true, completion: nil)
     }
     func setupKeyboardObservers() {
-            NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillShow(_:)), name: UIResponder.keyboardWillShowNotification, object: nil)
-            NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillHide(_:)), name: UIResponder.keyboardWillHideNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillShow(_:)), name: UIResponder.keyboardWillShowNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillHide(_:)), name: UIResponder.keyboardWillHideNotification, object: nil)
+    }
+    
+    @objc func keyboardWillShow(_ notification: Notification) {
+        if let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
+            let keyboardHeight = keyboardFrame.height
+            self.view.frame.origin.y = -keyboardHeight / 2
         }
-
-        @objc func keyboardWillShow(_ notification: Notification) {
-            if let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
-                let keyboardHeight = keyboardFrame.height
-                self.view.frame.origin.y = -keyboardHeight / 2
+    }
+    
+    @objc func keyboardWillHide(_ notification: Notification) {
+        self.view.frame.origin.y = 0
+    }
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        textField.resignFirstResponder()
+        return true
+    }
+    func setupActivityIndicator() {
+        blurEffectView.frame = view.bounds
+        blurEffectView.alpha = 0
+        view.addSubview(blurEffectView)
+        
+        activityIndicator.translatesAutoresizingMaskIntoConstraints = false
+        blurEffectView.contentView.addSubview(activityIndicator)
+        
+        NSLayoutConstraint.activate([
+            activityIndicator.centerXAnchor.constraint(equalTo: blurEffectView.centerXAnchor),
+            activityIndicator.centerYAnchor.constraint(equalTo: blurEffectView.centerYAnchor)
+        ])
+    }
+    func showLoading(_ isLoading: Bool) {
+        DispatchQueue.main.async {
+            if isLoading {
+                self.blurEffectView.alpha = 0.5
+                self.activityIndicator.startAnimating()
+                self.view.isUserInteractionEnabled = false
+            } else {
+                self.activityIndicator.stopAnimating()
+                self.blurEffectView.alpha = 0
+                self.view.isUserInteractionEnabled = true
             }
         }
-
-        @objc func keyboardWillHide(_ notification: Notification) {
-            self.view.frame.origin.y = 0
-        }
-    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
-            textField.resignFirstResponder()
-            return true
-        }
-
+    }
+    
 }

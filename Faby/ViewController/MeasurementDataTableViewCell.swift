@@ -14,24 +14,26 @@ class MeasurementDataTableViewCell: UITableViewCell {
 
     private func setupViews() {
         valueLabel.font = UIFont.systemFont(ofSize: 16, weight: .regular)
+        valueLabel.numberOfLines = 1
+
         dateLabel.font = UIFont.systemFont(ofSize: 14, weight: .light)
         dateLabel.textColor = .gray
         dateLabel.textAlignment = .right
-        dateLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        
+        dateLabel.numberOfLines = 1
+
         let stackView = UIStackView(arrangedSubviews: [valueLabel, dateLabel])
         stackView.axis = .horizontal
-        stackView.alignment = .fill
+        stackView.alignment = .center
         stackView.spacing = 8
         stackView.translatesAutoresizingMaskIntoConstraints = false
 
         contentView.addSubview(stackView)
+
         NSLayoutConstraint.activate([
             stackView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
             stackView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-            stackView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 10),
-            stackView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -10),
-            stackView.heightAnchor.constraint(equalToConstant: 30)
+            stackView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 12),
+            stackView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -12),
         ])
     }
 

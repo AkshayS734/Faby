@@ -46,20 +46,23 @@ class SpecialMomentsCollectionViewCell: UICollectionViewCell {
         ])
     }
     
-    func configure(with milestone: (GrowthMilestone, Date)) {
-        let (milestoneDetail, achievedDate) = milestone
-        
-        specialMomentTitle.text = milestoneDetail.caption ?? milestoneDetail.title
+    func configure(with milestone: GrowthMilestone) {
+        specialMomentTitle.text = milestone.caption ?? milestone.title
+
         let dateFormatter = DateFormatter()
         dateFormatter.dateStyle = .medium
-        specialMomentDate.text = dateFormatter.string(from: achievedDate)
-        
-        if let videoPath = milestoneDetail.userVideoPath, !videoPath.isEmpty {
+        if let achievedDate = milestone.achievedDate {
+            specialMomentDate.text = dateFormatter.string(from: achievedDate)
+        } else {
+            specialMomentDate.text = "Date unknown"
+        }
+
+        if let videoPath = milestone.userVideoPath, !videoPath.isEmpty {
             showVideoPlayer(with: URL(fileURLWithPath: videoPath))
-        } else if let userImagePath = milestoneDetail.userImagePath, !userImagePath.isEmpty {
+        } else if let userImagePath = milestone.userImagePath, !userImagePath.isEmpty {
             showImageView(with: UIImage(contentsOfFile: userImagePath))
         } else {
-            showImageView(with: UIImage(named: milestoneDetail.image))
+            showImageView(with: UIImage(named: milestone.image))
         }
     }
     

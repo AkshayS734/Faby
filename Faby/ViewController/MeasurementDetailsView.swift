@@ -3,38 +3,20 @@ import Charts
 
 struct MeasurementDetailsView: View {
     var measurementType: String
-    var baby: Baby?
+    var measurements: [BabyMeasurement]
     
     @EnvironmentObject var unitSettings: UnitSettingsViewModel
-
+    
     var currentGrowthData: [Double] {
-        guard let baby = baby else { return [] }
-        switch measurementType {
-        case "Height":
-            return baby.height.keys.sorted().map { convertValue($0) }
-        case "Weight":
-            return baby.weight.keys.sorted().map { convertValue($0) }
-        case "Head Circumference":
-            return baby.headCircumference.keys.sorted().map { convertValue($0) }
-        default:
-            return []
-        }
+        let sorted = measurements.sorted(by: { $0.date < $1.date })
+        return sorted.map { convertValue($0.value) }
     }
-
+    
     var currentTimeLabels: [String] {
-        guard let baby = baby else { return [] }
-        switch measurementType {
-        case "Height":
-            return baby.height.values.sorted().map { $0.formattedDate() }
-        case "Weight":
-            return baby.weight.values.sorted().map { $0.formattedDate() }
-        case "Head Circumference":
-            return baby.headCircumference.values.sorted().map { $0.formattedDate() }
-        default:
-            return []
-        }
+        let sorted = measurements.sorted(by: { $0.date < $1.date })
+        return sorted.map { $0.date.formattedDate() }
     }
-
+    
     var body: some View {
         VStack {
             if currentGrowthData.isEmpty {
@@ -62,7 +44,7 @@ struct MeasurementDetailsView: View {
         .background(Color(UIColor.systemGray6))
         .navigationBarTitle("\(measurementType)", displayMode: .inline)
     }
-
+    
     private func unitLabel() -> String {
         switch measurementType {
         case "Height", "Head Circumference":
@@ -73,7 +55,7 @@ struct MeasurementDetailsView: View {
             return ""
         }
     }
-
+    
     private func convertValue(_ value: Double) -> Double {
         switch measurementType {
         case "Height", "Head Circumference":
