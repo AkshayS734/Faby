@@ -500,13 +500,20 @@ class AuthViewController: UIViewController {
         
         Task {
             do {
-                let session = try await supabase.auth.signIn(email: email, password: password)
+                // First verify the email and password
+                try await supabase.auth.signIn(email: email, password: password)
+                
+                // Store the password temporarily for session restoration
+                UserSessionManager.shared.userPassword = password
+                
                 await MainActor.run {
                     // Hide loading indicator
                     signInLoadingIndicator.stopAnimating()
                     signInButton.setTitle("Sign In", for: .normal)
                     signInButton.isEnabled = true
-                    navigateToHome()
+                    
+                    // Present the 2FA OTP verification screen
+                    presentOTPVerification(email: email)
                 }
             } catch {
                 await MainActor.run {
@@ -519,6 +526,17 @@ class AuthViewController: UIViewController {
             }
         }
     }
+    
+    private func presentOTPVerification(email: String) {
+        let otpVC = SignInOTPVerificationViewController()
+        otpVC.userEmail = email
+        otpVC.delegate = self
+        
+        let navController = UINavigationController(rootViewController: otpVC)
+        navController.modalPresentationStyle = .fullScreen
+        present(navController, animated: true)
+    }
+
     
     @objc private func appleSignInTapped() {
         // Handle Apple Sign In (would need to implement Sign in with Apple)
@@ -594,6 +612,25 @@ extension AuthViewController: UITextFieldDelegate {
     }
     
     // No special handling needed for text field focus events
+}
+
+// MARK: - SignInOTPVerificationViewControllerDelegate
+extension AuthViewController: SignInOTPVerificationViewControllerDelegate {
+    func didVerifySignInOTP(email: String) {
+        // Dismiss the OTP verification screen
+        dismiss(animated: true) { [weak self] in
+            // Navigate to the home screen
+            self?.navigateToHome()
+        }
+    }
+    
+    func didCancelSignInOTP() {
+        // Clear any stored credentials
+        UserSessionManager.shared.userPassword = nil
+        
+        // Dismiss the OTP verification screen
+        dismiss(animated: true)
+    }
 }
 
 // MARK: - UIScrollViewDelegate

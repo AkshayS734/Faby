@@ -17,27 +17,41 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
         // Use this method to optionally configure and attach the UIWindow `window` to the provided UIWindowScene `scene`.
-        // If using a storyboard, the `window` property will automatically be initialized and attached to the scene.
-        // This delegate does not imply the connecting scene or session are new (see `application:configurationForConnectingSceneSession` instead).
         guard let windowScene = (scene as? UIWindowScene) else { return }
         
         // Create a new UIWindow using the windowScene constructor
         let window = UIWindow(windowScene: windowScene)
         
-        // For testing purposes, reset onboarding status to ensure walkthrough shows first
-        UserDefaults.standard.set(false, forKey: "onboardingComplete")
-        
-        // Check if onboarding has been completed before
-        let onboardingComplete = UserDefaults.standard.bool(forKey: "onboardingComplete")
-        
-        // Create WalkthroughViewController programmatically
-        // This approach overrides any storyboard settings and ensures the walkthrough is displayed first
-        let walkthrough = WalkthroughViewController()
-        window.rootViewController = walkthrough
-        
-        // Set the window and make it visible
-        self.window = window
-        window.makeKeyAndVisible()
+        // Check for existing session and determine the initial view controller
+        Task {
+            // Try to restore session if one exists
+            let sessionRestored = await UserSessionManager.shared.restoreSession()
+            
+            await MainActor.run {
+                // Determine the initial view controller based on session state
+                let initialViewController: UIViewController
+                
+                // Check if onboarding has been completed
+                let onboardingComplete = UserDefaults.standard.bool(forKey: "onboardingComplete")
+                
+                if !onboardingComplete {
+                    // If onboarding not completed, show walkthrough first
+                    initialViewController = WalkthroughViewController()
+                } else if sessionRestored {
+                    // If session restored, get the appropriate view controller based on signup stage
+                    initialViewController = UserSessionManager.shared.getAppropriateViewController()
+                    print("DEBUG: Restored session with stage: \(UserSessionManager.shared.currentSignupStage.rawValue)")
+                } else {
+                    // Default to walkthrough if no session or onboarding not complete
+                    initialViewController = WalkthroughViewController()
+                }
+                
+                // Set the root view controller and make window visible
+                window.rootViewController = initialViewController
+                self.window = window
+                window.makeKeyAndVisible()
+            }
+        }
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {

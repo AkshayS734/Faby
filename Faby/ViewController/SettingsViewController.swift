@@ -1,4 +1,5 @@
 import UIKit
+import Supabase
 
 class SettingsViewController: UIViewController, UICollectionViewDelegate, UICollectionViewDataSource, UITableViewDelegate, UITableViewDataSource, UISearchBarDelegate {
     
@@ -6,20 +7,22 @@ class SettingsViewController: UIViewController, UICollectionViewDelegate, UIColl
     var tableView: UITableView!
     var searchBar: UISearchBar!
     
-    let tableSections = ["PARENT PROFILE", "VACCITIME", "GROWTRACK", "TODBITE", "HELP & SUPPORT"]
+    let tableSections = ["PARENT PROFILE", "VACCITIME", "GROWTRACK", "TODBITE", "HELP & SUPPORT", "ACCOUNT"]
     var filteredTableItems: [[String]] = [
         ["Parents Info"],
         ["Administered Vaccines"],
         ["Milestone track"],
         ["Today's meal", "Your plan"],
-        ["Contact support", "FAQs", "Submit feedback"]
+        ["Contact support", "FAQs", "Submit feedback"],
+        ["Sign Out"]
     ]
     let tableItems = [
         ["Parents Info"],
         ["Administered Vaccines"],
         ["Milestone track"],
         ["Today's meal", "Your plan"],
-        ["Contact support", "FAQs", "Submit feedback"]
+        ["Contact support", "FAQs", "Submit feedback"],
+        ["Sign Out"]
     ]
     
     override func viewDidLoad() {
@@ -166,20 +169,76 @@ class SettingsViewController: UIViewController, UICollectionViewDelegate, UIColl
         let selectedSection = tableSections[indexPath.section]
         let selectedItem = filteredTableItems[indexPath.section][indexPath.row]
         
-        switch (selectedSection, selectedItem) {
-        case ("VACCITIME", "Administered Vaccines"):
-            let savedVaccineVC = SavedVaccineViewController()
-            navigationController?.pushViewController(savedVaccineVC, animated: true)
+        switch selectedSection {
+        case "PARENT PROFILE":
+            // Navigate to parent profile
+            break
             
-        case ("GROWTRACK", "Milestone track"):
+        case "GROWTRACK":
+            // Navigate to milestone overview
             let milestoneOverviewVC = MilestonesOverviewViewController()
             navigationController?.pushViewController(milestoneOverviewVC, animated: true)
+            
+        case "ACCOUNT":
+            if selectedItem == "Sign Out" {
+                signOut()
+            }
             
         default:
             break
         }
         
         tableView.deselectRow(at: indexPath, animated: true)
+    }
+    
+    // MARK: - Sign Out Functionality
+    private func signOut() {
+        // Create an alert to confirm sign out
+        let alert = UIAlertController(title: "Sign Out", message: "Are you sure you want to sign out?", preferredStyle: .alert)
+        
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        
+        alert.addAction(UIAlertAction(title: "Sign Out", style: .destructive) { [weak self] _ in
+            // Perform sign out
+            Task {
+                do {
+                    // Sign out from Supabase
+                    let supabase = SupabaseClient(
+                        supabaseURL: URL(string: "https://tmnltannywgqrrxavoge.supabase.co")!,
+                        supabaseKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRtbmx0YW5ueXdncXJyeGF2b2dlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY5NjQ0MjQsImV4cCI6MjA2MjU0MDQyNH0.pkaPTx--vk4GPULyJ6o3ttI3vCsMUKGU0TWEMDpE1fY"
+                    )
+                    try await supabase.auth.signOut()
+                    
+                    // Clear local session data
+                    UserSessionManager.shared.clearSession()
+                    
+                    // Navigate to auth screen
+                    await MainActor.run {
+                        let authVC = AuthViewController()
+                        let navigationController = UINavigationController(rootViewController: authVC)
+                        navigationController.modalPresentationStyle = .fullScreen
+                        
+                        // Replace the root view controller
+                        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                           let window = windowScene.windows.first {
+                            UIView.transition(with: window, duration: 0.3, options: .transitionCrossDissolve, animations: {
+                                window.rootViewController = navigationController
+                            })
+                        }
+                    }
+                } catch {
+                    print("Error signing out: \(error)")
+                    // Show error alert
+                    await MainActor.run {
+                        let errorAlert = UIAlertController(title: "Sign Out Failed", message: "There was a problem signing out. Please try again.", preferredStyle: .alert)
+                        errorAlert.addAction(UIAlertAction(title: "OK", style: .default))
+                        self?.present(errorAlert, animated: true)
+                    }
+                }
+            }
+        })
+        
+        present(alert, animated: true)
     }
 }
 
