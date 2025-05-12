@@ -23,31 +23,31 @@ class DataController {
     
     var baby: Baby?
     
-//    func loadMeasurements(for babyUID: UUID) async {
-//        do {
-//            let measurements = try await supabaseManager.fetchMeasurements(for: babyUID)
-//            self.measurements = measurements
-//        } catch {
-//            print("Failed to load measurements: \(error)")
-//        }
-//    }
-    
-    func loadBabyData() {
-        Task {
-            if let userID = await supabaseManager.getCurrentUserID() {
-                print(userID)
-                supabaseManager.fetchBabyData(for: userID) { fetchedBaby in
-                    if let baby = fetchedBaby {
-                        self.baby = baby
-                        print(baby.babyID.uuidString)
-                        NotificationCenter.default.post(name: .milestonesAchievedUpdated, object: nil)
-                    } else {
-                        print("Failed to fetch baby data.")
+    func loadBabyData() async {
+        if let userID = await supabaseManager.getCurrentUserID() {
+            print(userID)
+
+            if let fetchedBaby = await supabaseManager.fetchBabyDataAsync(for: userID) {
+                self.baby = fetchedBaby
+                print(fetchedBaby.babyID.uuidString)
+                NotificationCenter.default.post(name: .milestonesAchievedUpdated, object: nil)
+
+                await withCheckedContinuation { continuation in
+                    self.loadMilestones(for: fetchedBaby.babyID.uuidString) {
+                        continuation.resume()
+                    }
+                }
+
+                await withCheckedContinuation { continuation in
+                    self.loadMeasurements(for: fetchedBaby.babyID) {
+                        continuation.resume()
                     }
                 }
             } else {
-                print("No authenticated user found.")
+                print("Failed to fetch baby data.")
             }
+        } else {
+            print("No authenticated user found.")
         }
     }
     
@@ -97,30 +97,34 @@ class DataController {
         baby?.measurementUpdated?()
     }
     func deleteMeasurement(id: UUID) async throws {
-        print("DeleteMeasurement called")
+//        print("DeleteMeasurement called")
         try await supabaseManager.deleteMeasurement(id: id)
-        print("Measurement ended")
+//        print("Measurement ended")
         baby?.measurementUpdated?()
     }
     func saveMilestoneUserImage(for milestone: GrowthMilestone, image: UIImage, caption: String?) {
         let filename = "\(milestone.id.uuidString)_userImage.jpg"
-        //        print("Saving image: \(filename)")
         
         if let userImagePath = saveImageToDocumentsDirectory(image: image, filename: filename) {
             milestone.userImagePath = userImagePath
             milestone.caption = caption
-            //            print("Image saved at: \(userImagePath), Caption: \(caption ?? "No caption provided")")
         }
     }
     
     func saveMilestoneUserVideo(for milestone: GrowthMilestone, videoURL: URL, caption: String?) {
         let filename = "\(milestone.id.uuidString)_userVideo.mp4"
-        //        print("Saving video: \(filename)")
         
         if let userVideoPath = saveVideoToDocumentsDirectory(videoURL: videoURL, filename: filename) {
             milestone.userVideoPath = userVideoPath
             milestone.caption = caption
-            //            print("Video saved at: \(userVideoPath), Caption: \(caption ?? "No caption provided")")
+        }
+    }
+    func saveMedia(for milestone: GrowthMilestone, image: UIImage?, videoURL: URL?, caption: String?) {
+        if let image = image {
+            saveMilestoneUserImage(for: milestone, image: image, caption: caption)
+        }
+        if let videoURL = videoURL {
+            saveMilestoneUserVideo(for: milestone, videoURL: videoURL, caption: caption)
         }
     }
     
@@ -188,6 +192,7 @@ class DataController {
                 let measurements = try await supabaseManager.fetchMeasurements(for: babyUID)
                 DispatchQueue.main.async {
                     self.measurements = measurements
+                    self.baby?.measurements = measurements
                     completion()
                 }
             } catch {

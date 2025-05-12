@@ -13,7 +13,7 @@ struct CalendarView: View {
         VStack(alignment: .leading) {
             HStack {
                 Image(systemName: "calendar")
-                    .foregroundColor(Color(UIColor(hex: "#0076BA")))
+                    .foregroundColor(Color(UIColor(hex: "#0076BA") ?? .red))
                 Text(monthYearString(from: selectedDate))
                     .font(.headline)
                     .foregroundColor(.primary)
@@ -35,7 +35,7 @@ struct CalendarView: View {
                                     .fontWeight(isDaySelected(day) ? .semibold : .regular)
                                     .foregroundColor(isDaySelected(day) ? .white : .primary)
                                     .frame(width: 36, height: 36)
-                                    .background(isDaySelected(day) ? Color(UIColor(hex: "#0076BA")) : Color.clear)
+                                    .background(isDaySelected(day) ? Color(UIColor(hex: "#0076BA") ?? .blue) : Color.clear)
                                     .clipShape(Circle())
                             }
                             .id(day)
@@ -74,7 +74,7 @@ struct CalendarContainerView: View {
     
     var body: some View {
         ZStack {
-            Color(UIColor(hex: "#f2f2f7"))
+            Color(UIColor(hex: "#f2f2f7") ?? .systemGray6)
                 .ignoresSafeArea()
             
             ScrollView {
@@ -131,7 +131,7 @@ struct VaccineCardView: View {
                 }
                 Spacer()
                 Image(systemName: "plus.circle")
-                    .foregroundColor(Color(UIColor(hex: "#0076BA")))
+                    .foregroundColor(Color(UIColor(hex: "#0076BA") ?? .blue))
             }
             .padding()
             .background(Color.white)

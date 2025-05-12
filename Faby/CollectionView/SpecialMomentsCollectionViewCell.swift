@@ -6,7 +6,7 @@ class SpecialMomentsCollectionViewCell: UICollectionViewCell {
     @IBOutlet weak var specialMomentTitle: UILabel!
     @IBOutlet weak var specialMomentDate: UILabel!
     @IBOutlet weak var mediaContainerView: UIView!
-    
+    private var currentMilestone: GrowthMilestone?
     private var specialMomentsImage: UIImageView?
     private var playerViewController: AVPlayerViewController?
     
@@ -47,25 +47,38 @@ class SpecialMomentsCollectionViewCell: UICollectionViewCell {
     }
     
     func configure(with milestone: GrowthMilestone) {
+        currentMilestone = milestone
         specialMomentTitle.text = milestone.caption ?? milestone.title
 
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateStyle = .medium
         if let achievedDate = milestone.achievedDate {
-            specialMomentDate.text = dateFormatter.string(from: achievedDate)
+            let formatter = DateFormatter()
+            formatter.dateFormat = "dd MMMM yyyy"
+            formatter.locale = Locale(identifier: "en_US")
+            specialMomentDate.text = formatter.string(from: achievedDate)
         } else {
             specialMomentDate.text = "Date unknown"
         }
 
-        if let videoPath = milestone.userVideoPath, !videoPath.isEmpty {
-            showVideoPlayer(with: URL(fileURLWithPath: videoPath))
-        } else if let userImagePath = milestone.userImagePath, !userImagePath.isEmpty {
-            showImageView(with: UIImage(contentsOfFile: userImagePath))
+        if let videoURL = milestone.fetchedVideoURL {
+            showVideoPlayer(with: videoURL)
+        } else if let image = milestone.fetchedImage {
+            showImageView(with: image)
         } else {
-            showImageView(with: UIImage(named: milestone.image))
+            fallbackToImage()
         }
     }
-    
+    func fallbackToImage() {
+        guard let milestone = currentMilestone else {
+            print("⚠️ No milestone available for fallback.")
+            return
+        }
+
+        if let defaultImage = UIImage(named: milestone.image) {
+            showImageView(with: defaultImage)
+        } else {
+            print("❌ No fallback image available for milestone: \(milestone.id)")
+        }
+    }
     private func showImageView(with image: UIImage?) {
         specialMomentsImage?.removeFromSuperview()
         specialMomentsImage = UIImageView(image: image)

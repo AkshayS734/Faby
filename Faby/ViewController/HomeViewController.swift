@@ -416,7 +416,7 @@ struct VaccineCardsView: View {
                     }
                 }
                 .frame(height: 120)
-                .background(Color(UIColor(hex: "#f2f2f7")))
+                .background(Color(UIColor(hex: "#f2f2f7") ?? .systemGray6))
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 12) {
@@ -436,7 +436,7 @@ struct VaccineCardsView: View {
             }
         }
         .frame(height: 200)
-        .background(Color(UIColor(hex: "#f2f2f7")))
+        .background(Color(UIColor(hex: "#f2f2f7") ?? .systemGray6))
     }
 }
 

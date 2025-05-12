@@ -84,13 +84,42 @@ class SpecialMomentsViewController: UIViewController {
 
     func populateMilestones() {
         milestones = dataController.milestones.filter {
-            print("Milestones : \($0.title)")
-            return $0.isAchieved && (
+            $0.isAchieved && (
                 !($0.userImagePath?.isEmpty ?? true) ||
                 !($0.userVideoPath?.isEmpty ?? true)
             )
         }.sorted {
             ($0.achievedDate ?? Date.distantPast) > ($1.achievedDate ?? Date.distantPast)
+        }
+
+        for (index, milestone) in milestones.enumerated() {
+            if let imagePath = milestone.userImagePath, !imagePath.isEmpty {
+                if let cachedImage = ImageCache.shared.getImage(forKey: imagePath) {
+                    milestone.fetchedImage = cachedImage
+                } else {
+                    SupabaseManager.shared.fetchMediaFromMilestoneBucket(path: imagePath, isImage: true) { media in
+                        DispatchQueue.main.async {
+                            if let image = media as? UIImage {
+                                milestone.fetchedImage = image
+                            }
+                            self.collectionView.reloadItems(at: [IndexPath(item: index, section: 0)])
+                        }
+                    }
+                }
+            } else if let videoPath = milestone.userVideoPath, !videoPath.isEmpty {
+                if let cachedURL = VideoCache.shared.getVideoURL(forKey: videoPath) {
+                    milestone.fetchedVideoURL = cachedURL
+                } else {
+                    SupabaseManager.shared.fetchMediaFromMilestoneBucket(path: videoPath, isImage: false) { media in
+                        DispatchQueue.main.async {
+                            if let url = media as? URL {
+                                milestone.fetchedVideoURL = url
+                            }
+                            self.collectionView.reloadItems(at: [IndexPath(item: index, section: 0)])
+                        }
+                    }
+                }
+            }
         }
 
         emptyLabel.isHidden = !milestones.isEmpty
@@ -100,7 +129,7 @@ class SpecialMomentsViewController: UIViewController {
 
 extension SpecialMomentsViewController: UICollectionViewDelegate, UICollectionViewDataSource {
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        print("Count Special moments: \(milestones.count)")
+//        print("Count Special moments: \(milestones.count)")
         return milestones.count
     }
 

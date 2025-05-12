@@ -8,14 +8,6 @@ class Baby : Encodable{
     var gender: Gender
     var region: String?
     var imageURL: String?
-//    var milestonesAchieved: [GrowthMilestone: Date] = [:]
-//    var achievedMilestonesByCategory: [String: [GrowthMilestone]] = [
-//        "cognitive": [],
-//        "language": [],
-//        "physical": [],
-//        "social": []
-//    ]
-//    var milestones: [GrowthMilestone] = GrowthMilestonesDataModel.shared.milestones
     var measurements: [BabyMeasurement] = []
     var measurementUpdated: (() -> Void)?
 
@@ -43,7 +35,7 @@ class Baby : Encodable{
     }
 
     var headCircumferenceMeasurements: [BabyMeasurement] {
-        measurements.filter { $0.measurement_type.lowercased() == "head circumference" }
+        measurements.filter { $0.measurement_type.lowercased() == "head_circumference" }
     }
 }
 
@@ -84,6 +76,9 @@ class GrowthMilestone: Hashable, Codable {
     var description: String
     var category: GrowthCategory
     var isAchieved = false
+    var fetchedImage: UIImage?
+    var fetchedVideoURL: URL?
+
     
     init(title: String,subtitle: String,query: String, image: String, milestoneMonth: MilestoneMonth, description: String, category: GrowthCategory) {
         self.id = UUID()
@@ -132,6 +127,7 @@ class GrowthMilestone: Hashable, Codable {
         }
     
 }
+
 struct BabyMeasurement: Codable {
     let id: UUID
     let baby_uid: UUID

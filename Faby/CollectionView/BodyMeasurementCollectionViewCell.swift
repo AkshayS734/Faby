@@ -2,6 +2,7 @@ import UIKit
 
 class BodyMeasurementCollectionViewCell: UICollectionViewCell {
 
+    static let identifier = "BodyMeasurementCollectionViewCell"
     @IBOutlet weak var titleLabel: UILabel!
     @IBOutlet weak var labelImage: UIImageView!
     @IBOutlet weak var chevronButton: UIButton!

@@ -31,7 +31,8 @@ class SignInWithEmailViewController: UIViewController,UITextFieldDelegate {
         Task {
             do {
                 try await authManager.signIn(email: email, password: password)
-                DataController.shared.loadBabyData()
+                await DataController.shared.loadBabyData()
+                
                 DispatchQueue.main.async {
                     self.showLoading(false)
                     self.navigateToHome()

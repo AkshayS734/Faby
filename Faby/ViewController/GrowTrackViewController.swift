@@ -2,25 +2,25 @@ import UIKit
 import SwiftUI
 
 class GrowTrackViewController: UIViewController, MilestonesOverviewDelegate{
+
+    @IBOutlet weak var topSegmentedControl: UISegmentedControl!
+    
+    @IBAction func showMilestoneOverviewTapped(_ sender: UIBarButtonItem) {
+        let milestonesVC = MilestonesOverviewViewController()
+        milestonesVC.delegate = self
+        navigationController?.pushViewController(milestonesVC, animated: true)
+    }
     
     var baby: Baby?
     var dataController: DataController {
         return DataController.shared
     }
     
-    @IBOutlet weak var topSegmentedControl: UISegmentedControl!
-    
-    @IBAction func showMilestoneOverviewTapped(_ sender: UIBarButtonItem) {
-//        print("Button was tapped!")
-        let milestonesVC = MilestonesOverviewViewController()
-        milestonesVC.delegate = self
-        navigationController?.pushViewController(milestonesVC, animated: true)
-    }
     
     private var monthButtonCollectionView: ButtonsCollectionView!
     private var categoryButtonCollectionView: ButtonsCollectionView!
     private var milestonesCollectionView: UICollectionView!
-    
+    private var filteredMilestones: [GrowthMilestone] = []
     private let monthButtonTitles = ["12 months", "15 months", "18 months", "24 months", "30 months", "36 months"]
     private let monthButtonSize = CGSize(width: 90, height: 100)
     private let categoryButtonTitles = ["Cognitive", "Language", "Physical", "Social"]
@@ -31,18 +31,7 @@ class GrowTrackViewController: UIViewController, MilestonesOverviewDelegate{
         UIImage(systemName: "figure.walk")!,
         UIImage(systemName: "person.2.fill")!
     ]
-    private var filteredMilestones: [GrowthMilestone] = []
     
-    private var emptyLabel: UILabel = {
-        let label = UILabel()
-        label.text = "Congratulations! Your child has reached all the milestones in this section."
-        label.textColor = .darkGray
-        label.font = UIFont.systemFont(ofSize: 16, weight: .medium)
-        label.textAlignment = .center
-        label.numberOfLines = 0
-        label.isHidden = true
-        return label
-    }()
     
     @IBOutlet weak var bodyMeasurementCollectionView: UICollectionView!
     private var bodyMeasurements = ["Height", "Weight", "Head Circumference"]
@@ -51,59 +40,40 @@ class GrowTrackViewController: UIViewController, MilestonesOverviewDelegate{
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        guard let babyID = dataController.baby?.babyID else {
+        
+        guard let baby = dataController.baby else {
             print("Baby not initialized")
             return
         }
-//        Task {
-//            await dataController.loadMeasurements(for: babyID)
-//        }
-        baby = dataController.baby
-//        print(baby!.babyID)
+        
+        self.baby = baby
         view.backgroundColor = .systemGray6
-        if let baby = baby {
-            baby.measurementUpdated = { [weak self] in
-                DispatchQueue.main.async {
-                    self?.bodyMeasurementCollectionView.reloadData()
-                }
-            }
-//            Task {
-//                print("Task started")
-//                await dataController.loadMeasurements(for: baby.babyID)
-//                self.measurements = dataController.measurements
-//                print("In task measurements \(measurements)")
-//                self.bodyMeasurementCollectionView.reloadData()
-//                print("Task ends")
-//            }
-        }
-        dataController.loadMeasurements(for: baby!.babyID) {
+        
+        setupMeasurementCallback()
+        setupNavigationBar()
+        setupMonthButtons()
+        setupCategoryButtons()
+        setupMilestonesCollectionView()
+        setupBodyMeasurementCollectionView()
+        
+        loadInitialData(for: baby)
+    }
+    
+    private func setupMeasurementCallback() {
+        baby?.measurementUpdated = { [weak self] in
             DispatchQueue.main.async {
-                self.measurements = self.dataController.measurements
-                self.bodyMeasurementCollectionView.reloadData()
-//                print("Measurements ready: \(self.measurements)")
+                self?.bodyMeasurementCollectionView.reloadData()
             }
         }
-        dataController.loadMilestones(for: baby!.babyID.uuidString)  {
-            DispatchQueue.main.async {
-                self.filterMilestones(
-                    month: self.monthButtonTitles[0],
-                    category: self.categoryButtonTitles[0]
-                )
-            }
-        }
-        let button = UIBarButtonItem(image: UIImage(systemName: "clock.arrow.trianglehead.counterclockwise.rotate.90")?.withRenderingMode(.alwaysOriginal), style: .plain, target: self, action: #selector(showMilestoneOverviewTapped))
-        self.navigationItem.rightBarButtonItem = button
+    }
+
+    private func setupNavigationBar() {
+        let icon = UIImage(systemName: "clock.arrow.trianglehead.counterclockwise.rotate.90")?.withRenderingMode(.alwaysOriginal)
+        let button = UIBarButtonItem(image: icon, style: .plain, target: self, action: #selector(showMilestoneOverviewTapped))
         navigationItem.rightBarButtonItem = button
-        
-        view.addSubview(emptyLabel)
-        emptyLabel.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            emptyLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            emptyLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-            emptyLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            emptyLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16)
-        ])
-        
+    }
+
+    private func setupMonthButtons() {
         monthButtonCollectionView = ButtonsCollectionView(
             buttonTitles: monthButtonTitles,
             categoryButtonTitles: [],
@@ -115,7 +85,10 @@ class GrowTrackViewController: UIViewController, MilestonesOverviewDelegate{
         monthButtonCollectionView.delegate = self
         view.addSubview(monthButtonCollectionView)
         setupMonthCollectionView()
+        monthButtonCollectionView.selectButton(at: 0)
+    }
 
+    private func setupCategoryButtons() {
         categoryButtonCollectionView = ButtonsCollectionView(
             buttonTitles: categoryButtonTitles,
             categoryButtonTitles: categoryButtonTitles,
@@ -127,49 +100,74 @@ class GrowTrackViewController: UIViewController, MilestonesOverviewDelegate{
         categoryButtonCollectionView.delegate = self
         view.addSubview(categoryButtonCollectionView)
         setupCategoryCollectionView()
-        
-        setupMilestonesCollectionView()
-        monthButtonCollectionView.selectButton(at: 0)
         categoryButtonCollectionView.selectButton(at: 0)
-        filterMilestones(month: monthButtonTitles[0], category: categoryButtonTitles[0])
-        
+    }
+
+    private func setupBodyMeasurementCollectionView() {
         let nib = UINib(nibName: "BodyMeasurementCollectionViewCell", bundle: nil)
         bodyMeasurementCollectionView.register(nib, forCellWithReuseIdentifier: "BodyMeasurementCollectionViewCell")
         
         bodyMeasurementCollectionView.dataSource = self
         bodyMeasurementCollectionView.delegate = self
         bodyMeasurementCollectionView.isHidden = true
+        
         let layout = UICollectionViewFlowLayout()
         layout.scrollDirection = .vertical
         layout.minimumLineSpacing = 10
         layout.itemSize = CGSize(width: view.frame.width - 32, height: 150)
         bodyMeasurementCollectionView.collectionViewLayout = layout
+        
         bodyMeasurementCollectionView.reloadData()
+    }
+
+    private func loadInitialData(for baby: Baby) {
+        dataController.loadMeasurements(for: baby.babyID) { [weak self] in
+            DispatchQueue.main.async {
+                self?.measurements = self?.dataController.measurements ?? []
+                self?.bodyMeasurementCollectionView.reloadData()
+            }
+        }
+        
+        dataController.loadMilestones(for: baby.babyID.uuidString) { [weak self] in
+            guard let self = self else { return }
+            DispatchQueue.main.async {
+                self.filterMilestones(
+                    month: self.monthButtonTitles[0],
+                    category: self.categoryButtonTitles[0]
+                )
+            }
+        }
     }
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        configureNavigationBar()
+    }
+
+    private func configureNavigationBar() {
         navigationController?.navigationBar.prefersLargeTitles = true
         navigationItem.largeTitleDisplayMode = .automatic
     }
+    
     private func setupMonthCollectionView() {
         monthButtonCollectionView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             monthButtonCollectionView.topAnchor.constraint(equalTo: topSegmentedControl.bottomAnchor, constant: 20),
             monthButtonCollectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            monthButtonCollectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            monthButtonCollectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             monthButtonCollectionView.heightAnchor.constraint(equalToConstant: 100)
         ])
     }
+
     private func setupCategoryCollectionView() {
         categoryButtonCollectionView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             categoryButtonCollectionView.topAnchor.constraint(equalTo: monthButtonCollectionView.bottomAnchor, constant: 10),
             categoryButtonCollectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            categoryButtonCollectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            categoryButtonCollectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             categoryButtonCollectionView.heightAnchor.constraint(equalToConstant: 50)
         ])
     }
-    
+
     private func setupMilestonesCollectionView() {
         let layout = UICollectionViewFlowLayout()
         layout.scrollDirection = .vertical
@@ -178,12 +176,15 @@ class GrowTrackViewController: UIViewController, MilestonesOverviewDelegate{
 
         milestonesCollectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
         milestonesCollectionView.backgroundColor = .clear
-        milestonesCollectionView.register(MilestoneCardCell.self, forCellWithReuseIdentifier: MilestoneCardCell.identifier)
+        milestonesCollectionView.showsVerticalScrollIndicator = false
         milestonesCollectionView.dataSource = self
         milestonesCollectionView.delegate = self
-        milestonesCollectionView.showsVerticalScrollIndicator = false
-        view.addSubview(milestonesCollectionView)
+        milestonesCollectionView.register(
+            MilestoneCardCell.self,
+            forCellWithReuseIdentifier: MilestoneCardCell.identifier
+        )
 
+        view.addSubview(milestonesCollectionView)
         milestonesCollectionView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             milestonesCollectionView.topAnchor.constraint(equalTo: categoryButtonCollectionView.bottomAnchor, constant: 20),
@@ -194,258 +195,285 @@ class GrowTrackViewController: UIViewController, MilestonesOverviewDelegate{
     }
     
     @IBAction func segmentedControlSwitched(_ sender: UISegmentedControl) {
-        
-        let selectedIndex = sender.selectedSegmentIndex
-        switch selectedIndex {
-            case 0:
-            monthButtonCollectionView.isHidden = false
-            categoryButtonCollectionView.isHidden = false
-            milestonesCollectionView.isHidden = false
-            bodyMeasurementCollectionView.isHidden = true
-            bodyMeasurementCollectionView.reloadData()
-            emptyLabel.isHidden = !dataController.milestones.isEmpty
-            case 1:
-            monthButtonCollectionView.isHidden = true
-            categoryButtonCollectionView.isHidden = true
-            milestonesCollectionView.isHidden = true
-            bodyMeasurementCollectionView.isHidden = false
-            bodyMeasurementCollectionView.reloadData()
-            emptyLabel.isHidden = true
-            default:
-            monthButtonCollectionView.isHidden = false
-            categoryButtonCollectionView.isHidden = false
-            milestonesCollectionView.isHidden = false
-            bodyMeasurementCollectionView.isHidden = true
-            bodyMeasurementCollectionView.reloadData()
-            emptyLabel.isHidden = !dataController.milestones.isEmpty
-            
+        switch sender.selectedSegmentIndex {
+        case 0:
+            showMilestonesView()
+        case 1:
+            showBodyMeasurementsView()
+        default:
+            showMilestonesView()
         }
     }
+    
+    private func showMilestonesView() {
+        monthButtonCollectionView.isHidden = false
+        categoryButtonCollectionView.isHidden = false
+        milestonesCollectionView.isHidden = false
+        bodyMeasurementCollectionView.isHidden = true
+    }
+
+    private func showBodyMeasurementsView() {
+        monthButtonCollectionView.isHidden = true
+        categoryButtonCollectionView.isHidden = true
+        milestonesCollectionView.isHidden = true
+        bodyMeasurementCollectionView.isHidden = false
+        bodyMeasurementCollectionView.reloadData()
+    }
+    
     private func filterMilestones(month: String, category: String) {
         guard baby != nil else { return }
-        let monthNumber = Int(month.split(separator: " ")[0]) ?? 0
-            
+
+        let monthNumber = Int(month.components(separatedBy: " ").first ?? "") ?? 0
+        let categoryLowercased = category.lowercased()
+
         filteredMilestones = dataController.milestones.filter { milestone in
-            let isMatchingMonth = milestone.milestoneMonth.rawValue == monthNumber
-            let isMatchingCategory = milestone.category.rawValue == category.lowercased()
-            return isMatchingMonth && isMatchingCategory
+            milestone.milestoneMonth.rawValue == monthNumber &&
+            milestone.category.rawValue == categoryLowercased
         }
-//        print("Filtered Milestones: \(filteredMilestones.count)")
-        emptyLabel.isHidden = !filteredMilestones.isEmpty
-        
+
         milestonesCollectionView.reloadData()
     }
+    
+    // Called by delegate when overview is updated
     func milestonesOverviewDidUpdate() {
         milestonesCollectionView.reloadData()
-    }
-    
-//    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-//        if segue.identifier == "showMeasurementDetail",
-//           let destinationVC = segue.destination as? UIHostingController<MeasurementDetailsView>,
-//           let senderData = sender as? MeasurementData {
-//            
-//            let measurementType = senderData.measurementType
-//            destinationVC.rootView = MeasurementDetailsView(measurementType: measurementType, baby: baby)
-//        }
-//    }
-}
-
-
-extension GrowTrackViewController: UICollectionViewDelegate {
-    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        if collectionView == milestonesCollectionView {
-            guard baby != nil else { return }
-            var selectedMilestone = filteredMilestones[indexPath.row]
-            
-            // Prevent navigation if milestone is already achieved
-            if selectedMilestone.isAchieved {
-                return
-            }
-                    
-            let modalVC = MilestoneModalViewController(
-                category: selectedMilestone.category.rawValue,
-                title: selectedMilestone.title,
-                description: selectedMilestone.description,
-                milestone: selectedMilestone
-            )
-            modalVC.baby = baby
-            modalVC.onSave = { [weak self] date, image, videoURL, caption in
-                guard let self = self else { return }
-                
-                dataController.updateMilestonesAchieved(
-                    &selectedMilestone, for: baby!,
-                    date: date,
-                    image: image,
-                    video: videoURL,
-                    caption: caption
-                )
-                
-                if let milestonesVC = self.navigationController?.viewControllers.first(where: { $0 is MilestonesOverviewViewController }) as? MilestonesOverviewViewController {
-                    milestonesVC.reloadMilestones()
-                    milestonesVC.delegate?.milestonesOverviewDidUpdate()
-                }
-                
-                self.filterMilestones(
-                    month: self.monthButtonTitles[self.monthButtonCollectionView.selectedIndex ?? 0],
-                    category: self.categoryButtonTitles[self.categoryButtonCollectionView.selectedIndex ?? 0]
-                )
-                if let image = image {
-                    dataController.saveMilestoneUserImage(for: selectedMilestone, image: image, caption: caption)
-                }
-                if let videoURL = videoURL {
-                    dataController.saveMilestoneUserVideo(for: selectedMilestone, videoURL: videoURL, caption: caption)
-                }
-                self.milestonesCollectionView.reloadData()
-                
-                modalVC.dismiss(animated: true) {
-                    self.showCongratulationsAlert()
-                }
-            }
-            modalVC.modalPresentationStyle = .formSheet
-            present(modalVC, animated: true, completion: nil)
-        } else if collectionView == bodyMeasurementCollectionView {
-//            let titles = ["height", "weight", "head_circumference"]
-            let selectedMeasurement = bodyMeasurements[indexPath.row]
-
-            let storyboard = UIStoryboard(name: "GrowTrack", bundle: nil)
-            if let vc = storyboard.instantiateViewController(withIdentifier: "MeasurementDetailsViewController") as? MeasurementDetailsViewController {
-                vc.measurementType = selectedMeasurement
-//                print("Measurement type : \(selectedMeasurement)")
-                let allMeasurements = dataController.measurements
-//                print("All measurements : \(allMeasurements)")
-                let type = selectedMeasurement == "Head Circumference" ? "head_circumference" : selectedMeasurement.lowercased()
-                vc.measurements = allMeasurements.filter { $0.measurement_type == type }
-//                print("From Growtrack : \(vc.measurements)")
-
-                navigationController?.pushViewController(vc, animated: true)
-            }
-        }
-    }
-    
-    private func showCongratulationsAlert() {
-        let alertController = UIAlertController(
-            title: "🎉 Congratulations 🎉",
-            message: "The milestone has been marked as reached.",
-            preferredStyle: .alert
-        )
-        alertController.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
-        present(alertController, animated: true, completion: nil)
-    }
-}
-
-extension UIColor {
-    convenience init(hex: String) {
-        var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
-        hexSanitized = hexSanitized.replacingOccurrences(of: "#", with: "")
-        
-        var rgb: UInt64 = 0
-        if Scanner(string: hexSanitized).scanHexInt64(&rgb) {
-            let red = CGFloat((rgb & 0xFF0000) >> 16) / 255.0
-            let green = CGFloat((rgb & 0x00FF00) >> 8) / 255.0
-            let blue = CGFloat(rgb & 0x0000FF) / 255.0
-            self.init(red: red, green: green, blue: blue, alpha: 1.0)
-        } else {
-            self.init(red: 0, green: 0, blue: 0, alpha: 1.0)
-        }
     }
 }
 
 extension GrowTrackViewController: ButtonsCollectionViewDelegate {
     func didSelectButton(withTitle title: String, inCollection collection: ButtonsCollectionView) {
+        guard
+            let selectedMonthIndex = monthButtonCollectionView.selectedIndex,
+            let selectedCategoryIndex = categoryButtonCollectionView.selectedIndex
+        else { return }
+
+        let selectedMonth = monthButtonTitles[selectedMonthIndex]
+        let selectedCategory = categoryButtonTitles[selectedCategoryIndex]
+
         if collection == monthButtonCollectionView {
-            filterMilestones(month: title, category: categoryButtonTitles[categoryButtonCollectionView.selectedIndex ?? 0])
+            filterMilestones(month: title, category: selectedCategory)
         } else if collection == categoryButtonCollectionView {
-            filterMilestones(month: monthButtonTitles[monthButtonCollectionView.selectedIndex ?? 0], category: title)
+            filterMilestones(month: selectedMonth, category: title)
         }
     }
 }
+
 extension GrowTrackViewController: UICollectionViewDataSource {
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        if collectionView == bodyMeasurementCollectionView {
+        switch collectionView {
+        case bodyMeasurementCollectionView:
             return min(bodyMeasurements.count, 3)
-        } else if collectionView == milestonesCollectionView {
+        case milestonesCollectionView:
             return filteredMilestones.count
+        default:
+            return 0
         }
-        return 0
     }
-    
+
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         if collectionView == bodyMeasurementCollectionView {
             guard indexPath.row < bodyMeasurements.count else {
-                fatalError("Index out of bounds for bodyMeasurements at row \(indexPath.row)")
+                assertionFailure("Index out of bounds for bodyMeasurements at row \(indexPath.row)")
+                return UICollectionViewCell()
             }
 
-            let cell = collectionView.dequeueReusableCell(
-                withReuseIdentifier: "BodyMeasurementCollectionViewCell",
+            guard let cell = collectionView.dequeueReusableCell(
+                withReuseIdentifier: BodyMeasurementCollectionViewCell.identifier,
                 for: indexPath
-            ) as! BodyMeasurementCollectionViewCell
-
-            let units = ["cm", "kg", "cm"]
-            let titleColors: [UIColor] = [
-                UIColor(hex: "942192"),
-                UIColor(hex: "F27200"),
-                UIColor(hex: "AA7942")
-            ]
-
-            let measurementType = bodyMeasurements[indexPath.row]
-            let unit = indexPath.row < units.count ? units[indexPath.row] : ""
-            let titleColor = titleColors[indexPath.row % titleColors.count]
-
-            if let baby = baby {
-                var latestMeasurement = "0"
-                var latestDate: Date?
-
-                switch measurementType {
-                case "Height":
-                    if let latest = baby.heightMeasurements.sorted(by: { $0.date < $1.date }).last {
-                        latestMeasurement = String(format: "%.2f", latest.value)
-                        latestDate = latest.date
-                    }
-                case "Weight":
-                    if let latest = baby.weightMeasurements.sorted(by: { $0.date < $1.date }).last {
-                        latestMeasurement = String(format: "%.2f", latest.value)
-                        latestDate = latest.date
-                    }
-                case "Head Circumference":
-                    if let latest = baby.headCircumferenceMeasurements.sorted(by: { $0.date < $1.date }).last {
-                        latestMeasurement = String(format: "%.2f", latest.value)
-                        latestDate = latest.date
-                    }
-                default:
-                    break
-                }
-
-                cell.measurementNumberLabel.text = latestMeasurement
-                if let date = latestDate {
-                    let dateFormatter = DateFormatter()
-                    dateFormatter.dateStyle = .medium
-                    cell.dateTimeLabel.text = dateFormatter.string(from: date)
-                } else {
-                    cell.dateTimeLabel.text = nil
-                }
-            } else {
-                cell.measurementNumberLabel.text = "0"
-                cell.dateTimeLabel.text = nil
+            ) as? BodyMeasurementCollectionViewCell else {
+                return UICollectionViewCell()
             }
 
-            cell.titleLabel.text = measurementType
-            cell.labelImage.image = UIImage(systemName: "figure.arms.open")
-            cell.labelImage.tintColor = titleColor
-            cell.titleLabel.textColor = titleColor
-            cell.measurementUnitLabel.text = unit
-
+            configureMeasurementCell(cell, at: indexPath.row)
             return cell
 
         } else if collectionView == milestonesCollectionView {
-            let cell = collectionView.dequeueReusableCell(
+            guard let cell = collectionView.dequeueReusableCell(
                 withReuseIdentifier: MilestoneCardCell.identifier,
                 for: indexPath
-            ) as! MilestoneCardCell
+            ) as? MilestoneCardCell else {
+                return UICollectionViewCell()
+            }
+
             cell.configure(with: filteredMilestones[indexPath.row])
             return cell
         }
 
-        fatalError("Unhandled collectionView type or missing reuse identifier")
+        return UICollectionViewCell()
     }
-    
+
+    private func configureMeasurementCell(_ cell: BodyMeasurementCollectionViewCell, at index: Int) {
+        let measurementType = bodyMeasurements[index]
+
+        let units = ["cm", "kg", "cm"]
+        let titleColors: [UIColor] = [
+            UIColor(hex: "942192") ?? .systemPurple,
+            UIColor(hex: "F27200") ?? .systemOrange,
+            UIColor(hex: "AA7942") ?? .systemBrown
+        ]
+
+        let unit = index < units.count ? units[index] : ""
+        let titleColor = titleColors[index % titleColors.count]
+
+        var latestMeasurement = "0"
+        var latestDate: Date?
+
+        if let baby = baby {
+            let measurements: [BabyMeasurement]
+
+            switch measurementType {
+            case "Height":
+                measurements = baby.heightMeasurements
+            case "Weight":
+                measurements = baby.weightMeasurements
+            case "Head Circumference":
+                measurements = baby.headCircumferenceMeasurements
+            default:
+                measurements = []
+            }
+
+            if let latest = measurements.sorted(by: { $0.date < $1.date }).last {
+                latestMeasurement = String(format: "%.2f", latest.value)
+                latestDate = latest.date
+            }
+        }
+
+        cell.titleLabel.text = measurementType
+        cell.measurementUnitLabel.text = unit
+        cell.measurementNumberLabel.text = latestMeasurement
+        cell.labelImage.image = UIImage(systemName: "figure.arms.open")
+        cell.labelImage.tintColor = titleColor
+        cell.titleLabel.textColor = titleColor
+
+        if let date = latestDate {
+            let formatter = DateFormatter()
+            formatter.dateStyle = .medium
+            cell.dateTimeLabel.text = formatter.string(from: date)
+        } else {
+            cell.dateTimeLabel.text = nil
+        }
+    }
+}
+
+extension GrowTrackViewController: UICollectionViewDelegate {
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        if collectionView == milestonesCollectionView {
+            handleMilestoneSelection(at: indexPath)
+        } else if collectionView == bodyMeasurementCollectionView {
+            handleMeasurementSelection(at: indexPath)
+        }
+    }
+
+    private func handleMilestoneSelection(at indexPath: IndexPath) {
+        guard let baby = baby else { return }
+        var milestone = filteredMilestones[indexPath.row]
+
+        guard !milestone.isAchieved else { return }
+
+        let modalVC = MilestoneModalViewController(
+            category: milestone.category.rawValue,
+            title: milestone.title,
+            description: milestone.description,
+            milestone: milestone
+        )
+        modalVC.baby = baby
+
+        modalVC.onSave = { [weak self] date, image, videoURL, caption in
+            guard let self = self else { return }
+
+            self.dataController.updateMilestonesAchieved(
+                &milestone, for: baby,
+                date: date,
+                image: image,
+                video: videoURL,
+                caption: caption
+            )
+
+            // Reflect updated milestone in filtered array
+            self.filteredMilestones[indexPath.row] = milestone
+
+            self.dataController.saveMedia(for: milestone, image: image, videoURL: videoURL, caption: caption)
+
+            // Update Milestone Overview screen if it's already in nav stack
+            if let milestonesVC = self.navigationController?.viewControllers
+                .compactMap({ $0 as? MilestonesOverviewViewController }).first {
+                milestonesVC.reloadMilestones()
+                milestonesVC.delegate?.milestonesOverviewDidUpdate()
+            }
+
+            self.filterMilestones(
+                month: self.monthButtonTitles[self.monthButtonCollectionView.selectedIndex ?? 0],
+                category: self.categoryButtonTitles[self.categoryButtonCollectionView.selectedIndex ?? 0]
+            )
+
+            self.milestonesCollectionView.reloadData()
+
+            modalVC.dismiss(animated: true) {
+                self.showCongratulationsAlert()
+            }
+        }
+
+        configureModalSheet(for: modalVC)
+        present(modalVC, animated: true)
+    }
+
+    private func handleMeasurementSelection(at indexPath: IndexPath) {
+        let selectedMeasurement = bodyMeasurements[indexPath.row]
+        let type = selectedMeasurement == "Head Circumference" ? "head_circumference" : selectedMeasurement.lowercased()
+
+        let storyboard = UIStoryboard(name: "GrowTrack", bundle: nil)
+        guard let vc = storyboard.instantiateViewController(withIdentifier: "MeasurementDetailsViewController")
+                as? MeasurementDetailsViewController else { return }
+
+        vc.measurementType = selectedMeasurement
+        vc.measurements = dataController.measurements.filter { $0.measurement_type == type }
+        
+        vc.onDataChanged = { [weak self] in
+            guard let self = self, let baby = self.baby else { return }
+            self.dataController.loadMeasurements(for: baby.babyID) {
+                DispatchQueue.main.async {
+                    self.bodyMeasurementCollectionView.reloadData()
+                }
+            }
+        }
+        navigationController?.pushViewController(vc, animated: true)
+    }
+
+    private func configureModalSheet(for modalVC: UIViewController) {
+        modalVC.modalPresentationStyle = .pageSheet
+        if let sheet = modalVC.sheetPresentationController {
+            sheet.detents = [.medium(), .large()]
+            sheet.selectedDetentIdentifier = .large
+            sheet.prefersGrabberVisible = true
+            sheet.preferredCornerRadius = 16
+        }
+    }
+
+    private func showCongratulationsAlert() {
+        let alert = UIAlertController(
+            title: "🎉 Congratulations 🎉",
+            message: "The milestone has been marked as reached.",
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
+    }
+}
+
+extension UIColor {
+    convenience init?(hex: String) {
+        var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+        hexSanitized = hexSanitized.replacingOccurrences(of: "#", with: "")
+        
+        var rgb: UInt64 = 0
+        guard Scanner(string: hexSanitized).scanHexInt64(&rgb) else {
+            return nil
+        }
+        
+        let red = CGFloat((rgb & 0xFF0000) >> 16) / 255.0
+        let green = CGFloat((rgb & 0x00FF00) >> 8) / 255.0
+        let blue = CGFloat(rgb & 0x0000FF) / 255.0
+        
+        self.init(red: red, green: green, blue: blue, alpha: 1.0)
+    }
 }

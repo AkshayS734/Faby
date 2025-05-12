@@ -52,13 +52,30 @@ class MilestoneModalViewController: UIViewController {
         view.clipsToBounds = true
         view.backgroundColor = .systemGray6
         
-        let modalTitle = UILabel()
-        modalTitle.text = "Add \(category) Milestone"
-        modalTitle.font = .boldSystemFont(ofSize: 18)
-        modalTitle.textAlignment = .center
-        view.addSubview(modalTitle)
-        modalTitle.translatesAutoresizingMaskIntoConstraints = false
-        
+//        let modalTitle = UILabel()
+//        modalTitle.text = "Add \(category) Milestone"
+//        modalTitle.font = .boldSystemFont(ofSize: 18)
+//        modalTitle.textAlignment = .center
+//        view.addSubview(modalTitle)
+//        modalTitle.translatesAutoresizingMaskIntoConstraints = false
+        let navigationBar = UINavigationBar()
+        navigationBar.translatesAutoresizingMaskIntoConstraints = false
+        let navItem = UINavigationItem(title: "Add \(category) Milestone")
+
+        let cancelItem = UIBarButtonItem(barButtonSystemItem: .cancel, target: self, action: #selector(cancelTapped))
+        let saveItem = UIBarButtonItem(barButtonSystemItem: .save, target: self, action: #selector(saveTapped))
+
+        navItem.leftBarButtonItem = cancelItem
+        navItem.rightBarButtonItem = saveItem
+        navigationBar.setItems([navItem], animated: false)
+
+        view.addSubview(navigationBar)
+
+        NSLayoutConstraint.activate([
+            navigationBar.topAnchor.constraint(equalTo: view.topAnchor),
+            navigationBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            navigationBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+        ])
         titleLabel.text = milestoneTitle
         titleLabel.font = .systemFont(ofSize: 20)
         titleLabel.textAlignment = .center
@@ -137,22 +154,22 @@ class MilestoneModalViewController: UIViewController {
         cardView.addSubview(imageView)
         imageView.translatesAutoresizingMaskIntoConstraints = false
         
-        saveButton.setTitle("Save", for: .normal)
-        saveButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: saveButton.titleLabel?.font.pointSize ?? 20)
-        saveButton.addTarget(self, action: #selector(saveTapped), for: .touchUpInside)
-        view.addSubview(saveButton)
-        saveButton.translatesAutoresizingMaskIntoConstraints = false
-        
-        cancelButton.setTitle("Cancel", for: .normal)
-        cancelButton.addTarget(self, action: #selector(cancelTapped), for: .touchUpInside)
-        view.addSubview(cancelButton)
-        cancelButton.translatesAutoresizingMaskIntoConstraints = false
+//        saveButton.setTitle("Save", for: .normal)
+//        saveButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: saveButton.titleLabel?.font.pointSize ?? 20)
+//        saveButton.addTarget(self, action: #selector(saveTapped), for: .touchUpInside)
+//        view.addSubview(saveButton)
+//        saveButton.translatesAutoresizingMaskIntoConstraints = false
+//        
+//        cancelButton.setTitle("Cancel", for: .normal)
+//        cancelButton.addTarget(self, action: #selector(cancelTapped), for: .touchUpInside)
+//        view.addSubview(cancelButton)
+//        cancelButton.translatesAutoresizingMaskIntoConstraints = false
         
         NSLayoutConstraint.activate([
-            modalTitle.topAnchor.constraint(equalTo: view.topAnchor, constant: 16),
-            modalTitle.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+//            modalTitle.topAnchor.constraint(equalTo: view.topAnchor, constant: 16),
+//            modalTitle.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             
-            titleLabel.topAnchor.constraint(equalTo: modalTitle.bottomAnchor, constant: 30),
+            titleLabel.topAnchor.constraint(equalTo: navigationBar.bottomAnchor, constant: 30),
             titleLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             titleLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             
@@ -201,13 +218,13 @@ class MilestoneModalViewController: UIViewController {
             captionTextField.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -16),
             captionTextField.heightAnchor.constraint(equalToConstant: 40),
             
-            saveButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            saveButton.topAnchor.constraint(equalTo: view.topAnchor, constant: 16),
-            saveButton.centerYAnchor.constraint(equalTo: modalTitle.centerYAnchor),
-            
-            cancelButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            cancelButton.topAnchor.constraint(equalTo: view.topAnchor, constant: 16),
-            cancelButton.centerYAnchor.constraint(equalTo: saveButton.centerYAnchor)
+//            saveButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+//            saveButton.topAnchor.constraint(equalTo: view.topAnchor, constant: 16),
+//            saveButton.centerYAnchor.constraint(equalTo: modalTitle.centerYAnchor),
+//            
+//            cancelButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+//            cancelButton.topAnchor.constraint(equalTo: view.topAnchor, constant: 16),
+//            cancelButton.centerYAnchor.constraint(equalTo: saveButton.centerYAnchor)
         ])
     }
     @objc func handleTextFieldTap() {

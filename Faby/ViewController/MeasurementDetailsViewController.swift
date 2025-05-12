@@ -27,7 +27,8 @@ class MeasurementDetailsViewController: UIViewController, UITableViewDelegate, U
         label.textColor = .black
         return label
     }()
-    
+    var onDataChanged: (() -> Void)?
+    var dataChanged: Bool = false
     private let latestMeasurementUnitLabel: UILabel = {
         let label = UILabel()
         label.textAlignment = .left
@@ -53,6 +54,22 @@ class MeasurementDetailsViewController: UIViewController, UITableViewDelegate, U
         }
         observeUnitChanges()
     }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        if dataChanged {
+            guard let measurementType = measurementType else { return }
+            let typeKey = measurementType == "Head Circumference" ? "head_circumference" : measurementType.lowercased()
+            
+            measurements = dataController.measurements.filter { $0.measurement_type == typeKey }
+            setupDataForTimeSpan()
+            updateLatestMeasurementLabel()
+            embedSwiftUIView()
+            tableView.reloadData()
+            dataChanged = false
+        }
+    }
+    
     private func observeUnitChanges() {
         unitSettings.$selectedUnit
             .sink { [weak self] _ in
@@ -214,7 +231,7 @@ class MeasurementDetailsViewController: UIViewController, UITableViewDelegate, U
             measurementType: measurementType ?? "",
             saveMeasurement: { [weak self] measurement, date, unit in
                 guard let self = self else { return }
-
+                
                 Task {
                     let convertedMeasurement: Double
                     if unit == "inches" {
@@ -224,7 +241,7 @@ class MeasurementDetailsViewController: UIViewController, UITableViewDelegate, U
                     } else {
                         convertedMeasurement = measurement
                     }
-
+                    
                     do {
                         switch self.measurementType {
                         case "Height":
@@ -236,10 +253,22 @@ class MeasurementDetailsViewController: UIViewController, UITableViewDelegate, U
                         default:
                             break
                         }
-
-                        self.setupDataForTimeSpan()
-                        self.updateLatestMeasurementLabel()
-                        self.embedSwiftUIView()
+                        
+                        guard let baby = self.baby else { return }
+                        self.dataController.loadMeasurements(for: baby.babyID) {
+                            DispatchQueue.main.async {
+                                let type = (self.measurementType == "Head Circumference") ? "head_circumference" : self.measurementType?.lowercased() ?? ""
+                                self.measurements = self.dataController.measurements.filter { $0.measurement_type == type }
+                                
+                                self.setupDataForTimeSpan()
+                                self.updateLatestMeasurementLabel()
+                                self.embedSwiftUIView()
+                                self.tableView.reloadData()
+                            }
+                        }
+                        
+                        self.onDataChanged?()
+                        
                     } catch {
                         print("❌ Failed to save measurement:", error.localizedDescription)
                     }
@@ -251,6 +280,7 @@ class MeasurementDetailsViewController: UIViewController, UITableViewDelegate, U
         hostingController.modalPresentationStyle = .formSheet
         present(hostingController, animated: true, completion: nil)
     }
+    
     private func convertToBaseUnit(_ value: Double) -> Double {
         switch measurementType {
         case "Height", "Head Circumference":
@@ -294,8 +324,15 @@ class MeasurementDetailsViewController: UIViewController, UITableViewDelegate, U
                 allDataVC.measurementType = self.measurementType ?? "Height"
                 allDataVC.measurements = self.measurements
                 allDataVC.onDataChanged = { [weak self] in
-                    self?.setupDataForTimeSpan()
+                    guard let self = self, let measurementType = self.measurementType else { return }
+
+                    let typeKey = measurementType == "Head Circumference" ? "head_circumference" : measurementType.lowercased()
+                    self.measurements = self.dataController.measurements.filter { $0.measurement_type == typeKey }
+                    self.tableView.reloadData()
+                    self.onDataChanged?()
+                    self.dataChanged = true
                 }
+                
                 navigationController?.pushViewController(allDataVC, animated: true)
             }
         } else if indexPath.row == 1 {
