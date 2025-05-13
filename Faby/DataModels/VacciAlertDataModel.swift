@@ -49,7 +49,7 @@ struct VaccineAdministered: Identifiable, Codable {
     let id: UUID
     let babyId: UUID
     let vaccineId: UUID
-    let scheduleId: UUID
+    let scheduleId: UUID?
     var administeredDate: Date
     
     // Add CodingKeys to map between Swift property names and database column names

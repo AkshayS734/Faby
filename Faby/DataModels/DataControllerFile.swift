@@ -285,11 +285,14 @@ class AdministeredVaccineManager {
             let dateFormatter = ISO8601DateFormatter()
             let administeredDate = dateFormatter.date(from: raw.administeredDate) ?? Date()
             
+            // Handle optional scheduleId
+            let scheduleUUID: UUID? = raw.scheduleId != nil ? UUID(uuidString: raw.scheduleId!) : nil
+            
             return VaccineAdministered(
                 id: UUID(uuidString: raw.id) ?? UUID(),
                 babyId: UUID(uuidString: raw.baby_id) ?? UUID(),
                 vaccineId: UUID(uuidString: raw.vaccineID) ?? UUID(),
-                scheduleId: UUID(uuidString: raw.scheduleId) ?? UUID(),
+                scheduleId: scheduleUUID,
                 administeredDate: administeredDate
             )
         }
@@ -309,11 +312,15 @@ class AdministeredVaccineManager {
         return rawAdministered.map { raw in
             let dateFormatter = ISO8601DateFormatter()
             let administeredDate = dateFormatter.date(from: raw.administeredDate) ?? Date()
+            
+            // Handle optional scheduleId
+            let scheduleUUID: UUID? = raw.scheduleId != nil ? UUID(uuidString: raw.scheduleId!) : nil
+            
             return VaccineAdministered(
                 id: UUID(uuidString: raw.id) ?? UUID(),
                 babyId: UUID(uuidString: raw.baby_id) ?? UUID(),
                 vaccineId: UUID(uuidString: raw.vaccineID) ?? UUID(),
-                scheduleId: UUID(uuidString: raw.scheduleId) ?? UUID(),
+                scheduleId: scheduleUUID,
                 administeredDate: administeredDate
             )
         }
@@ -454,6 +461,37 @@ class UserDefaultsManager {
         set {
             UserDefaults.standard.set(newValue?.uuidString, forKey: "currentBabyId")
         }
+    }
+    
+    // Ensures a baby ID is available, fetching the first connected baby if needed
+    func ensureBabyIdIsAvailable() async -> UUID? {
+        // Always fetch the current baby connected to the logged-in parent
+        // to ensure we're using the correct baby for the current user
+        do {
+            let baby = try await fetchFirstConnectedBaby()
+            let babyId = baby.babyID
+            // Save it for future use
+            currentBabyId = babyId
+            print("✅ Auto-selected baby: \(baby.name) with ID: \(babyId)")
+            return babyId
+        } catch {
+            print("❌ Could not auto-select baby: \(error.localizedDescription)")
+            return nil
+        }
+    }
+    
+    // Clear any saved baby ID (should be called on logout)
+    func clearBabyId() {
+        UserDefaults.standard.removeObject(forKey: "currentBabyId")
+        print("✅ Cleared saved baby ID")
+    }
+    
+    // Helper method to get baby ID as string (for Supabase queries)
+    func getBabyIdString() async -> String? {
+        if let babyId = await ensureBabyIdIsAvailable() {
+            return babyId.uuidString
+        }
+        return nil
     }
 }
 

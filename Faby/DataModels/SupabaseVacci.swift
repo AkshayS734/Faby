@@ -200,6 +200,48 @@ class SupabaseVaccineManager {
     
     // MARK: - Administered Vaccines Management
     
+    /// Save administered vaccines directly (for manually entered vaccines)
+    /// - Parameters:
+    ///   - vaccines: Array of vaccines to save as administered
+    ///   - babyId: The UUID of the baby who received the vaccines
+    ///   - administeredDates: Dictionary mapping vaccine names to administered dates
+    /// - Throws: An error if saving fails
+    func saveAdministeredVaccines(vaccines: [Vaccine], babyId: UUID, administeredDates: [String: Date]) async throws {
+        guard let client = client else {
+            throw NSError(domain: "VacciAlertError", code: 1,
+                         userInfo: [NSLocalizedDescriptionKey: "Supabase client not available"])
+        }
+        
+        print("DEBUG: SupabaseVaccineManager - Saving \(vaccines.count) administered vaccines for baby ID: \(babyId)")
+        
+        // Create administered vaccine records for each vaccine
+        for vaccine in vaccines {
+            // Get the administered date (default to current date if not specified)
+            let administeredDate = administeredDates[vaccine.name] ?? Date()
+            
+            // Create a new administered vaccine record
+            let administeredVaccine = SupabaseVaccineAdministered(
+                id: UUID().uuidString,
+                baby_id: babyId.uuidString,
+                vaccineID: vaccine.id.uuidString,
+                scheduleId: nil, // No schedule for manually entered vaccines
+                administeredDate: ISO8601DateFormatter().string(from: administeredDate)
+            )
+            
+            try await client
+                .from("administered_vaccines")
+                .insert(administeredVaccine)
+                .execute()
+            
+            print("DEBUG: SupabaseVaccineManager - Saved administered vaccine: \(vaccine.name)")
+        }
+        
+        // Notify listeners about the update
+        await MainActor.run {
+            NotificationCenter.default.post(name: .vaccinesUpdated, object: nil)
+        }
+    }
+    
     /// Mark a vaccine as administered
     func markVaccineAsAdministered(scheduleId: String, administeredDate: Date) async throws {
         guard let client = client else {
@@ -267,11 +309,13 @@ class SupabaseVaccineManager {
             let dateFormatter = ISO8601DateFormatter()
             let date = dateFormatter.date(from: raw.administeredDate) ?? Date()
             
+            let scheduleUUID: UUID? = raw.scheduleId != nil ? UUID(uuidString: raw.scheduleId!) : nil
+            
             return VaccineAdministered(
                 id: UUID(uuidString: raw.id) ?? UUID(),
                 babyId: UUID(uuidString: raw.baby_id) ?? UUID(),
                 vaccineId: UUID(uuidString: raw.vaccineID) ?? UUID(),
-                scheduleId: UUID(uuidString: raw.scheduleId) ?? UUID(),
+                scheduleId: scheduleUUID,
                 administeredDate: date
             )
         }
@@ -309,11 +353,13 @@ class SupabaseVaccineManager {
                     let dateFormatter = ISO8601DateFormatter()
                     let date = dateFormatter.date(from: raw.administeredDate) ?? Date()
                     
+                    let scheduleUUID: UUID? = raw.scheduleId != nil ? UUID(uuidString: raw.scheduleId!) : nil
+                    
                     return VaccineAdministered(
                         id: UUID(uuidString: raw.id) ?? UUID(),
                         babyId: UUID(uuidString: raw.baby_id) ?? UUID(),
                         vaccineId: UUID(uuidString: raw.vaccineID) ?? UUID(),
-                        scheduleId: UUID(uuidString: raw.scheduleId) ?? UUID(),
+                        scheduleId: scheduleUUID,
                         administeredDate: date
                     )
                 }
@@ -388,7 +434,7 @@ struct SupabaseVaccineAdministered: Codable {
     let id: String
     let baby_id: String
     let vaccineID: String  // This matches the actual JSON field name "vaccineID"
-    let scheduleId: String // This matches the actual JSON field name "scheduleId"
+    let scheduleId: String? // Optional - This matches the actual JSON field name "scheduleId"
     let administeredDate: String
     
     // CodingKeys to map between Swift property names and database column names

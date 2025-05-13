@@ -219,7 +219,7 @@ class CalendarWithIndicators: UIDatePicker {
 }
 
 // MARK: - Main View Controller
-class VaccineReminderViewController: UIViewController, UISearchBarDelegate, UIScrollViewDelegate {
+class VaccineReminderViewController: UIViewController, UIScrollViewDelegate {
     
     // MARK: - Properties
     private let scrollView = UIScrollView()
@@ -235,6 +235,11 @@ class VaccineReminderViewController: UIViewController, UISearchBarDelegate, UISc
     private var calendarWithIndicators: CalendarWithIndicators?
     private var vaccinations: [VaccineSchedule] = []
     private var filteredVaccinations: [VaccineSchedule] = []
+    
+    // Properties for direct navigation from HomeViewController
+    var selectedVaccineId: String? // To highlight specific vaccine when navigated directly
+    var selectedVaccineName: String? // For displaying name in navigation bar
+    var selectedScheduleId: String? // To scroll to specific schedule
     
     // Header views
     private let headerView = UIView()
@@ -279,6 +284,11 @@ class VaccineReminderViewController: UIViewController, UISearchBarDelegate, UISc
         setupUI()
         setupActivityIndicator()
         loadVaccinations()
+        
+        // If navigated directly from home with a specific vaccine
+        if let scheduleId = selectedScheduleId {
+            print("🔍 Navigated directly to vaccine with schedule ID: \(scheduleId)")
+        }
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -309,15 +319,16 @@ class VaccineReminderViewController: UIViewController, UISearchBarDelegate, UISc
     }
     
     private func setupNavigationBar() {
-        title = "Vaccine Reminders"
+        // Set custom title if navigated directly to a specific vaccine
+        if let vaccineName = selectedVaccineName {
+            title = vaccineName
+        } else {
+            title = "Vaccine Reminders"
+        }
+        
         navigationController?.navigationBar.prefersLargeTitles = false
         
-        let searchButton = UIBarButtonItem(
-            barButtonSystemItem: .search,
-            target: self,
-            action: #selector(didTapSearch)
-        )
-        navigationItem.rightBarButtonItem = searchButton
+        // Search button removed as requested
     }
     
     private func setupScrollView() {
@@ -902,6 +913,11 @@ class VaccineReminderViewController: UIViewController, UISearchBarDelegate, UISc
                     
                     // Now display vaccinations without loading indicator
                     self.displayVaccinations(combinedRecords)
+                    
+                    // If navigated directly to a specific vaccine, highlight and scroll to it
+                    if let selectedScheduleId = self.selectedScheduleId {
+                        self.highlightSelectedVaccine(scheduleId: selectedScheduleId)
+                    }
                 }
             } catch {
                 print("❌ Error loading vaccinations: \(error)")
@@ -925,6 +941,57 @@ class VaccineReminderViewController: UIViewController, UISearchBarDelegate, UISc
         let alert = UIAlertController(title: "Error", message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "OK", style: .default))
         present(alert, animated: true)
+    }
+    
+    private func highlightSelectedVaccine(scheduleId: String) {
+        print("👁️ Attempting to highlight vaccine with schedule ID: \(scheduleId)")
+        
+        // Find the target vaccine in our vaccine list
+        guard let targetVaccine = vaccinations.first(where: { $0.id.uuidString == scheduleId }),
+              let hostingController = vaccinationListHostingController else {
+            print("❌ Could not find vaccine with ID: \(scheduleId)")
+            return
+        }
+        
+        // Set the vaccine date as the selected date in the calendar
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+            guard let self = self else { return }
+            
+            // Scroll to the selected date in the calendar
+            if let calendarPicker = self.calendarWithIndicators {
+                calendarPicker.date = targetVaccine.date
+                self.didSelectDate(targetVaccine.date)
+            }
+            
+            // Post notification to scroll to specific vaccine (will be handled by SwiftUI view)
+            NotificationCenter.default.post(
+                name: Notification.Name("ScrollToVaccine"),
+                object: nil,
+                userInfo: ["scheduleId": scheduleId]
+            )
+            
+            // Add visual indicator of selection with animation
+            self.addTemporaryHighlight()
+        }
+    }
+    
+    private func addTemporaryHighlight() {
+        // Create a flash effect for the highlighted vaccine
+        let flashView = UIView(frame: vaccineListContainer.bounds)
+        flashView.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.1)
+        flashView.alpha = 0
+        vaccineListContainer.addSubview(flashView)
+        
+        // Animate the flash effect
+        UIView.animate(withDuration: 0.3, animations: {
+            flashView.alpha = 1
+        }, completion: { _ in
+            UIView.animate(withDuration: 0.5, delay: 0.3, options: [], animations: {
+                flashView.alpha = 0
+            }, completion: { _ in
+                flashView.removeFromSuperview()
+            })
+        })
     }
     
     private func processVaccinationRecords(
@@ -1110,55 +1177,13 @@ class VaccineReminderViewController: UIViewController, UISearchBarDelegate, UISc
         if filteredVaccinations.isEmpty {
             scheduledVaccinationsLabel.text = "No vaccinations for \(dateFormatter.string(from: selectedDate))"
         } else {
-            scheduledVaccinationsLabel.text = "Vaccinations for \(dateFormatter.string(from: selectedDate))"
+            scheduledVaccinationsLabel.text = "Vaccinations for : )"
         }
     }
     
-    // MARK: - Search
-    @objc private func didTapSearch() {
-        let searchController = UISearchController(searchResultsController: nil)
-        searchController.searchBar.delegate = self
-        searchController.obscuresBackgroundDuringPresentation = false
-        searchController.searchBar.placeholder = "Search vaccinations..."
-        navigationItem.searchController = searchController
-        searchController.isActive = true
-    }
+    // Search functionality removed as requested
     
-    // MARK: - UISearchBarDelegate
-    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
-        if searchText.isEmpty {
-            filteredVaccinations = vaccinations
-            displayVaccinations(filteredVaccinations)
-        } else {
-            // We need to handle search differently since we need to get vaccine names first
-            Task {
-                var searchResults: [VaccineSchedule] = []
-                
-                for vaccine in vaccinations {
-                    // Get current vaccine name
-                    let vaccineName = await getVaccineName(for: vaccine.vaccineId)
-                    
-                    if vaccineName.lowercased().contains(searchText.lowercased()) ||
-                       vaccine.hospital.lowercased().contains(searchText.lowercased()) ||
-                       vaccine.location.lowercased().contains(searchText.lowercased()) ||
-                       dateFormatter.string(from: vaccine.date).lowercased().contains(searchText.lowercased()) {
-                        searchResults.append(vaccine)
-                    }
-                }
-                
-                // Update on main thread
-                await MainActor.run {
-                    self.filteredVaccinations = searchResults
-                    self.displayVaccinations(searchResults)
-                }
-            }
-        }
-    }
-    
-    func searchBarCancelButtonClicked(_ searchBar: UISearchBar) {
-        filteredVaccinations = vaccinations
-        displayVaccinations(filteredVaccinations)
-    }
+    // Search functionality has been removed
     
     // MARK: - UIScrollViewDelegate
     func scrollViewDidScroll(_ scrollView: UIScrollView) {

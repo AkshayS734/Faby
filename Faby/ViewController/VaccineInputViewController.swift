@@ -117,17 +117,26 @@ class VaccineInputViewController: UIViewController, UISearchBarDelegate {
     }
     
     private func updateUI() {
-        if filteredVaccineData.isEmpty {
-            emptyStateLabel.text = searchText.isEmpty ?
-                "No vaccines available for \(currentPeriod)" :
-                "No vaccines found for '\(searchText)'"
-            emptyStateLabel.isHidden = false
-            tableView.isHidden = true
-        } else {
-            emptyStateLabel.isHidden = true
-            tableView.isHidden = false
-        }
         tableView.reloadData()
+        
+        // Update empty state visibility
+        if filteredVaccineData.isEmpty {
+            tableView.isHidden = true
+            emptyStateLabel.isHidden = false
+            emptyStateLabel.text = searchText.isEmpty ? "No vaccines found for this period" : "No matches found"
+        } else {
+            tableView.isHidden = false
+            emptyStateLabel.isHidden = true
+        }
+        
+        // Update save button enabled state based on selections
+        navigationItem.rightBarButtonItem?.isEnabled = !selectedVaccines.isEmpty
+    }
+    
+    // Update the save button state based on selections
+    private func updateSaveButtonState() {
+        // Enable the save button only if at least one vaccine is selected
+        navigationItem.rightBarButtonItem?.isEnabled = !selectedVaccines.isEmpty
     }
 
     private func getWeekRange(for period: String) -> (start: Int, end: Int) {
@@ -366,15 +375,41 @@ class VaccineInputViewController: UIViewController, UISearchBarDelegate {
     }
 
     @objc private func saveButtonTapped() {
-        // Get selected vaccine objects
-        let selectedVaccineObjects = vaccineData.filter { selectedVaccines.contains($0.name) }
+        // Create an array to store all selected vaccine objects from all time periods
+        var allSelectedVaccineObjects: [Vaccine] = []
         
-        // Navigate to selected vaccines review screen with selected dates
-        let selectedVaccinesVC = SelectedVaccinesViewController(
-            selectedVaccines: selectedVaccineObjects,
-            selectedDates: selectedDates // Pass the dictionary of selected dates
-        )
-        navigationController?.pushViewController(selectedVaccinesVC, animated: true)
+        // Collect all vaccine objects for selected vaccines across all time periods
+        Task {
+            do {
+                // Fetch all vaccines from the database
+                let allVaccines = try await FetchingVaccines.shared.fetchAllVaccines()
+                
+                // Filter only the ones that are selected
+                let selectedVaccineObjects = allVaccines.filter { selectedVaccines.contains($0.name) }
+                allSelectedVaccineObjects = selectedVaccineObjects
+                
+                // Navigate to selected vaccines review screen with selected dates
+                await MainActor.run {
+                    let selectedVaccinesVC = SelectedVaccinesViewController(
+                        selectedVaccines: allSelectedVaccineObjects,
+                        selectedDates: self.selectedDates // Pass the dictionary of selected dates
+                    )
+                    self.navigationController?.pushViewController(selectedVaccinesVC, animated: true)
+                }
+            } catch {
+                print("❌ Error fetching all vaccines: \(error)")
+                
+                // Fallback to just using current period vaccines if fetching all fails
+                await MainActor.run {
+                    let fallbackSelection = self.vaccineData.filter { self.selectedVaccines.contains($0.name) }
+                    let selectedVaccinesVC = SelectedVaccinesViewController(
+                        selectedVaccines: fallbackSelection,
+                        selectedDates: self.selectedDates
+                    )
+                    self.navigationController?.pushViewController(selectedVaccinesVC, animated: true)
+                }
+            }
+        }
     }
 
     // MARK: - UISearchBarDelegate
@@ -438,6 +473,13 @@ extension VaccineInputViewController: VaccineCellDelegate {
             selectedVaccines.append(vaccine)
         }
         tableView.reloadData()
+        
+        // Update save button state after selection changes
+        updateSaveButtonState()
+        
+        // Print debug info
+        print("✅ Vaccine selection changed: \(selectedVaccines.count) vaccines selected")
+        print("🔍 Selected vaccines: \(selectedVaccines)")
     }
     
     func didTapScheduleButton(for vaccine: String) {
@@ -447,8 +489,8 @@ extension VaccineInputViewController: VaccineCellDelegate {
         // Create date picker alert
         let alertController = UIAlertController(title: "", message: "Select a date for \(vaccine)", preferredStyle: .actionSheet)
         
-        // Create custom view for date picker
-        let customView = UIView(frame: CGRect(x: 0, y: 0, width: alertController.view.bounds.width - 16, height: 300))
+        // Create custom view for date picker with increased height to fix cut-off dates
+        let customView = UIView(frame: CGRect(x: 0, y: 0, width: alertController.view.bounds.width - 16, height: 380))
         
         // Create and configure date picker
         let datePicker = UIDatePicker()
@@ -456,13 +498,23 @@ extension VaccineInputViewController: VaccineCellDelegate {
         datePicker.preferredDatePickerStyle = .inline
         datePicker.minimumDate = Date() // Can't schedule in the past
         datePicker.maximumDate = Calendar.current.date(byAdding: .year, value: 2, to: Date()) // Max 2 years in future
-        datePicker.frame = customView.bounds
+        
+        // Configure datePicker to properly fit in the view
+        datePicker.translatesAutoresizingMaskIntoConstraints = false
         customView.addSubview(datePicker)
+        
+        // Add constraints to ensure datePicker is properly sized and positioned
+        NSLayoutConstraint.activate([
+            datePicker.topAnchor.constraint(equalTo: customView.topAnchor),
+            datePicker.leadingAnchor.constraint(equalTo: customView.leadingAnchor),
+            datePicker.trailingAnchor.constraint(equalTo: customView.trailingAnchor),
+            datePicker.bottomAnchor.constraint(equalTo: customView.bottomAnchor)
+        ])
         
         // Add custom view to alert
         alertController.view.addSubview(customView)
         
-        // Adjust alert height to accommodate date picker
+        // Adjust alert height to accommodate date picker and prevent cut-off dates
         let heightConstraint = NSLayoutConstraint(
             item: alertController.view!,
             attribute: .height,
@@ -470,7 +522,7 @@ extension VaccineInputViewController: VaccineCellDelegate {
             toItem: nil,
             attribute: .notAnAttribute,
             multiplier: 1,
-            constant: 500
+            constant: 580 // Increased height to ensure all dates are visible
         )
         alertController.view.addConstraint(heightConstraint)
         

@@ -1,5 +1,6 @@
 import UIKit
 import PDFKit
+import Foundation
 import Supabase
 import CoreLocation
 import MessageUI
@@ -136,6 +137,22 @@ class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITab
                     if let id = vaccine.id.uuidString as String? {
                         vaccines[id] = vaccine
                     }
+                }
+                
+                // Always fetch the first connected baby for the current user
+                // to ensure we're using the correct baby ID
+                do {
+                    let baby = try await fetchFirstConnectedBaby()
+                    currentBabyId = baby.babyID.uuidString
+                    
+                    // Update the UserDefaults with the current baby ID
+                    UserDefaultsManager.shared.currentBabyId = baby.babyID
+                    
+                    print("✅ Successfully fetched current baby: \(baby.name) with ID: \(currentBabyId)")
+                } catch {
+                    print("❌ Could not find any connected baby: \(error.localizedDescription)")
+                    // Continue with empty baby ID to fetch all administered vaccines
+                    currentBabyId = ""
                 }
                 
                 // Fetch administered vaccines for all babies or specific baby
@@ -366,22 +383,47 @@ class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITab
                     // If there's no baby selected, fall back to local data
                     if (error as NSError).domain == "VacciAlertError" &&
                        ((error as NSError).code == 2 || (error as NSError).code == 3) {
-                        // Try to use local baby data instead
-                        if let firstBaby = BabyDataModel.shared.babyList.first {
-                            let fakeBabyData = BabyData(
-                                id: firstBaby.babyID.uuidString,
-                                name: firstBaby.name,
-                                dateOfBirth: firstBaby.dateOfBirth,
-                                gender: firstBaby.gender == .male ? "male" : "female"
-                            )
-                            
-                            let fakeParentData = ParentData(
-                                id: UUID().uuidString,
-                                name: UserDefaults.standard.string(forKey: "parentName") ?? "Parent",
-                                relation: "parent"
-                            )
-                            
-                            generateAndSharePDF(with: (fakeBabyData, fakeParentData))
+                        // Try to fetch baby data directly from Supabase
+                        Task {
+                            do {
+                                let baby = try await fetchFirstConnectedBaby()
+                                
+                                let fakeBabyData = BabyData(
+                                    id: baby.babyID.uuidString,
+                                    name: baby.name,
+                                    dateOfBirth: baby.dateOfBirth,
+                                    gender: baby.gender == .male ? "male" : "female"
+                                )
+                                
+                                let fakeParentData = ParentData(
+                                    id: UUID().uuidString,
+                                    name: UserDefaults.standard.string(forKey: "parentName") ?? "Parent",
+                                    relation: "parent"
+                                )
+                                
+                                await MainActor.run {
+                                    generateAndSharePDF(with: (fakeBabyData, fakeParentData))
+                                }
+                            } catch {
+                                print("❌ Error fetching baby: \(error)")
+                                // Create generic data as fallback
+                                let fakeBabyData = BabyData(
+                                    id: UUID().uuidString,
+                                    name: "Baby",
+                                    dateOfBirth: "01/01/2023",
+                                    gender: "unknown"
+                                )
+                                
+                                let fakeParentData = ParentData(
+                                    id: UUID().uuidString,
+                                    name: UserDefaults.standard.string(forKey: "parentName") ?? "Parent",
+                                    relation: "parent"
+                                )
+                                
+                                await MainActor.run {
+                                    generateAndSharePDF(with: (fakeBabyData, fakeParentData))
+                                }
+                            }
                             return
                         }
                     }
@@ -506,26 +548,40 @@ class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITab
             generatePersonalizedVaccinationCard(babyData: data.baby, parentData: data.parent)
         } else {
             // Fallback to local data if backend data is not available
-            guard let currentBaby = BabyDataModel.shared.babyList.first(where: { $0.babyID == UUID(uuidString: currentBabyId) }) else {
-                // If no specific baby is selected, use a generic name
-                generateGenericVaccinationCard()
+            Task {
+                do {
+                    // Try to fetch baby with current ID first
+                    let baby: Baby
+                    if !currentBabyId.isEmpty, let babyId = UUID(uuidString: currentBabyId) {
+                        baby = try await fetchBaby(with: babyId)
+                    } else {
+                        // If no specific baby is selected, fetch first connected baby
+                        baby = try await fetchFirstConnectedBaby()
+                    }
+                    
+                    // Create fake parent data from UserDefaults
+                    let parentName = UserDefaults.standard.string(forKey: "parentName") ?? "Parent"
+                    let fakeParentData = ParentData(id: UUID().uuidString, name: parentName, relation: "parent")
+                    
+                    // Create BabyData from Baby model
+                    let fakeBabyData = BabyData(
+                        id: baby.babyID.uuidString,
+                        name: baby.name,
+                        dateOfBirth: baby.dateOfBirth,
+                        gender: baby.gender == .male ? "male" : "female"
+                    )
+                    
+                    await MainActor.run {
+                        generatePersonalizedVaccinationCard(babyData: fakeBabyData, parentData: fakeParentData)
+                    }
+                } catch {
+                    print("❌ Error fetching baby: \(error)")
+                    await MainActor.run {
+                        generateGenericVaccinationCard()
+                    }
+                }
                 return
             }
-            
-            // Create fake parent data from UserDefaults
-            let parentName = UserDefaults.standard.string(forKey: "parentName") ?? "Parent"
-            let fakeParentData = ParentData(id: UUID().uuidString, name: parentName, relation: "parent")
-            
-            // Create BabyData from Baby model
-            let fakeBabyData = BabyData(
-                id: currentBaby.babyID.uuidString,
-                name: currentBaby.name,
-                dateOfBirth: currentBaby.dateOfBirth,
-                gender: currentBaby.gender == .male ? "male" : "female"
-            )
-            
-            // Generate a personalized vaccination card with converted local data
-            generatePersonalizedVaccinationCard(babyData: fakeBabyData, parentData: fakeParentData)
         }
     }
     
@@ -965,43 +1021,186 @@ class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITab
         }
     }
     
+    // MARK: - Baby Data Fetching
+    // Using shared methods from BabyDataModels.swift
+    
     // MARK: - Date Change Functionality
     
-    /// Shows date change options when the three-dot menu is tapped
+    /// Shows iOS-native date picker when user wants to change the administered date
     func showDateChangeOptions(for vaccine: VaccineAdministered) {
-        // Create and present the date picker controller
-        let datePickerVC = DatePickerViewController()
-        datePickerVC.modalPresentationStyle = .pageSheet
-        datePickerVC.initialDate = vaccine.administeredDate
+        // Create alert controller with action sheet style
+        let alertController = UIAlertController(title: "", message: "Update administered date", preferredStyle: .actionSheet)
         
-        // Set callback for when a date is selected
-        datePickerVC.dateSelected = { [weak self] newDate in
-            // Handle the date selection
+        // Create custom view for date picker with sufficient height
+        let customView = UIView(frame: CGRect(x: 0, y: 0, width: alertController.view.bounds.width - 16, height: 380))
+        
+        // Create and configure date picker using iOS-native inline style
+        let datePicker = UIDatePicker()
+        datePicker.datePickerMode = .date
+        datePicker.preferredDatePickerStyle = .inline  // Modern iOS inline calendar style
+        datePicker.date = vaccine.administeredDate
+        
+        // Allow past dates for administered vaccines but limit future dates
+        datePicker.maximumDate = Date()  // Can't administer vaccines in the future
+        
+        // Configure datePicker to properly fit in the view
+        datePicker.translatesAutoresizingMaskIntoConstraints = false
+        customView.addSubview(datePicker)
+        
+        // Add constraints to ensure datePicker is properly sized and positioned
+        NSLayoutConstraint.activate([
+            datePicker.topAnchor.constraint(equalTo: customView.topAnchor),
+            datePicker.leadingAnchor.constraint(equalTo: customView.leadingAnchor),
+            datePicker.trailingAnchor.constraint(equalTo: customView.trailingAnchor),
+            datePicker.bottomAnchor.constraint(equalTo: customView.bottomAnchor)
+        ])
+        
+        // Add custom view to alert
+        alertController.view.addSubview(customView)
+        
+        // Adjust alert height to accommodate date picker and prevent cut-off dates
+        let heightConstraint = NSLayoutConstraint(
+            item: alertController.view!,
+            attribute: .height,
+            relatedBy: .equal,
+            toItem: nil,
+            attribute: .notAnAttribute,
+            multiplier: 1,
+            constant: 580 // Increased height to ensure all dates are visible
+        )
+        alertController.view.addConstraint(heightConstraint)
+        
+        // Add actions
+        let updateAction = UIAlertAction(title: "Update", style: .default) { [weak self] _ in
+            guard let self = self else { return }
+            
+            // Immediately update the local data model before server update
+            let oldDate = vaccine.administeredDate
+            let newDate = datePicker.date
+            
+            // Find the vaccine in our local array and update its date
+            for (sectionIndex, section) in self.organizedVaccines.enumerated() {
+                if let vaccineIndex = section.vaccines.firstIndex(where: { $0.scheduleId == vaccine.scheduleId }) {
+                    // Update the vaccine's date locally
+                    self.organizedVaccines[sectionIndex].vaccines[vaccineIndex].administeredDate = newDate
+                    
+                    // Get the indexPath for this vaccine
+                    let indexPath = IndexPath(row: vaccineIndex, section: sectionIndex)
+                    
+                    // Update the cell if it's visible
+                    if let cell = self.tableView.cellForRow(at: indexPath) as? AdministeredVaccineCell {
+                        let dateFormatter = DateFormatter()
+                        dateFormatter.dateStyle = .medium
+                        cell.updateDate(newDate: newDate)
+                    }
+                    
+                    // Also update in the main array
+                    if let mainIndex = self.administeredVaccines.firstIndex(where: { $0.scheduleId == vaccine.scheduleId }) {
+                        self.administeredVaccines[mainIndex].administeredDate = newDate
+                    }
+                }
+            }
+            
+            // FRONTEND ONLY IMPLEMENTATION (until backend is ready)
+            // Skipping database update for now
+            self.showToast(message: "Date updated (frontend only)")
+            
+            // NOTE: Uncomment the below code once the backend API is ready
+            /*
             Task {
                 do {
-                    // Get the schedule ID for this administered vaccine
+                    // Update the date in the database
                     try await SupabaseVaccineManager.shared.updateAdministeredDate(
                         scheduleId: vaccine.scheduleId.uuidString,
                         newDate: newDate
                     )
                     
-                    // Refresh the view
+                    // Show success feedback
                     await MainActor.run {
-                        self?.loadVaccines()
+                        self.showToast(message: "Vaccine date updated successfully")
                     }
                 } catch {
                     print("Failed to update date: \(error)")
+                    
+                    // Revert the local change if server update failed
+                    await MainActor.run {
+                        // Revert local changes
+                        self.loadVaccines()
+                        self.showToast(message: "Failed to update date. Please try again.")
+                    }
                 }
             }
+            */
         }
         
-        present(datePickerVC, animated: true)
+        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
+        
+        alertController.addAction(updateAction)
+        alertController.addAction(cancelAction)
+        
+        // For iPad support
+        if let popoverController = alertController.popoverPresentationController {
+            popoverController.sourceView = view
+            popoverController.sourceRect = CGRect(x: view.bounds.midX, y: view.bounds.midY, width: 0, height: 0)
+            popoverController.permittedArrowDirections = []
+        }
+        
+        present(alertController, animated: true)
     }
     
-    // MARK: - Vaccine Cell Delegate
+    // MARK: - AdministeredVaccineCellDelegate Implementation
     
+    /// Handler for when a user taps on the date change button for a vaccine
     func showOptionsForVaccine(_ vaccine: VaccineAdministered) {
         showDateChangeOptions(for: vaccine)
+    }
+    
+    // MARK: - Feedback Methods
+    
+    /// Shows a toast message with feedback about the operation
+    func showToast(message: String) {
+        let toastContainer = UIView()
+        toastContainer.backgroundColor = UIColor.black.withAlphaComponent(0.7)
+        toastContainer.layer.cornerRadius = 16
+        toastContainer.clipsToBounds = true
+        toastContainer.translatesAutoresizingMaskIntoConstraints = false
+        
+        let toastLabel = UILabel()
+        toastLabel.textColor = .white
+        toastLabel.font = UIFont.systemFont(ofSize: 14, weight: .medium)
+        toastLabel.textAlignment = .center
+        toastLabel.text = message
+        toastLabel.numberOfLines = 0
+        toastLabel.translatesAutoresizingMaskIntoConstraints = false
+        
+        toastContainer.addSubview(toastLabel)
+        view.addSubview(toastContainer)
+        
+        // Set constraints
+        NSLayoutConstraint.activate([
+            toastLabel.topAnchor.constraint(equalTo: toastContainer.topAnchor, constant: 12),
+            toastLabel.leadingAnchor.constraint(equalTo: toastContainer.leadingAnchor, constant: 16),
+            toastLabel.trailingAnchor.constraint(equalTo: toastContainer.trailingAnchor, constant: -16),
+            toastLabel.bottomAnchor.constraint(equalTo: toastContainer.bottomAnchor, constant: -12),
+            
+            toastContainer.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            toastContainer.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -100),
+            toastContainer.leadingAnchor.constraint(greaterThanOrEqualTo: view.leadingAnchor, constant: 16),
+            toastContainer.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -16)
+        ])
+        
+        // Animate in
+        toastContainer.alpha = 0
+        UIView.animate(withDuration: 0.2, animations: {
+            toastContainer.alpha = 1
+        }, completion: { _ in
+            // Animate out after delay
+            UIView.animate(withDuration: 0.2, delay: 2.0, options: .curveEaseOut, animations: {
+                toastContainer.alpha = 0
+            }, completion: { _ in
+                toastContainer.removeFromSuperview()
+            })
+        })
     }
 }
 
@@ -1068,9 +1267,10 @@ class AdministeredVaccineCell: UITableViewCell {
         dateLabel.translatesAutoresizingMaskIntoConstraints = false
         cardView.addSubview(dateLabel)
         
-        // Configure menu button
-        menuButton.setImage(UIImage(systemName: "ellipsis"), for: .normal)
-        menuButton.tintColor = .systemGray3
+        // Configure date change button with iOS-native calendar icon
+        let dateChangeConfig = UIImage.SymbolConfiguration(pointSize: 18, weight: .medium)
+        menuButton.setImage(UIImage(systemName: "calendar.badge.clock", withConfiguration: dateChangeConfig), for: .normal)
+        menuButton.tintColor = .systemBlue
         menuButton.translatesAutoresizingMaskIntoConstraints = false
         menuButton.addTarget(self, action: #selector(showMenu), for: .touchUpInside)
         cardView.addSubview(menuButton)
@@ -1111,6 +1311,7 @@ class AdministeredVaccineCell: UITableViewCell {
     @objc private func showMenu() {
         guard let vaccine = vaccine, let delegate = delegate else { return }
         
+        // Trigger the date change options in the view controller
         delegate.showOptionsForVaccine(vaccine)
     }
     
@@ -1136,6 +1337,29 @@ class AdministeredVaccineCell: UITableViewCell {
         // Always use syringe icon with systemBlue color
         iconImageView.image = UIImage(systemName: "syringe.fill")
         iconImageView.tintColor = .systemBlue
+    }
+    
+    /// Updates the displayed date in the cell without requiring a full reload
+    func updateDate(newDate: Date) {
+        // Update the stored vaccine object
+        if var vaccine = self.vaccine {
+            vaccine.administeredDate = newDate
+            self.vaccine = vaccine
+        }
+        
+        // Update the displayed date
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateStyle = .medium
+        dateLabel.text = "Administered on \(dateFormatter.string(from: newDate))"
+        
+        // Add a subtle animation to highlight the update
+        UIView.animate(withDuration: 0.3) {
+            self.dateLabel.alpha = 0.3
+        } completion: { _ in
+            UIView.animate(withDuration: 0.3) {
+                self.dateLabel.alpha = 1.0
+            }
+        }
     }
 }
 

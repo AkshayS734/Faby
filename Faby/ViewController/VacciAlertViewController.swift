@@ -2,6 +2,151 @@ import UIKit
 import SwiftUI
 import Combine
 import CoreLocation
+import Foundation
+import Supabase
+
+// Forward declarations of functions from BabyDataModels.swift
+func fetchBaby(with id: UUID) async throws -> Baby {
+    // Get the AppDelegate to access the Supabase client
+    guard let appDelegate = UIApplication.shared.delegate as? AppDelegate else {
+        throw NSError(domain: "BabyDataError", code: 1,
+                     userInfo: [NSLocalizedDescriptionKey: "AppDelegate not available"])
+    }
+    
+    // The supabase client is not optional in AppDelegate
+    let client = appDelegate.supabase
+    
+    // Fetch the baby data from Supabase
+    let response = try await client
+        .from("baby")
+        .select()
+        .eq("uid", value: id.uuidString)
+        .single()
+        .execute()
+    
+    // Parse the baby data using JSONSerialization for more flexibility
+    guard let babyData = try? JSONSerialization.jsonObject(with: response.data, options: []) as? [String: Any] else {
+        throw NSError(domain: "BabyDataError", code: 4,
+                     userInfo: [NSLocalizedDescriptionKey: "Failed to decode baby data"])
+    }
+    
+    // Extract baby properties
+    guard let babyUID = babyData["uid"] as? String,
+          let babyName = babyData["name"] as? String,
+          let babyDOB = babyData["dob"] as? String,
+          let babyGender = babyData["gender"] as? String else {
+        throw NSError(domain: "BabyDataError", code: 5,
+                     userInfo: [NSLocalizedDescriptionKey: "Missing required baby data fields"])
+    }
+    
+    // Create and return the Baby object
+    let baby = Baby(
+        babyId: UUID(uuidString: babyUID) ?? UUID(),
+        name: babyName,
+        dateOfBirth: babyDOB,
+        gender: babyGender.lowercased() == "female" ? .female : .male
+    )
+    
+    return baby
+}
+
+func fetchFirstConnectedBaby() async throws -> Baby {
+    // Get the AppDelegate to access the Supabase client
+    guard let appDelegate = UIApplication.shared.delegate as? AppDelegate else {
+        throw NSError(domain: "BabyDataError", code: 1,
+                     userInfo: [NSLocalizedDescriptionKey: "AppDelegate not available"])
+    }
+    
+    // The supabase client is not optional in AppDelegate
+    let client = appDelegate.supabase
+    
+    // Get the current user ID directly from the Supabase session
+    let userID = try await getCurrentUserID(client: client)
+    guard let parentUUID = userID, !parentUUID.isEmpty else {
+        throw NSError(domain: "BabyDataError", code: 2,
+                     userInfo: [NSLocalizedDescriptionKey: "User not authenticated or invalid user ID"])
+    }
+    
+    print("DEBUG: Using parent UUID: \(parentUUID)")
+    
+    // Fetch the baby associated with this parent
+    do {
+        // First verify the parent exists in the parents table
+        let parentResponse = try await client
+            .from("parents")
+            .select("uid")
+            .eq("uid", value: parentUUID)
+            .single()
+            .execute()
+        
+        // Print the raw parent JSON data for debugging
+        let parentJsonString = String(data: parentResponse.data, encoding: .utf8) ?? "Unable to convert data to string"
+        print("DEBUG: Raw parent JSON data: \(parentJsonString)")
+        
+        // Verify parent data
+        guard let parentData = try? JSONSerialization.jsonObject(with: parentResponse.data, options: []) as? [String: Any],
+              let parentUID = parentData["uid"] as? String else {
+            throw NSError(domain: "BabyDataError", code: 3,
+                         userInfo: [NSLocalizedDescriptionKey: "Parent not found"])
+        }
+        
+        // Now fetch the baby data using the verified parent ID
+        let babyResponse = try await client
+            .from("baby")
+            .select()
+            .eq("user_id", value: parentUID)
+            .single()
+            .execute()
+        
+        // Print the raw baby JSON data for debugging
+        let babyJsonString = String(data: babyResponse.data, encoding: .utf8) ?? "Unable to convert data to string"
+        print("DEBUG: Raw baby JSON data: \(babyJsonString)")
+        
+        // Parse the baby data using JSONSerialization for more flexibility
+        guard let babyData = try? JSONSerialization.jsonObject(with: babyResponse.data, options: []) as? [String: Any] else {
+            throw NSError(domain: "BabyDataError", code: 4,
+                         userInfo: [NSLocalizedDescriptionKey: "Failed to decode baby data"])
+        }
+        
+        // Extract baby properties
+        guard let babyUID = babyData["uid"] as? String,
+              let babyName = babyData["name"] as? String,
+              let babyDOB = babyData["dob"] as? String,
+              let babyGender = babyData["gender"] as? String else {
+            throw NSError(domain: "BabyDataError", code: 5,
+                         userInfo: [NSLocalizedDescriptionKey: "Missing required baby data fields"])
+        }
+        
+        // Save the baby ID for future reference
+        UserDefaults.standard.set(babyUID, forKey: "selectedBabyId")
+        
+        // Create and return the Baby object
+        let baby = Baby(
+            babyId: UUID(uuidString: babyUID) ?? UUID(),
+            name: babyName,
+            dateOfBirth: babyDOB,
+            gender: babyGender.lowercased() == "female" ? .female : .male
+        )
+        
+        print("DEBUG: Successfully fetched baby: \(baby.name) with ID: \(baby.babyID)")
+        return baby
+        
+    } catch {
+        print("DEBUG: Error fetching baby data: \(error)")
+        throw NSError(domain: "BabyDataError", code: 6,
+                     userInfo: [NSLocalizedDescriptionKey: "Failed to fetch baby data: \(error.localizedDescription)"])
+    }
+}
+
+func getCurrentUserID(client: SupabaseClient) async throws -> String? {
+    do {
+        let session = try await client.auth.session
+        return session.user.id.uuidString
+    } catch {
+        print("Error fetching user ID: \(error.localizedDescription)")
+        return nil
+    }
+}
 
 // MARK: - Vaccine Card View
 struct VaccineCardView: View {
@@ -66,26 +211,29 @@ struct VaccineListView: View {
     let onVaccineTap: (Vaccine) -> Void
     let refreshAction: () -> Void
     
-    @Environment(\.colorScheme) private var colorScheme
-    @ScaledMetric var scaledPadding: CGFloat = 16
+    @State private var isRefreshing = false
     
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: scaledPadding) {
-                Text("Available Vaccines")
-                    .font(.title3)
-                    .fontWeight(.semibold)
-                    .padding(.horizontal, scaledPadding)
-                    .padding(.bottom, 8)
-                    .accessibilityAddTraits(.isHeader)
-                
-                if vaccines.isEmpty {
-                    EmptyStateView()
-                } else {
-                    VaccinesList(vaccines: vaccines, babyBirthDate: babyBirthDate, onVaccineTap: onVaccineTap)
+            RefreshControl(isRefreshing: $isRefreshing, onRefresh: refreshAction)
+            
+            if vaccines.isEmpty {
+                EmptyStateView()
+                    .padding(.top, 100) // Add padding to make empty state more visible
+            } else {
+                VStack(spacing: 12) {
+                    // Use ForEach directly instead of VaccinesList
+                    ForEach(vaccines) { vaccine in
+                        VaccineCardView(
+                            vaccine: vaccine,
+                            babyBirthDate: babyBirthDate,
+                            onTap: { onVaccineTap(vaccine) }
+                        )
+                        .padding(.horizontal, 16)
+                    }
                 }
+                .padding(.vertical, 8)
             }
-            .padding(.vertical, 16)
         }
         .background(Color(.systemGroupedBackground).edgesIgnoringSafeArea(.all))
     }
@@ -149,7 +297,13 @@ struct RefreshControl: View {
                             .onAppear {
                                 if !isRefreshing {
                                     isRefreshing = true
-                                    onRefresh()
+                                    DispatchQueue.main.async {
+                                        onRefresh()
+                                        // Automatically reset refreshing state after a short delay
+                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                            isRefreshing = false
+                                        }
+                                    }
                                 }
                             }
                         Spacer()
@@ -188,6 +342,9 @@ class VacciAlertViewController: UIViewController, TimePeriodCollectionViewDelega
         indicator.hidesWhenStopped = true
         indicator.color = .systemGray
         indicator.translatesAutoresizingMaskIntoConstraints = false
+        indicator.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.7)
+        indicator.layer.cornerRadius = 10
+        indicator.layer.masksToBounds = true
         return indicator
     }()
     
@@ -232,16 +389,31 @@ class VacciAlertViewController: UIViewController, TimePeriodCollectionViewDelega
             }
         }
         
-        // Initial data load
-        if let currentBaby = BabyDataModel.shared.babyList.first(where: { $0.babyID == UserDefaultsManager.shared.currentBabyId }) {
-            print("🔍 DEBUG: Loading data for current baby: \(currentBaby.name)")
-            processBabyData(currentBaby)
-            loadVaccinesByTimePeriod("Birth")
-        } else if let firstBaby = BabyDataModel.shared.babyList.first {
-            print("🔍 DEBUG: Loading data for first baby: \(firstBaby.name)")
-            UserDefaultsManager.shared.currentBabyId = firstBaby.babyID
-            processBabyData(firstBaby)
-            loadVaccinesByTimePeriod("Birth")
+        // Initial data load using current baby ID from UserDefaults
+        Task {
+            do {
+                // Try to get current baby ID from UserDefaults
+                if let currentBabyId = UserDefaultsManager.shared.currentBabyId {
+                    // Get baby details from Supabase
+                    let baby = try await fetchBaby(with: currentBabyId)
+                    print("🔍 DEBUG: Loading data for current baby: \(baby.name)")
+                    await MainActor.run {
+                        processBabyData(baby)
+                        loadVaccinesByTimePeriod("Birth")
+                    }
+                } else {
+                    // Fetch first baby connected to parent
+                    let baby = try await fetchFirstConnectedBaby()
+                    print("🔍 DEBUG: Loading data for first baby: \(baby.name)")
+                    await MainActor.run {
+                        UserDefaultsManager.shared.currentBabyId = baby.babyID
+                        processBabyData(baby)
+                        loadVaccinesByTimePeriod("Birth")
+                    }
+                }
+            } catch {
+                print("❌ ERROR: Failed to load baby data: \(error)")
+            }
         }
     }
     
@@ -366,10 +538,17 @@ class VacciAlertViewController: UIViewController, TimePeriodCollectionViewDelega
     
     private func setupVaccineListView(with vaccines: [Vaccine]) {
         print("🎨 DEBUG: Setting up vaccine list view with \(vaccines.count) vaccines")
+        print("🔍 DEBUG: Vaccine details: \(vaccines.map { "\($0.name) (\($0.id))" }.joined(separator: ", "))")
+        
+        // Remove any existing empty state message
+        emptyStateLabel.isHidden = true
         
         // If we already have a hosting controller, just update its root view
         if let existingHostingController = vaccineListHostingController {
             print("🔄 DEBUG: Updating existing hosting controller")
+            
+            // Make sure the view is visible
+            existingHostingController.view.isHidden = false
             
             // Use animation for smoother transitions
             UIView.transition(with: existingHostingController.view, duration: 0.25, options: .transitionCrossDissolve) {
@@ -404,19 +583,28 @@ class VacciAlertViewController: UIViewController, TimePeriodCollectionViewDelega
         let hostingController = UIHostingController(rootView: vaccineListView)
         vaccineListHostingController = hostingController
         
-        addChild(hostingController)
+        // Configure the hosting controller view
         hostingController.view.translatesAutoresizingMaskIntoConstraints = false
+        hostingController.view.backgroundColor = .systemGroupedBackground
+        
+        // Add to view hierarchy
+        addChild(hostingController)
         view.addSubview(hostingController.view)
         hostingController.didMove(toParent: self)
         
+        // Set constraints with priority to ensure proper layout
+        let topConstraint = hostingController.view.topAnchor.constraint(equalTo: timePeriodCollectionView.bottomAnchor, constant: 16)
+        topConstraint.priority = .required
+        
         NSLayoutConstraint.activate([
-            hostingController.view.topAnchor.constraint(equalTo: timePeriodCollectionView.bottomAnchor, constant: 16),
+            topConstraint,
             hostingController.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             hostingController.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             hostingController.view.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
         
-        hostingController.view.backgroundColor = .systemGroupedBackground
+        // Force layout update
+        view.layoutIfNeeded()
     }
     
     // MARK: - TimePeriodCollectionViewDelegate
@@ -427,13 +615,22 @@ class VacciAlertViewController: UIViewController, TimePeriodCollectionViewDelega
     
     // MARK: - Data Loading
     private func loadBabyDataSilently() async {
-        if let currentBabyId = UserDefaultsManager.shared.currentBabyId,
-           let currentBaby = BabyDataModel.shared.babyList.first(where: { $0.babyID == currentBabyId }) {
-            processBabyData(currentBaby)
-        } else if let firstBaby = BabyDataModel.shared.babyList.first {
-            UserDefaultsManager.shared.currentBabyId = firstBaby.babyID
-            processBabyData(firstBaby)
-        } else {
+        do {
+            if let currentBabyId = UserDefaultsManager.shared.currentBabyId {
+                // Get baby details from Supabase
+                let baby = try await fetchBaby(with: currentBabyId)
+                await MainActor.run {
+                    processBabyData(baby)
+                }
+            } else {
+                // Fetch first baby connected to parent
+                let baby = try await fetchFirstConnectedBaby()
+                await MainActor.run {
+                    UserDefaultsManager.shared.currentBabyId = baby.babyID
+                    processBabyData(baby)
+                }
+            }
+        } catch {
             await MainActor.run {
                 updateEmptyState("No baby data available. Please add a baby first.")
             }
@@ -474,7 +671,18 @@ class VacciAlertViewController: UIViewController, TimePeriodCollectionViewDelega
         
         // Show loading indicator on main thread
         DispatchQueue.main.async { [weak self] in
-            self?.loadingIndicator.startAnimating()
+            guard let self = self else { return }
+            
+            // Make sure the loading indicator is visible and in front
+            self.loadingIndicator.startAnimating()
+            self.view.bringSubviewToFront(self.loadingIndicator)
+            
+            // Add a semi-transparent background to the loading indicator
+            self.loadingIndicator.frame = CGRect(x: 0, y: 0, width: 50, height: 50)
+            self.loadingIndicator.center = self.view.center
+            
+            // Hide empty state while loading
+            self.emptyStateLabel.isHidden = true
         }
         
         // Create new loading task
@@ -486,18 +694,59 @@ class VacciAlertViewController: UIViewController, TimePeriodCollectionViewDelega
             
             do {
                 print("🔍 DEBUG: Starting to fetch data")
-                guard let currentBabyId = UserDefaultsManager.shared.currentBabyId else {
-                    print("❌ DEBUG: No baby ID found")
-                    throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "No baby selected"])
+                
+                // Always fetch the first connected baby for the current user
+                // to ensure we're using the correct baby ID
+                let baby: Baby
+                do {
+                    baby = try await fetchFirstConnectedBaby()
+                    let currentBabyId = baby.babyID
+                    
+                    // Update the UserDefaults with the current baby ID
+                    UserDefaultsManager.shared.currentBabyId = currentBabyId
+                    
+                    // Update baby birth date for correct age calculation
+                    let inputFormatter = DateFormatter()
+                    inputFormatter.dateFormat = "yyyy-MM-dd" // Updated format to match the data
+                    
+                    if let birthDate = inputFormatter.date(from: baby.dateOfBirth) {
+                        await MainActor.run {
+                            self.babyBirthDate = birthDate
+                        }
+                    } else {
+                        // Try alternate format
+                        inputFormatter.dateFormat = "ddMMyyyy"
+                        if let birthDate = inputFormatter.date(from: baby.dateOfBirth) {
+                            await MainActor.run {
+                                self.babyBirthDate = birthDate
+                            }
+                        }
+                    }
+                    
+                    print("✅ DEBUG: Successfully fetched current baby: \(baby.name) with ID: \(currentBabyId)")
+                    print("📅 DEBUG: Baby birth date: \(self.babyBirthDate)")
+                } catch {
+                    print("❌ DEBUG: Could not find any connected baby: \(error.localizedDescription)")
+                    throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Could not find any connected baby: \(error.localizedDescription)"])
                 }
+                
+                let currentBabyId = baby.babyID
                 
                 let (lowerWeeks, upperWeeks) = self.convertPeriodToWeeks(period)
                 print("📊 DEBUG: Fetching vaccines for weeks \(lowerWeeks)-\(upperWeeks)")
                 
-                async let allVaccinesTask = self.getAllVaccines()
-                async let scheduledVaccinesTask = VaccineScheduleManager.shared.fetchSchedules(forId: currentBabyId)
+                // Fetch all vaccines first
+                let allVaccines = try await self.getAllVaccines()
+                print("📋 DEBUG: Total vaccines in database: \(allVaccines.count)")
                 
-                let (allVaccines, scheduledVaccines) = try await (allVaccinesTask, scheduledVaccinesTask)
+                // Log all vaccines for debugging
+                for (index, vaccine) in allVaccines.enumerated() {
+                    print("🔢 DEBUG: Vaccine \(index+1): \(vaccine.name), Weeks: \(vaccine.startWeek)-\(vaccine.endWeek)")
+                }
+                
+                // Fetch scheduled vaccines
+                let scheduledVaccines = try await VaccineScheduleManager.shared.fetchSchedules(forId: currentBabyId)
+                print("📋 DEBUG: Total scheduled vaccines: \(scheduledVaccines.count)")
                 
                 if Task.isCancelled {
                     print("🚫 DEBUG: Task was cancelled")
@@ -506,26 +755,42 @@ class VacciAlertViewController: UIViewController, TimePeriodCollectionViewDelega
                 
                 // Process results
                 let scheduledVaccineIds = scheduledVaccines.map { $0.vaccineId }
+                
+                // Filter by age range
                 let ageAppropriateVaccines = allVaccines.filter { vaccine in
-                    return vaccine.startWeek >= lowerWeeks && vaccine.endWeek <= upperWeeks
+                    let isInRange = vaccine.startWeek >= lowerWeeks && vaccine.endWeek <= upperWeeks
+                    print("🔍 DEBUG: Vaccine \(vaccine.name) in range \(lowerWeeks)-\(upperWeeks)? \(isInRange)")
+                    return isInRange
                 }
+                
+                print("📊 DEBUG: Age-appropriate vaccines: \(ageAppropriateVaccines.count)")
+                
+                // Filter out already scheduled vaccines
                 let availableVaccines = ageAppropriateVaccines.filter { vaccine in
-                    !scheduledVaccineIds.contains(vaccine.id)
+                    let isNotScheduled = !scheduledVaccineIds.contains(vaccine.id)
+                    print("🔍 DEBUG: Vaccine \(vaccine.name) already scheduled? \(!isNotScheduled)")
+                    return isNotScheduled
                 }
                 
                 print("📊 DEBUG: Found \(availableVaccines.count) available vaccines")
                 
                 await MainActor.run {
                     print("🎯 DEBUG: Updating UI with vaccines")
-                    // Stop the loading indicator
-                    self.loadingIndicator.stopAnimating()
+                    
+                    // Always update the vaccine data
+                    self.vaccineData = availableVaccines
                     
                     if availableVaccines.isEmpty {
                         self.updateEmptyState("No vaccines found for \(period)")
                     } else {
-                        self.vaccineData = availableVaccines
                         self.setupVaccineListView(with: availableVaccines)
                         self.emptyStateLabel.isHidden = true
+                    }
+                    
+                    // Stop the loading indicator after UI is updated
+                    // This ensures it's removed after the vaccine list is shown
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        self.loadingIndicator.stopAnimating()
                     }
                 }
             } catch {
@@ -634,15 +899,21 @@ class VacciAlertViewController: UIViewController, TimePeriodCollectionViewDelega
     private func ensureCurrentBabyIdIsSet() {
         // Check if a current baby ID is already set
         if UserDefaultsManager.shared.currentBabyId == nil {
-            // If not set, use the first baby in the list (if available)
-            if let firstBaby = BabyDataModel.shared.babyList.first {
-                print("🔧 No current baby ID set, using first baby: \(firstBaby.name) (ID: \(firstBaby.babyID))")
-                UserDefaultsManager.shared.currentBabyId = firstBaby.babyID
-            } else {
-                print("⚠️ No babies in baby list, cannot set current baby ID")
+            // If not set, fetch the first baby connected to parent
+            Task {
+                do {
+                    let baby = try await fetchFirstConnectedBaby()
+                    print("🔧 No current baby ID set, using first baby: \(baby.name) (ID: \(baby.babyID))")
+                    UserDefaultsManager.shared.currentBabyId = baby.babyID
+                } catch {
+                    print("⚠️ Error fetching connected baby: \(error)")
+                }
             }
         } else {
             print("✅ Current baby ID already set: \(UserDefaultsManager.shared.currentBabyId!)")
         }
     }
+    
+    // MARK: - Baby Data Fetching
+    // Using shared methods from BabyDataModels.swift
 }

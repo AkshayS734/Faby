@@ -20,12 +20,13 @@ class Baby {
     var headCircumference: [Double: Date] = [:]
     var measurementUpdated: (() -> Void)?
 
-    init(name: String, dateOfBirth: String, gender: Gender) {
-        self.babyID = UUID()
-        self.name = name
-        self.dateOfBirth = dateOfBirth
-        self.gender = gender
-    }
+    init(babyId : UUID,name: String, dateOfBirth: String, gender: Gender) {
+           self.babyID = babyId
+           self.name = name
+           self.dateOfBirth = dateOfBirth
+           self.gender = gender
+       }
+
 
     func updateMilestonesAchieved(_ milestone: GrowthMilestone, date: Date, image: UIImage? = nil, videoURL: URL? = nil, caption: String? = nil) {
         milestone.isAchieved = true

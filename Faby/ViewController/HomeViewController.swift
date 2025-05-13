@@ -1,5 +1,6 @@
 import UIKit
 import SwiftUI
+import Foundation
 
 class HomeViewController: UIViewController {
     // For storing navigation bar blur effect view
@@ -12,7 +13,8 @@ class HomeViewController: UIViewController {
     var scheduledVaccines: [[String: String]] = []
     private var administeredVaccines: [[String: String]] = []
     var vaccineView: UIView?
-    var baby = BabyDataModel.shared.babyList[0]
+    // Current baby, will be fetched from Supabase
+    var baby: Baby?
     
     private let scrollView: UIScrollView = {
         let scrollView = UIScrollView()
@@ -98,6 +100,12 @@ class HomeViewController: UIViewController {
     private let vaccineContainerView: UIView = {
         let view = UIView()
         view.translatesAutoresizingMaskIntoConstraints = false
+        view.backgroundColor = .white
+        view.layer.cornerRadius = 16
+        view.layer.shadowColor = UIColor.systemGray4.cgColor
+        view.layer.shadowOpacity = 0.3
+        view.layer.shadowOffset = CGSize(width: 0, height: 2)
+        view.layer.shadowRadius = 6
         return view
     }()
     
@@ -171,7 +179,7 @@ class HomeViewController: UIViewController {
         
         // Set up navigation bar with large title
         navigationController?.navigationBar.prefersLargeTitles = true
-        navigationItem.title = baby.name
+        navigationItem.title = baby?.name ?? "Home"
         
         // Setup the navigation bar with gradient and blur effects
         setupNavigationBar()
@@ -196,11 +204,32 @@ class HomeViewController: UIViewController {
         todaysBitesCollectionView.dataSource = self
         todaysBitesCollectionView.register(TodayBiteCollectionViewCell.self, forCellWithReuseIdentifier: "BitesCell")
         let tapGesture = UITapGestureRecognizer(target: self, action: #selector(openTodBiteViewController))
-                todaysBitesLabel.addGestureRecognizer(tapGesture)
+        todaysBitesLabel.addGestureRecognizer(tapGesture)
         
         setupUI()
         setupDelegates()
-        loadVaccinations() // Initial load of vaccinations
+        
+        // Fetch current baby data first
+        Task {
+            do {
+                self.baby = try await fetchCurrentBaby()
+                // Now that we have the baby data, we can load vaccinations
+                await MainActor.run {
+                    loadVaccinations()
+                    // Update UI with baby name
+                    if let babyName = baby?.name {
+                        title = "\(babyName)'s Home"
+                    }
+                }
+            } catch {
+                print("❌ Error fetching baby data: \(error)")
+                // Still try to load vaccinations with default UUID
+                await MainActor.run {
+                    loadVaccinations()
+                }
+            }
+        }
+        
         // Navigation title is set directly in viewDidLoad instead of using updateNameLabel()
         updateDateLabel()
         updateTodaysBites()
@@ -210,6 +239,16 @@ class HomeViewController: UIViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         print("🚀 HomeViewController viewWillAppear")
+        
+        // Ensure large title is always displayed when coming from any tab
+        navigationController?.navigationBar.prefersLargeTitles = true
+        navigationItem.largeTitleDisplayMode = .always
+        
+        // If we have baby data, update the title
+        if let babyName = baby?.name {
+            title = "\(babyName)'s Home"
+        }
+        
         loadVaccinations() // Reload vaccinations when view appears
         updateSpecialMoments()
         updateDateLabel()
@@ -226,10 +265,27 @@ class HomeViewController: UIViewController {
         gradientLayer.frame = view.bounds
     }
     
+    // This method has been replaced with the implementation at line ~635 that uses tab bar navigation
+    
+    // MARK: - Baby Data Fetching
+    
+    /// Fetch the current baby data directly from Supabase
+    private func fetchCurrentBaby() async throws -> Baby {
+        // Try to get current baby ID from UserDefaults
+        if let currentBabyId = UserDefaultsManager.shared.currentBabyId {
+            // Get baby details from Supabase
+            return try await fetchBaby(with: currentBabyId)
+        }
+        
+        // If no current baby ID, fetch first connected baby
+        return try await fetchFirstConnectedBaby()
+    }
+    
     @objc func goToSettings() {
         let settingsVC = SettingsViewController()
         navigationController?.pushViewController(settingsVC, animated: true)
     }
+    
     @objc func updateSpecialMoments() {
         DispatchQueue.main.async {
             self.removeEmbeddedView()
@@ -374,7 +430,7 @@ class HomeViewController: UIViewController {
                 
                 let schedule = VaccineSchedule(
                     id: id,
-                    babyID: BabyDataModel.shared.babyList[0].babyID,
+                    babyID: baby?.babyID ?? UUID(),
                     vaccineId: vaccineId,
                     hospital: hospital,
                     date: date,
@@ -409,7 +465,7 @@ class HomeViewController: UIViewController {
                 oldVaccineViewController.removeFromParent()
             }
             
-            // Create the vaccine cards view with the callback
+            // Create the vaccine cards view with the callbacks for both completion and navigation
             let vaccineCardsView = UIHostingController(rootView: VaccineCardsView(
                 vaccines: vaccineSchedulesWithNames,
                 onVaccineCompleted: { [weak self] tuple in
@@ -436,6 +492,11 @@ class HomeViewController: UIViewController {
                             print("❌ Error completing vaccine: \(error)")
                         }
                     }
+                },
+                onVaccineCardTapped: { [weak self] tuple in
+                    let (vaccine, name) = tuple
+                    print("🔍 Navigating to details for vaccine: \(name) (ID: \(vaccine.id))")
+                    self?.navigateToVaccineDetails(vaccine: vaccine, vaccineName: name)
                 }
             ))
             // Add the view controller as a child
@@ -721,13 +782,38 @@ class HomeViewController: UIViewController {
         ])
         
         specialMomentsVC.didMove(toParent: self)
-        
     }
     
+    // MARK: - Actions and Handlers
     @objc private func addMealPlanTapped() {
-        openTodBiteViewController()
+        print("Add meal plan tapped")
+        // Implement meal plan addition navigation
     }
     
+    // MARK: - Navigation
+    private func navigateToVaccineDetails(vaccine: VaccineSchedule, vaccineName: String) {
+        // Create the VaccineReminderViewController
+        let vaccineReminderVC = VaccineReminderViewController()
+        
+        // Set any needed properties or data
+        vaccineReminderVC.selectedVaccineId = vaccine.vaccineId.uuidString
+        vaccineReminderVC.selectedVaccineName = vaccineName
+        vaccineReminderVC.selectedScheduleId = vaccine.id.uuidString
+        
+        // Configure any initial state if needed
+        vaccineReminderVC.hidesBottomBarWhenPushed = true // Hide bottom tab bar for a cleaner detail view
+        
+        // Add smooth iOS-native transition animation
+        UIView.transition(with: navigationController!.view, 
+                          duration: 0.3, 
+                          options: .transitionCrossDissolve, 
+                          animations: nil, 
+                          completion: nil)
+        
+        // Navigate to the vaccine details screen
+        navigationController?.pushViewController(vaccineReminderVC, animated: true)
+    }
+
     private func updateTodaysBitesEmptyState() {
         if todaysBitesData.isEmpty {
             todaysBitesCollectionView.isHidden = true
@@ -767,58 +853,85 @@ struct VaccineCardsView: View {
     @State private var displayedVaccines: [(VaccineSchedule, String)]
     let vaccines: [(VaccineSchedule, String)]
     var onVaccineCompleted: ((VaccineSchedule, String)) -> Void
+    var onVaccineCardTapped: ((VaccineSchedule, String)) -> Void
     
-    init(vaccines: [(VaccineSchedule, String)], onVaccineCompleted: @escaping ((VaccineSchedule, String)) -> Void) {
+    init(vaccines: [(VaccineSchedule, String)], 
+         onVaccineCompleted: @escaping ((VaccineSchedule, String)) -> Void,
+         onVaccineCardTapped: @escaping ((VaccineSchedule, String)) -> Void) {
         self.vaccines = vaccines
         self._displayedVaccines = State(initialValue: vaccines)
         self.onVaccineCompleted = onVaccineCompleted
+        self.onVaccineCardTapped = onVaccineCardTapped
     }
     
     var body: some View {
         VStack {
             if displayedVaccines.isEmpty {
-                HStack {
-                    Image(systemName: "syringe")
-                        .font(.system(size: 24))
-                        .foregroundColor(.gray)
-                    Text("No upcoming vaccinations")
-                        .font(.system(size: 16))
-                        .foregroundColor(.gray)
-                }
-                .frame(height: 100)
-                .background(Color(UIColor(hex: "#f2f2f7")))
+                emptyVaccineView
             } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(spacing: 12) {
-                        ForEach(Array(displayedVaccines.enumerated()), id: \.element.0.id) { index, tuple in
-                            let (vaccine, vaccineName) = tuple
-                            VaccineCard(
-                                vaccine: vaccine,
-                                vaccineName: vaccineName,
-                                onComplete: {
-                                    print("📱 Vaccine card tapped for completion: \(vaccine.vaccineId)")
-                                    // Use withAnimation to smoothly remove the card
-                                    withAnimation(.easeOut(duration: 0.3)) {
-                                        // Find and remove the completed vaccine from our local array
-                                        if let index = displayedVaccines.firstIndex(where: { $0.0.id == vaccine.id }) {
-                                            displayedVaccines.remove(at: index)
-                                        }
-                                    }
-                                    // Call the completion handler to update the parent view/model
-                                    onVaccineCompleted(tuple)
-                                }
-                            )
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 4)
-                }
-                .frame(height: 120)
-                .animation(.default, value: displayedVaccines.count) // Add animation for the container
+                vaccineCardsListView
             }
         }
         .frame(height: 160)
-        .background(Color(UIColor(hex: "#f2f2f7")))
+        .background(Color(.white))
+    }
+    
+    // Break down complex SwiftUI expressions into smaller views
+    private var emptyVaccineView: some View {
+        HStack {
+            Image(systemName: "syringe")
+                .font(.system(size: 24))
+                .foregroundColor(.gray)
+            Text("No upcoming vaccinations")
+                .font(.system(size: 16))
+                .foregroundColor(.gray)
+        }
+        .frame(height: 100)
+        .padding(16)
+        .background(Color(UIColor.systemGray6))
+        .cornerRadius(16)
+        .shadow(color: Color(.systemGray4).opacity(0.3), radius: 6, x: 0, y: 2)
+    }
+    
+    private var vaccineCardsListView: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            LazyHStack(spacing: 12) {
+                ForEach(Array(displayedVaccines.enumerated()), id: \.element.0.id) { index, tuple in
+                    vaccineCardView(for: tuple)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 4)
+        }
+        .frame(height: 120)
+        .animation(.default, value: displayedVaccines.count)
+    }
+    
+    private func vaccineCardView(for tuple: (VaccineSchedule, String)) -> some View {
+        let (vaccine, vaccineName) = tuple
+        return VaccineCard(
+            vaccine: vaccine,
+            vaccineName: vaccineName,
+            onComplete: {
+                handleVaccineCompletion(vaccine: vaccine, tuple: tuple)
+            },
+            onCardTapped: {
+                onVaccineCardTapped(tuple)
+            }
+        )
+    }
+    
+    private func handleVaccineCompletion(vaccine: VaccineSchedule, tuple: (VaccineSchedule, String)) {
+        print("📱 Vaccine card tapped for completion: \(vaccine.vaccineId)")
+        // Use withAnimation to smoothly remove the card
+        withAnimation(.easeOut(duration: 0.3)) {
+            // Find and remove the completed vaccine from our local array
+            if let index = displayedVaccines.firstIndex(where: { $0.0.id == vaccine.id }) {
+                displayedVaccines.remove(at: index)
+            }
+        }
+        // Call the completion handler to update the parent view/model
+        onVaccineCompleted(tuple)
     }
 }
 
@@ -826,14 +939,19 @@ struct VaccineCard: View {
     let vaccine: VaccineSchedule
     let vaccineName: String
     let onComplete: () -> Void
+    let onCardTapped: () -> Void
     @State private var isCompleted: Bool
     @State private var showConfirmation = false
     @State private var showReschedulePrompt = false
     
-    init(vaccine: VaccineSchedule, vaccineName: String, onComplete: @escaping () -> Void) {
+    init(vaccine: VaccineSchedule,
+         vaccineName: String,
+         onComplete: @escaping () -> Void,
+         onCardTapped: @escaping () -> Void) {
         self.vaccine = vaccine
         self.vaccineName = vaccineName
         self.onComplete = onComplete
+        self.onCardTapped = onCardTapped
         _isCompleted = State(initialValue: vaccine.isAdministered)
     }
     
@@ -863,21 +981,29 @@ struct VaccineCard: View {
                 }
                 .disabled(isCompleted)
             }
+            .contentShape(Rectangle()) // Make entire row tappable
             
             Divider()
                 .padding(.vertical, 2)
             
             // Date and Hospital Info
             VStack(alignment: .leading, spacing: 8) {
+                // Create a variable for formatted date string outside the HStack
+                let formattedDate: String = {
+                    let dateFormatter = DateFormatter()
+                    dateFormatter.dateStyle = .medium
+                    return dateFormatter.string(from: vaccine.date)
+                }()
+                
                 HStack(spacing: 8) {
                     Image(systemName: "calendar")
                         .foregroundColor(Color(.systemGray))
                         .font(.system(size: 14))
                         .frame(width: 16)
                     
-                    Text(formatDate(vaccine.date))
-                        .font(.subheadline)
-                        .foregroundColor(Color(.darkText))
+                    Text(formattedDate)
+                        .font(.system(size: 14))
+                        .foregroundColor(Color(.darkGray))
                 }
                 
                 HStack(spacing: 8) {
@@ -887,17 +1013,21 @@ struct VaccineCard: View {
                         .frame(width: 16)
                     
                     Text(vaccine.hospital)
-                        .font(.subheadline)
-                        .foregroundColor(Color(.darkText))
+                        .font(.system(size: 14))
+                        .foregroundColor(Color(.darkGray))
                         .lineLimit(1)
                 }
             }
         }
         .padding(16)
         .frame(width: 280, height: 130)
-        .background(Color(.systemBackground))
+        .background(Color(UIColor.systemGray6))
         .cornerRadius(16)
         .shadow(color: Color(.systemGray4).opacity(0.3), radius: 6, x: 0, y: 2)
+        .contentShape(Rectangle()) // Make entire card tappable
+        .onTapGesture {
+            onCardTapped()
+        }
         .alert(isPresented: $showConfirmation) {
             Alert(
                 title: Text("Confirm Vaccination"),
@@ -907,8 +1037,8 @@ struct VaccineCard: View {
                     // Just call onComplete immediately - the parent view will handle the animation
                     onComplete()
                 },
-                secondaryButton: .cancel(Text("Reschedule")) {
-                    showReschedulePrompt = true
+                secondaryButton: .cancel(Text("No")) {
+                    // Just close the dialog without any action
                 }
             )
         }
@@ -922,70 +1052,70 @@ struct VaccineCard: View {
         formatter.dateStyle = .medium
         return formatter.string(from: date)
     }
-}
-struct RescheduleVaccineView: View {
-    let vaccine: VaccineSchedule
-    let vaccineName: String
-    @State private var selectedDate = Date()
-    @Environment(\.presentationMode) var presentationMode
-    
-    var body: some View {
-        NavigationView {
-            VStack(spacing: 20) {
-                Text("Reschedule \(vaccineName)")
-                    .font(.headline)
-                    .padding(.top)
-                
-                DatePicker(
-                    "Select New Date",
-                    selection: $selectedDate,
-                    displayedComponents: .date
-                )
-                .datePickerStyle(GraphicalDatePickerStyle())
-                .padding()
-                
-                Button(action: {
-                    // Here you would implement the actual rescheduling logic
-                    // connecting to your VaccineScheduleManager
-                    Task {
-                        do {
-                            try await VaccineScheduleManager.shared.updateSchedule(
-                                recordId: vaccine.id,
-                                newDate: selectedDate,
-                                newHospital: Hospital(
-                                    id: UUID(),
-                                    babyId: vaccine.babyID,
-                                    name: vaccine.hospital,
-                                    address: vaccine.location,
-                                    distance: 0.0
-                                )
-                            )
-                            // Post notification to refresh the view
-                            NotificationCenter.default.post(
-                                name: NSNotification.Name("NewVaccineScheduled"),
-                                object: nil
-                            )
-                        } catch {
-                            print("Failed to reschedule vaccine: \(error)")
-                        }
-                    }
-                    presentationMode.wrappedValue.dismiss()
-                }) {
-                    Text("Save New Date")
+    struct RescheduleVaccineView: View {
+        let vaccine: VaccineSchedule
+        let vaccineName: String
+        @State private var selectedDate = Date()
+        @Environment(\.presentationMode) var presentationMode
+        
+        var body: some View {
+            NavigationView {
+                VStack(spacing: 20) {
+                    Text("Reschedule \(vaccineName)")
                         .font(.headline)
-                        .foregroundColor(.white)
-                        .frame(height: 50)
-                        .frame(maxWidth: .infinity)
-                        .background(Color.blue)
-                        .cornerRadius(10)
+                        .padding(.top)
+                    
+                    DatePicker(
+                        "Select New Date",
+                        selection: $selectedDate,
+                        displayedComponents: .date
+                    )
+                    .datePickerStyle(GraphicalDatePickerStyle())
+                    .padding()
+                    
+                    Button(action: {
+                        // Here you would implement the actual rescheduling logic
+                        // connecting to your VaccineScheduleManager
+                        Task {
+                            do {
+                                try await VaccineScheduleManager.shared.updateSchedule(
+                                    recordId: vaccine.id,
+                                    newDate: selectedDate,
+                                    newHospital: Hospital(
+                                        id: UUID(),
+                                        babyId: vaccine.babyID,
+                                        name: vaccine.hospital,
+                                        address: vaccine.location,
+                                        distance: 0.0
+                                    )
+                                )
+                                // Post notification to refresh the view
+                                NotificationCenter.default.post(
+                                    name: NSNotification.Name("NewVaccineScheduled"),
+                                    object: nil
+                                )
+                            } catch {
+                                print("Failed to reschedule vaccine: \(error)")
+                            }
+                        }
+                        presentationMode.wrappedValue.dismiss()
+                    }) {
+                        Text("Save New Date")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .frame(height: 50)
+                            .frame(maxWidth: .infinity)
+                            .background(Color.blue)
+                            .cornerRadius(10)
+                    }
+                    .padding(.horizontal)
+                    
+                    Spacer()
                 }
-                .padding(.horizontal)
-                
-                Spacer()
+                .navigationBarItems(trailing: Button("Cancel") {
+                    presentationMode.wrappedValue.dismiss()
+                })
             }
-            .navigationBarItems(trailing: Button("Cancel") {
-                presentationMode.wrappedValue.dismiss()
-            })
         }
     }
 }

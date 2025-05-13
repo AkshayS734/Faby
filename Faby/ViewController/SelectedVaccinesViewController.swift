@@ -1,4 +1,5 @@
 import UIKit
+import Foundation
 
 class SelectedVaccinesViewController: UIViewController {
     
@@ -265,9 +266,57 @@ class SelectedVaccinesViewController: UIViewController {
             return
         }
         
-        // Just navigate to VacciAlertViewController, do not save here
-        let vacciAlertVC = VacciAlertViewController()
-        self.navigationController?.pushViewController(vacciAlertVC, animated: true)
+        // Show loading indicator
+        let loadingAlert = UIAlertController(title: "Saving Vaccines", message: "Please wait...", preferredStyle: .alert)
+        present(loadingAlert, animated: true)
+        
+        // Save the selected vaccines to the administered_vaccines table
+        Task {
+            do {
+                // Get the baby ID with auto-fetch if needed
+                let baby = try await fetchFirstConnectedBaby()
+                let babyId = baby.babyID
+                
+                // Save the administered vaccines
+                try await SupabaseVaccineManager.shared.saveAdministeredVaccines(
+                    vaccines: selectedVaccines,
+                    babyId: babyId,
+                    administeredDates: selectedDates
+                )
+                
+                // Dismiss the loading alert
+                await MainActor.run {
+                    loadingAlert.dismiss(animated: true) {
+                        // Show success message
+                        let successAlert = UIAlertController(
+                            title: "Success",
+                            message: "\(self.selectedVaccines.count) vaccines have been saved successfully.",
+                            preferredStyle: .alert
+                        )
+                        successAlert.addAction(UIAlertAction(title: "OK", style: .default) { _ in
+                            // Navigate to VacciAlertViewController after successful save
+                            let vacciAlertVC = VacciAlertViewController()
+                            self.navigationController?.pushViewController(vacciAlertVC, animated: true)
+                        })
+                        self.present(successAlert, animated: true)
+                    }
+                }
+            } catch {
+                // Dismiss the loading alert and show error message
+                await MainActor.run {
+                    loadingAlert.dismiss(animated: true) {
+                        let errorAlert = UIAlertController(
+                            title: "Error",
+                            message: "Failed to save vaccines: \(error.localizedDescription)",
+                            preferredStyle: .alert
+                        )
+                        errorAlert.addAction(UIAlertAction(title: "OK", style: .default))
+                        self.present(errorAlert, animated: true)
+                    }
+                }
+                print("❌ Error saving administered vaccines: \(error)")
+            }
+        }
     }
 
     @objc private func vaccineCardTapped(_ sender: UITapGestureRecognizer) {

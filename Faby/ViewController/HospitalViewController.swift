@@ -472,6 +472,9 @@ class HospitalViewController: UIViewController, UITableViewDataSource, UITableVi
     private func saveVaccinationData(hospital: Hospital, date: Date) {
         // Create a hospital location from coordinates
         var location = ""
+        var finalVaccineId: UUID
+        var finalVaccineName: String
+        
         if let coordinates = hospital.coordinates {
             location = "\(coordinates.latitude),\(coordinates.longitude)"
         } else {
@@ -479,16 +482,7 @@ class HospitalViewController: UIViewController, UITableViewDataSource, UITableVi
             location = hospital.address
         }
         
-        // Get the baby ID from UserDefaultsManager
-        guard let babyId = UserDefaultsManager.shared.currentBabyId else {
-            print("❌ Error: No baby ID available")
-            return
-        }
-        
         // Get the vaccine ID from the provided vaccine or use default
-        let finalVaccineId: UUID
-        let finalVaccineName: String
-        
         if let vaccine = self.vaccine {
             finalVaccineId = vaccine.id
             finalVaccineName = vaccine.name
@@ -502,6 +496,25 @@ class HospitalViewController: UIViewController, UITableViewDataSource, UITableVi
         // Save the schedule using the VaccineScheduleManager
         Task {
             do {
+                // Always fetch the first connected baby for the current user
+                // to ensure we're using the correct baby ID
+                let baby: Baby
+                let babyId: UUID
+                do {
+                    baby = try await fetchFirstConnectedBaby()
+                    babyId = baby.babyID
+                    
+                    // Update the UserDefaults with the current baby ID
+                    UserDefaultsManager.shared.currentBabyId = babyId
+                    
+                    print("✅ Successfully fetched current baby: \(baby.name) with ID: \(babyId)")
+                } catch {
+                    await MainActor.run {
+                        self.showErrorAlert(message: "Could not find any connected baby: \(error.localizedDescription)")
+                    }
+                    return
+                }
+                
                 print("📝 Saving vaccine schedule with the following details:")
                 print("   - Vaccine: \(finalVaccineName)")
                 print("   - Vaccine ID: \(finalVaccineId)")
