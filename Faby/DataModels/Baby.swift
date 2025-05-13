@@ -119,10 +119,7 @@ class Baby {
         measurementUpdated?()
     }
 }
-enum Gender {
-    case male
-    case female
-}
+
 extension Notification.Name {
     static let milestonesAchievedUpdated = Notification.Name("milestonesAchievedUpdated")
 }

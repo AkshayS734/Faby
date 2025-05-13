@@ -64,7 +64,7 @@ class ParentDataModel {
                         phoneNumber: phoneNumber,
                         gender: gender,
                         relation: relation,
-                        babyIds: [],
+                     //   babyIds: [],
                         parentimage_url: parentImageUrl
                     )
                     
@@ -81,7 +81,7 @@ class ParentDataModel {
                         email: "",
                         gender: .male,
                         relation: .guardian,
-                        babyIds: [],
+                      //  babyIds: [],
                         parentimage_url: nil
                     )
                     
