@@ -11,16 +11,33 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     var window: UIWindow?
     let supabase = SupabaseClient(
-        supabaseURL: URL(string: "https://hlkmrimpxzsnxzrgofes.supabase.co")!,
-        supabaseKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhsa21yaW1weHpzbnh6cmdvZmVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDAwNzI1MjgsImV4cCI6MjA1NTY0ODUyOH0.6mvladJjLsy4Q7DTs7x6jnQrLaKrlsnwDUlN-x_ZcFY"
+        supabaseURL: URL(string: "https://tmnltannywgqrrxavoge.supabase.co")!,
+        supabaseKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRtbmx0YW5ueXdncXJyeGF2b2dlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY5NjQ0MjQsImV4cCI6MjA2MjU0MDQyNH0.pkaPTx--vk4GPULyJ6o3ttI3vCsMUKGU0TWEMDpE1fY"
     )
 
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
         // Use this method to optionally configure and attach the UIWindow `window` to the provided UIWindowScene `scene`.
         // If using a storyboard, the `window` property will automatically be initialized and attached to the scene.
         // This delegate does not imply the connecting scene or session are new (see `application:configurationForConnectingSceneSession` instead).
-        guard let _ = (scene as? UIWindowScene) else { return }
+        guard let windowScene = (scene as? UIWindowScene) else { return }
         
+        // Create a new UIWindow using the windowScene constructor
+        let window = UIWindow(windowScene: windowScene)
+        
+        // For testing purposes, reset onboarding status to ensure walkthrough shows first
+        UserDefaults.standard.set(false, forKey: "onboardingComplete")
+        
+        // Check if onboarding has been completed before
+        let onboardingComplete = UserDefaults.standard.bool(forKey: "onboardingComplete")
+        
+        // Create WalkthroughViewController programmatically
+        // This approach overrides any storyboard settings and ensures the walkthrough is displayed first
+        let walkthrough = WalkthroughViewController()
+        window.rootViewController = walkthrough
+        
+        // Set the window and make it visible
+        self.window = window
+        window.makeKeyAndVisible()
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {

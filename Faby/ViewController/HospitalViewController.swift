@@ -1,5 +1,6 @@
 import UIKit
 import MapKit
+import CoreLocation
 
 // MARK: - Hospital Model
 //struct Hospital {
@@ -10,9 +11,16 @@ import MapKit
 //}
 
 // MARK: - HospitalViewController
-class HospitalViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
+class HospitalViewController: UIViewController, UITableViewDataSource, UITableViewDelegate, MKMapViewDelegate, CLLocationManagerDelegate {
     
+    // Vaccine properties
+    var vaccine: Vaccine?
     var vaccineName: String = "Vaccination"
+    var vaccineId: UUID = UUID()
+    
+    private var hospitals: [Hospital] = []
+    private let hospitalSearchManager = HospitalSearchManager.shared
+    private let locationManager = CLLocationManager()
     
     // UI Elements
     let mapView: MKMapView = {
@@ -35,6 +43,26 @@ class HospitalViewController: UIViewController, UITableViewDataSource, UITableVi
         return table
     }()
     
+    // Loading indicator
+    let activityIndicator: UIActivityIndicatorView = {
+        let indicator = UIActivityIndicatorView(style: .large)
+        indicator.translatesAutoresizingMaskIntoConstraints = false
+        indicator.hidesWhenStopped = true
+        return indicator
+    }()
+    
+    // Add a status label for location errors
+    let statusLabel: UILabel = {
+        let label = UILabel()
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.textAlignment = .center
+        label.numberOfLines = 0
+        label.textColor = .systemGray
+        label.font = UIFont.systemFont(ofSize: 16)
+        label.isHidden = true
+        return label
+    }()
+    
     // Date formatter for consistent date formatting
     private let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -42,20 +70,78 @@ class HospitalViewController: UIViewController, UITableViewDataSource, UITableVi
         return formatter
     }()
     
-    // Mock Data
-    let hospitals = [
-        Hospital(babyId: UUID(), name: "Kailash Hospital", address: "Knowledge Park 3, Greater Noida, 201308, Uttar Pradesh", distance: 4.0),
-        Hospital(babyId: UUID(), name: "Green City Hospital", address: "Knowledge Park 1, Greater Noida, 201308, Uttar Pradesh", distance: 6.0),
-        Hospital(babyId: UUID(), name: "Sharda Hospital", address: "Knowledge Park 2, Greater Noida, 201308, Uttar Pradesh", distance: 8.5)
-    ]
-    
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
-        navigationItem.title = "\(vaccineName) Vaccination"
+        setupLocationManager()
+        
+        // Update title if a vaccine is provided
+        if let vaccine = vaccine {
+            vaccineName = vaccine.name
+            vaccineId = vaccine.id
+            navigationItem.title = "\(vaccineName)"
+            print("✅ Scheduling vaccine: \(vaccineName) (ID: \(vaccineId))")
+        } else {
+            navigationItem.title = "Schedule Vaccination"
+        }
+        
         tableView.dataSource = self
         tableView.delegate = self
-        setMapRegion()
+        mapView.delegate = self
+        
+        // Show loading indicator
+        activityIndicator.startAnimating()
+    }
+    
+    private func setupLocationManager() {
+        locationManager.delegate = self
+        locationManager.desiredAccuracy = kCLLocationAccuracyBest
+        
+        // Check location authorization status
+        checkLocationAuthorization()
+    }
+    
+    private func checkLocationAuthorization() {
+        switch locationManager.authorizationStatus {
+        case .notDetermined:
+            // Request permission if not determined yet
+            locationManager.requestWhenInUseAuthorization()
+        case .restricted, .denied:
+            // Show alert or status message when location access is restricted or denied
+            showLocationAccessError()
+        case .authorizedWhenInUse, .authorizedAlways:
+            // We have permission, proceed with loading hospitals
+            locationManager.startUpdatingLocation()
+            loadNearbyHospitals()
+        @unknown default:
+            print("Unknown location authorization status")
+            showLocationAccessError()
+        }
+    }
+    
+    private func showLocationAccessError() {
+        activityIndicator.stopAnimating()
+        statusLabel.isHidden = false
+        statusLabel.text = "Location access is required to find nearby hospitals.\nPlease enable location access in Settings."
+        
+        // Add settings button
+        let settingsButton = UIButton(type: .system)
+        settingsButton.translatesAutoresizingMaskIntoConstraints = false
+        settingsButton.setTitle("Open Settings", for: .normal)
+        settingsButton.addTarget(self, action: #selector(openSettings), for: .touchUpInside)
+        
+        view.addSubview(settingsButton)
+        
+        NSLayoutConstraint.activate([
+            settingsButton.topAnchor.constraint(equalTo: statusLabel.bottomAnchor, constant: 16),
+            settingsButton.centerXAnchor.constraint(equalTo: view.centerXAnchor)
+        ])
+    }
+    
+    @objc private func openSettings() {
+        if let url = URL(string: UIApplication.openSettingsURLString) {
+            UIApplication.shared.open(url)
+        }
     }
     
     private func setupUI() {
@@ -64,6 +150,8 @@ class HospitalViewController: UIViewController, UITableViewDataSource, UITableVi
         view.addSubview(searchBar)
         view.addSubview(mapView)
         view.addSubview(tableView)
+        view.addSubview(activityIndicator)
+        view.addSubview(statusLabel)
         
         NSLayoutConstraint.activate([
             searchBar.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
@@ -78,16 +166,82 @@ class HospitalViewController: UIViewController, UITableViewDataSource, UITableVi
             tableView.topAnchor.constraint(equalTo: mapView.bottomAnchor),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            
+            activityIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            activityIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            
+            statusLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            statusLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            statusLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            statusLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20)
         ])
     }
     
-    private func setMapRegion() {
-        let latitude: CLLocationDegrees = 28.4744
-        let longitude: CLLocationDegrees = 77.5021
-        let span = MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
-        let region = MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: latitude, longitude: longitude), span: span)
-        mapView.setRegion(region, animated: true)
+    // MARK: - CLLocationManagerDelegate
+    
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        checkLocationAuthorization()
+    }
+    
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        // Once we get the location, we can stop updating
+        locationManager.stopUpdatingLocation()
+        
+        // Load nearby hospitals
+        loadNearbyHospitals()
+    }
+    
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        print("Location Manager Error: \(error.localizedDescription)")
+        activityIndicator.stopAnimating()
+        statusLabel.isHidden = false
+        statusLabel.text = "Unable to determine your location.\nPlease check your device settings."
+    }
+    
+    private func loadNearbyHospitals() {
+        hospitalSearchManager.findNearbyHospitals { [weak self] hospitals in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                
+                self.hospitals = hospitals
+                self.tableView.reloadData()
+                self.addAnnotationsToMap()
+                self.activityIndicator.stopAnimating()
+                
+                if hospitals.isEmpty {
+                    self.statusLabel.isHidden = false
+                    self.statusLabel.text = "No hospitals found nearby. Please try again later."
+                } else {
+                    self.statusLabel.isHidden = true
+                }
+                
+                // If we have locations, set the map region to show them
+                if let firstHospital = hospitals.first, let coordinates = firstHospital.coordinates {
+                    let span = MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
+                    let region = MKCoordinateRegion(center: coordinates, span: span)
+                    self.mapView.setRegion(region, animated: true)
+                }
+            }
+        }
+    }
+    
+    private func addAnnotationsToMap() {
+        // Clear existing annotations
+        let existingAnnotations = mapView.annotations
+        mapView.removeAnnotations(existingAnnotations)
+        
+        // Add new annotations
+        for hospital in hospitals {
+            guard let coordinates = hospital.coordinates else { continue }
+            
+            let annotation = MKPointAnnotation()
+            annotation.coordinate = coordinates
+            annotation.title = hospital.name
+            annotation.subtitle = String(format: "%.1f km away", hospital.distance)
+            
+            mapView.addAnnotation(annotation)
+        }
     }
     
     // MARK: - TableView DataSource & Delegate
@@ -109,7 +263,25 @@ class HospitalViewController: UIViewController, UITableViewDataSource, UITableVi
         showSchedulePopup(for: selectedHospital)
     }
     
-    // MARK: - Scheduling Methods
+    // MARK: - Map View Delegate
+    func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+        guard annotation is MKPointAnnotation else { return nil }
+        
+        let identifier = "HospitalAnnotation"
+        var annotationView = mapView.dequeueReusableAnnotationView(withIdentifier: identifier)
+        
+        if annotationView == nil {
+            annotationView = MKMarkerAnnotationView(annotation: annotation, reuseIdentifier: identifier)
+            annotationView?.canShowCallout = true
+            (annotationView as? MKMarkerAnnotationView)?.glyphImage = UIImage(systemName: "cross.fill")
+            (annotationView as? MKMarkerAnnotationView)?.markerTintColor = .systemRed
+        } else {
+            annotationView?.annotation = annotation
+        }
+        
+        return annotationView
+    }
+    
     // MARK: - Scheduling Methods
     private func showSchedulePopup(for hospital: Hospital) {
         // Create a clean, modern sheet presentation
@@ -254,15 +426,14 @@ class HospitalViewController: UIViewController, UITableViewDataSource, UITableVi
         buttonStack.addArrangedSubview(cancelButton)
         buttonStack.addArrangedSubview(confirmButton)
         
-        // Add action to buttons - FIXED VERSION
+        // Add action to buttons
         cancelButton.addAction(UIAction { [weak self] _ in
             dateSelectionVC.dismiss(animated: true, completion: nil)
         }, for: .touchUpInside)
         
         confirmButton.addAction(UIAction { [weak self] _ in
             guard let self = self else { return }
-            let dateString = self.dateFormatter.string(from: datePicker.date)
-            self.saveVaccinationData(hospital: hospital, date: dateString)
+            self.saveVaccinationData(hospital: hospital, date: datePicker.date)
             dateSelectionVC.dismiss(animated: true) {
                 self.showConfirmationMessage()
             }
@@ -297,17 +468,89 @@ class HospitalViewController: UIViewController, UITableViewDataSource, UITableVi
         
         present(dateSelectionVC, animated: true)
     }
-    private func saveVaccinationData(hospital: Hospital, date: String) {
-        let schedule = VaccinationSchedule(
-            id: UUID(),
-            type: vaccineName,
-            hospitalName: hospital.name,
-            hospitalAddress: hospital.address,
-            scheduledDate: date,
-            babyId: hospital.babyId
-        )
+    
+    private func saveVaccinationData(hospital: Hospital, date: Date) {
+        // Create a hospital location from coordinates
+        var location = ""
+        var finalVaccineId: UUID
+        var finalVaccineName: String
         
-        VaccinationStorageManager.shared.saveSchedule(schedule)
+        if let coordinates = hospital.coordinates {
+            location = "\(coordinates.latitude),\(coordinates.longitude)"
+        } else {
+            // If no coordinates, use the address as location
+            location = hospital.address
+        }
+        
+        // Get the vaccine ID from the provided vaccine or use default
+        if let vaccine = self.vaccine {
+            finalVaccineId = vaccine.id
+            finalVaccineName = vaccine.name
+            print("✅ Using vaccine from selection: \(finalVaccineName) (ID: \(finalVaccineId))")
+        } else {
+            finalVaccineId = self.vaccineId
+            finalVaccineName = self.vaccineName
+            print("⚠️ Using default vaccine ID: \(finalVaccineId)")
+        }
+        
+        // Save the schedule using the VaccineScheduleManager
+        Task {
+            do {
+                // Always fetch the first connected baby for the current user
+                // to ensure we're using the correct baby ID
+                let baby: Baby
+                let babyId: UUID
+                do {
+                    baby = try await fetchFirstConnectedBaby()
+                    babyId = baby.babyID
+                    
+                    // Update the UserDefaults with the current baby ID
+                    UserDefaultsManager.shared.currentBabyId = babyId
+                    
+                    print("✅ Successfully fetched current baby: \(baby.name) with ID: \(babyId)")
+                } catch {
+                    await MainActor.run {
+                        self.showErrorAlert(message: "Could not find any connected baby: \(error.localizedDescription)")
+                    }
+                    return
+                }
+                
+                print("📝 Saving vaccine schedule with the following details:")
+                print("   - Vaccine: \(finalVaccineName)")
+                print("   - Vaccine ID: \(finalVaccineId)")
+                print("   - Baby ID: \(babyId)")
+                print("   - Hospital: \(hospital.name)")
+                print("   - Date: \(date)")
+                print("   - Location: \(location)")
+                
+                try await VaccineScheduleManager.shared.saveSchedule(
+                    babyId: babyId,
+                    vaccineId: finalVaccineId,
+                    hospital: hospital.name,
+                    date: date,
+                    location: location
+                )
+                
+                print("✅ Successfully saved vaccination schedule for \(finalVaccineName) at \(hospital.name)")
+            } catch {
+                print("❌ Error saving vaccination schedule: \(error)")
+                
+                // Show error alert on main thread
+                DispatchQueue.main.async { [weak self] in
+                    self?.showErrorAlert(message: "Failed to save vaccination: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+    
+    private func showErrorAlert(message: String) {
+        let alert = UIAlertController(
+            title: "Error",
+            message: message,
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
     }
     
     private func showConfirmationMessage() {
