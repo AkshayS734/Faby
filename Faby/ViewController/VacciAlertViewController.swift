@@ -5,149 +5,6 @@ import CoreLocation
 import Foundation
 import Supabase
 
-// Forward declarations of functions from BabyDataModels.swift
-func fetchBaby(with id: UUID) async throws -> Baby {
-    // Get the AppDelegate to access the Supabase client
-    guard let appDelegate = UIApplication.shared.delegate as? AppDelegate else {
-        throw NSError(domain: "BabyDataError", code: 1,
-                     userInfo: [NSLocalizedDescriptionKey: "AppDelegate not available"])
-    }
-    
-    // The supabase client is not optional in AppDelegate
-    let client = appDelegate.supabase
-    
-    // Fetch the baby data from Supabase
-    let response = try await client
-        .from("baby")
-        .select()
-        .eq("uid", value: id.uuidString)
-        .single()
-        .execute()
-    
-    // Parse the baby data using JSONSerialization for more flexibility
-    guard let babyData = try? JSONSerialization.jsonObject(with: response.data, options: []) as? [String: Any] else {
-        throw NSError(domain: "BabyDataError", code: 4,
-                     userInfo: [NSLocalizedDescriptionKey: "Failed to decode baby data"])
-    }
-    
-    // Extract baby properties
-    guard let babyUID = babyData["uid"] as? String,
-          let babyName = babyData["name"] as? String,
-          let babyDOB = babyData["dob"] as? String,
-          let babyGender = babyData["gender"] as? String else {
-        throw NSError(domain: "BabyDataError", code: 5,
-                     userInfo: [NSLocalizedDescriptionKey: "Missing required baby data fields"])
-    }
-    
-    // Create and return the Baby object
-    let baby = Baby(
-        babyId: UUID(uuidString: babyUID) ?? UUID(),
-        name: babyName,
-        dateOfBirth: babyDOB,
-        gender: babyGender.lowercased() == "female" ? .female : .male
-    )
-    
-    return baby
-}
-
-func fetchFirstConnectedBaby() async throws -> Baby {
-    // Get the AppDelegate to access the Supabase client
-    guard let appDelegate = UIApplication.shared.delegate as? AppDelegate else {
-        throw NSError(domain: "BabyDataError", code: 1,
-                     userInfo: [NSLocalizedDescriptionKey: "AppDelegate not available"])
-    }
-    
-    // The supabase client is not optional in AppDelegate
-    let client = appDelegate.supabase
-    
-    // Get the current user ID directly from the Supabase session
-    let userID = try await getCurrentUserID(client: client)
-    guard let parentUUID = userID, !parentUUID.isEmpty else {
-        throw NSError(domain: "BabyDataError", code: 2,
-                     userInfo: [NSLocalizedDescriptionKey: "User not authenticated or invalid user ID"])
-    }
-    
-    print("DEBUG: Using parent UUID: \(parentUUID)")
-    
-    // Fetch the baby associated with this parent
-    do {
-        // First verify the parent exists in the parents table
-        let parentResponse = try await client
-            .from("parents")
-            .select("uid")
-            .eq("uid", value: parentUUID)
-            .single()
-            .execute()
-        
-        // Print the raw parent JSON data for debugging
-        let parentJsonString = String(data: parentResponse.data, encoding: .utf8) ?? "Unable to convert data to string"
-        print("DEBUG: Raw parent JSON data: \(parentJsonString)")
-        
-        // Verify parent data
-        guard let parentData = try? JSONSerialization.jsonObject(with: parentResponse.data, options: []) as? [String: Any],
-              let parentUID = parentData["uid"] as? String else {
-            throw NSError(domain: "BabyDataError", code: 3,
-                         userInfo: [NSLocalizedDescriptionKey: "Parent not found"])
-        }
-        
-        // Now fetch the baby data using the verified parent ID
-        let babyResponse = try await client
-            .from("baby")
-            .select()
-            .eq("user_id", value: parentUID)
-            .single()
-            .execute()
-        
-        // Print the raw baby JSON data for debugging
-        let babyJsonString = String(data: babyResponse.data, encoding: .utf8) ?? "Unable to convert data to string"
-        print("DEBUG: Raw baby JSON data: \(babyJsonString)")
-        
-        // Parse the baby data using JSONSerialization for more flexibility
-        guard let babyData = try? JSONSerialization.jsonObject(with: babyResponse.data, options: []) as? [String: Any] else {
-            throw NSError(domain: "BabyDataError", code: 4,
-                         userInfo: [NSLocalizedDescriptionKey: "Failed to decode baby data"])
-        }
-        
-        // Extract baby properties
-        guard let babyUID = babyData["uid"] as? String,
-              let babyName = babyData["name"] as? String,
-              let babyDOB = babyData["dob"] as? String,
-              let babyGender = babyData["gender"] as? String else {
-            throw NSError(domain: "BabyDataError", code: 5,
-                         userInfo: [NSLocalizedDescriptionKey: "Missing required baby data fields"])
-        }
-        
-        // Save the baby ID for future reference
-        UserDefaults.standard.set(babyUID, forKey: "selectedBabyId")
-        
-        // Create and return the Baby object
-        let baby = Baby(
-            babyId: UUID(uuidString: babyUID) ?? UUID(),
-            name: babyName,
-            dateOfBirth: babyDOB,
-            gender: babyGender.lowercased() == "female" ? .female : .male
-        )
-        
-        print("DEBUG: Successfully fetched baby: \(baby.name) with ID: \(baby.babyID)")
-        return baby
-        
-    } catch {
-        print("DEBUG: Error fetching baby data: \(error)")
-        throw NSError(domain: "BabyDataError", code: 6,
-                     userInfo: [NSLocalizedDescriptionKey: "Failed to fetch baby data: \(error.localizedDescription)"])
-    }
-}
-
-func getCurrentUserID(client: SupabaseClient) async throws -> String? {
-    do {
-        let session = try await client.auth.session
-        return session.user.id.uuidString
-    } catch {
-        print("Error fetching user ID: \(error.localizedDescription)")
-        return nil
-    }
-}
-
 // MARK: - Vaccine Card View
 struct VaccineCardView: View {
     let vaccine: Vaccine
@@ -203,6 +60,12 @@ struct VaccineCardView: View {
         return "Due \(formatter.string(from: startDate)) - \(formatter.string(from: endDate))"
     }
 }
+//
+//  VacciAlertViewController.swift
+//  Faby
+//
+//  Created by Adarsh Mishra on 14/05/25.
+//
 
 // MARK: - SwiftUI Vaccine List View
 struct VaccineListView: View {
@@ -917,3 +780,4 @@ class VacciAlertViewController: UIViewController, TimePeriodCollectionViewDelega
     // MARK: - Baby Data Fetching
     // Using shared methods from BabyDataModels.swift
 }
+import Foundation
