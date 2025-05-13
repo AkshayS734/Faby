@@ -10,7 +10,7 @@ class cardDetailsCollectionViewCell: UICollectionViewCell {
     @IBOutlet weak var imageView: UIImageView!
     
     @IBOutlet weak var stackView: UIStackView!
-    @IBOutlet weak var subtitle: UILabel!
+ //   @IBOutlet weak var subtitle: UILabel!
     @IBOutlet weak var title: UILabel!
     
     override func awakeFromNib() {
@@ -41,7 +41,7 @@ class cardDetailsCollectionViewCell: UICollectionViewCell {
     
     func configure(with topic: Topics) {
         title.text = topic.title
-        subtitle.text = topic.subtitle
+       // subtitle.text = topic.subtitle
         
         // Set the image dynamically
         //        if let image = UIImage(named: topic.imageView) {
@@ -55,7 +55,7 @@ class cardDetailsCollectionViewCell: UICollectionViewCell {
         let blurEffect = UIBlurEffect(style: .light) // Adjust blur style if needed
         let blurEffectView = UIVisualEffectView(effect: blurEffect)
         blurEffectView.translatesAutoresizingMaskIntoConstraints = false
-        blurEffectView.alpha = 0.9
+        blurEffectView.alpha = 3.0
         // Add blur effect view behind the stack view
         contentView.insertSubview(blurEffectView, belowSubview: stackView)
         

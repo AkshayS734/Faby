@@ -20,10 +20,10 @@
                         <rect key="frame" x="0.0" y="0.0" width="346" height="196"/>
                     </imageView>
                     <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" distribution="fillEqually" translatesAutoresizingMaskIntoConstraints="NO" id="hNC-qM-5uh">
-                        <rect key="frame" x="0.0" y="110" width="346" height="86"/>
+                        <rect key="frame" x="0.0" y="105" width="346" height="91"/>
                         <subviews>
                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Label" textAlignment="center" lineBreakMode="tailTruncation" numberOfLines="0" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="08u-z1-O97">
-                                <rect key="frame" x="0.0" y="0.0" width="346" height="86"/>
+                                <rect key="frame" x="0.0" y="0.0" width="346" height="91"/>
                                 <fontDescription key="fontDescription" name="HelveticaNeue" family="Helvetica Neue" pointSize="18"/>
                                 <nil key="textColor"/>
                                 <nil key="highlightedColor"/>
@@ -37,7 +37,7 @@
                 <constraint firstAttribute="trailing" secondItem="SyG-SR-wzH" secondAttribute="trailing" id="4iz-Oi-O6e"/>
                 <constraint firstItem="hNC-qM-5uh" firstAttribute="leading" secondItem="gTV-IL-0wX" secondAttribute="leading" id="4sT-qR-7pf"/>
                 <constraint firstItem="SyG-SR-wzH" firstAttribute="top" secondItem="gTV-IL-0wX" secondAttribute="top" id="CQX-1y-QJW"/>
-                <constraint firstItem="hNC-qM-5uh" firstAttribute="top" secondItem="gTV-IL-0wX" secondAttribute="top" constant="110" id="N3z-x3-YKT"/>
+                <constraint firstItem="hNC-qM-5uh" firstAttribute="top" secondItem="gTV-IL-0wX" secondAttribute="top" constant="105" id="N3z-x3-YKT"/>
                 <constraint firstAttribute="bottom" secondItem="SyG-SR-wzH" secondAttribute="bottom" id="bcX-LR-wIH"/>
                 <constraint firstAttribute="bottom" secondItem="hNC-qM-5uh" secondAttribute="bottom" id="ebW-bY-Ves"/>
                 <constraint firstItem="SyG-SR-wzH" firstAttribute="leading" secondItem="gTV-IL-0wX" secondAttribute="leading" id="esZ-go-PjI"/>
