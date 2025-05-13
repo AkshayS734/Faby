@@ -6,7 +6,7 @@ class SavedPostsDebugger {
         print("\n----- CHECKING SUPABASE PERMISSIONS -----")
         
         // Check if user is authenticated
-        guard let userId = SupabaseManager.shared.userID else {
+        guard let userId = PostsSupabaseManager.shared.userID else {
             print("❌ ERROR: No user ID found - user not authenticated")
             completion(false)
             return
@@ -17,7 +17,7 @@ class SavedPostsDebugger {
         Task {
             do {
                 // Check access to SavedPosts table with SELECT
-                let selectResponse = try await SupabaseManager.shared.client.database
+                let selectResponse = try await PostsSupabaseManager.shared.client.database
                     .from("SavedPosts")
                     .select("*")
                     .limit(1)
@@ -27,7 +27,7 @@ class SavedPostsDebugger {
                 print("✅ SELECT permission test successful (Status: \(selectResponse.status))")
                 
                 // Check Posts table to make sure it exists
-                let postsResponse = try await SupabaseManager.shared.client.database
+                let postsResponse = try await PostsSupabaseManager.shared.client.database
                     .from("posts")
                     .select("postId")
                     .limit(1)
@@ -63,7 +63,7 @@ class SavedPostsDebugger {
             
             // Step 1: Check all SavedPosts records in the table
             print("\n----- STEP 1: Fetch all saved posts -----")
-            SupabaseManager.shared.debugFetchAllSavedPostsRecords { success in
+            PostsSupabaseManager.shared.debugFetchAllSavedPostsRecords { success in
                 if success {
                     print("✅ Successfully fetched all saved posts records")
                 } else {
@@ -76,12 +76,12 @@ class SavedPostsDebugger {
                 // You can replace this with any post ID you want to test
                 let testPostId = "9b2f116f-8681-4f2b-aa39-0985fa9fddaa"
                 
-                SupabaseManager.shared.debugIsPostSaved(postId: testPostId) { isSaved in
+                PostsSupabaseManager.shared.debugIsPostSaved(postId: testPostId) { isSaved in
                     print("✅ Is post saved check completed. Result: \(isSaved ? "SAVED" : "NOT SAVED")")
                     
                     // Step 3: Try to save a post
                     print("\n----- STEP 3: Try to save a post -----")
-                    SupabaseManager.shared.savePost(postId: testPostId) { success, error in
+                    PostsSupabaseManager.shared.savePost(postId: testPostId) { success, error in
                         if success {
                             print("✅ Post saved successfully")
                         } else if let error = error {
@@ -92,12 +92,12 @@ class SavedPostsDebugger {
                         
                         // Step 4: Check again if the post is saved
                         print("\n----- STEP 4: Check again if the post is saved -----")
-                        SupabaseManager.shared.debugIsPostSaved(postId: testPostId) { isSaved in
+                        PostsSupabaseManager.shared.debugIsPostSaved(postId: testPostId) { isSaved in
                             print("✅ Is post saved check completed. Result: \(isSaved ? "SAVED" : "NOT SAVED")")
                             
                             // Step 5: Check all SavedPosts records again
                             print("\n----- STEP 5: Fetch all saved posts again -----")
-                            SupabaseManager.shared.debugFetchAllSavedPostsRecords { success in
+                            PostsSupabaseManager.shared.debugFetchAllSavedPostsRecords { success in
                                 if success {
                                     print("✅ Successfully fetched all saved posts records")
                                 } else {

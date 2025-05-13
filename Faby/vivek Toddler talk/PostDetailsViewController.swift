@@ -759,14 +759,14 @@ class PostDetailsViewController: UIViewController {
         }
         
         // Fetch like counts
-        SupabaseManager.shared.fetchPostLikeCount(postId: post.postId) { [weak self] count, error in
+        PostsSupabaseManager.shared.fetchPostLikeCount(postId: post.postId) { [weak self] count, error in
             DispatchQueue.main.async {
                 self?.likeCountLabel.text = "\(count)"
             }
         }
         
         // Fetch comment counts
-        SupabaseManager.shared.fetchComments(for: post.postId) { [weak self] comments, error in
+        PostsSupabaseManager.shared.fetchComments(for: post.postId) { [weak self] comments, error in
             DispatchQueue.main.async {
                 let commentCount = comments?.count ?? 0
                 self?.commentCountLabel.text = "\(commentCount)"
@@ -775,9 +775,9 @@ class PostDetailsViewController: UIViewController {
     }
     
     private func checkIfPostIsLiked() {
-        guard let userId = SupabaseManager.shared.userID else { return }
+        guard let userId = PostsSupabaseManager.shared.userID else { return }
         
-        SupabaseManager.shared.checkIfUserLiked(postId: post.postId, userId: userId) { [weak self] isLiked, error in
+        PostsSupabaseManager.shared.checkIfUserLiked(postId: post.postId, userId: userId) { [weak self] isLiked, error in
             DispatchQueue.main.async {
                 self?.isLiked = isLiked
             }
@@ -811,7 +811,7 @@ class PostDetailsViewController: UIViewController {
     }
     
     @objc private func handleLikeButton() {
-        guard let userId = SupabaseManager.shared.userID else {
+        guard let userId = PostsSupabaseManager.shared.userID else {
             print("❌ User not logged in")
             let alert = UIAlertController(
                 title: "Login Required",
@@ -841,7 +841,7 @@ class PostDetailsViewController: UIViewController {
         
         if isLiked {
             // Adding like
-            SupabaseManager.shared.addLike(postId: post.postId, userId: userId) { [weak self] success, error in
+            PostsSupabaseManager.shared.addLike(postId: post.postId, userId: userId) { [weak self] success, error in
                 if !success {
                     // Revert UI if like failed
                     DispatchQueue.main.async {
@@ -859,7 +859,7 @@ class PostDetailsViewController: UIViewController {
             }
         } else {
             // Removing like
-            SupabaseManager.shared.removeLike(postId: post.postId, userId: userId) { [weak self] success, error in
+            PostsSupabaseManager.shared.removeLike(postId: post.postId, userId: userId) { [weak self] success, error in
                 if !success {
                     // Revert UI if unlike failed
                     DispatchQueue.main.async {
@@ -878,7 +878,7 @@ class PostDetailsViewController: UIViewController {
         }
         
         // Update like count
-        SupabaseManager.shared.fetchPostLikeCount(postId: post.postId) { [weak self] count, error in
+        PostsSupabaseManager.shared.fetchPostLikeCount(postId: post.postId) { [weak self] count, error in
             DispatchQueue.main.async {
                 self?.likeCountLabel.text = "\(count)"
             }
@@ -912,13 +912,13 @@ class PostDetailsViewController: UIViewController {
     
     @objc private func handleSendComment() {
         guard let commentText = commentTextField.text, !commentText.isEmpty,
-              let userId = SupabaseManager.shared.userID else {
+              let userId = PostsSupabaseManager.shared.userID else {
             return
         }
         
         if isInReplyMode, let replyToComment = replyingToComment, let commentId = replyToComment.commentId {
             // We're replying to a specific comment
-            SupabaseManager.shared.addCommentReply(
+            PostsSupabaseManager.shared.addCommentReply(
                 commentId: commentId,
                 postId: post.postId,
                 userId: userId,
@@ -939,7 +939,7 @@ class PostDetailsViewController: UIViewController {
             }
         } else {
             // Regular comment (not a reply)
-            SupabaseManager.shared.addComment(postId: post.postId, userId: userId, content: commentText) { [weak self] success, error in
+            PostsSupabaseManager.shared.addComment(postId: post.postId, userId: userId, content: commentText) { [weak self] success, error in
                 DispatchQueue.main.async {
                     if success {
                         self?.commentTextField.text = ""
@@ -959,7 +959,7 @@ class PostDetailsViewController: UIViewController {
     private func fetchComments() {
         isLoadingComments = true
         
-        SupabaseManager.shared.fetchComments(for: post.postId) { [weak self] comments, error in
+        PostsSupabaseManager.shared.fetchComments(for: post.postId) { [weak self] comments, error in
             guard let self = self else { return }
             
             self.isLoadingComments = false
@@ -989,9 +989,9 @@ class PostDetailsViewController: UIViewController {
         items.append(postText)
         
         // Add deep link or web link for sharing
-        if let deepLink = SupabaseManager.shared.generatePostDeepLink(for: post) {
+        if let deepLink = PostsSupabaseManager.shared.generatePostDeepLink(for: post) {
             items.append(deepLink)
-        } else if let webLink = SupabaseManager.shared.generatePostWebLink(for: post) {
+        } else if let webLink = PostsSupabaseManager.shared.generatePostWebLink(for: post) {
             items.append(webLink)
         }
         
@@ -1071,7 +1071,7 @@ class PostDetailsViewController: UIViewController {
     
     private func savePost() {
         // SupabaseManager.savePost already checks for userID internally
-        SupabaseManager.shared.savePost(postId: post.postId) { [weak self] success, error in
+        PostsSupabaseManager.shared.savePost(postId: post.postId) { [weak self] success, error in
             DispatchQueue.main.async {
                 if success {
                     let alert = UIAlertController(
@@ -1206,7 +1206,7 @@ class PostDetailsViewController: UIViewController {
     }
     
     private func updateCommentCount() {
-        SupabaseManager.shared.fetchComments(for: post.postId) { [weak self] comments, error in
+        PostsSupabaseManager.shared.fetchComments(for: post.postId) { [weak self] comments, error in
             DispatchQueue.main.async {
                 let commentCount = comments?.count ?? 0
                 self?.commentCountLabel.text = "\(commentCount)"
@@ -1229,8 +1229,8 @@ extension PostDetailsViewController: UITableViewDelegate, UITableViewDataSource 
         let comment = comments[indexPath.row]
         
         // Check if the user has liked this comment
-        if let commentId = comment.commentId?.description, let userId = SupabaseManager.shared.userID {
-            SupabaseManager.shared.checkIfUserLikedComment(commentId: commentId, userId: userId) { isLiked, _ in
+        if let commentId = comment.commentId?.description, let userId = PostsSupabaseManager.shared.userID {
+            PostsSupabaseManager.shared.checkIfUserLikedComment(commentId: commentId, userId: userId) { isLiked, _ in
                 DispatchQueue.main.async {
                     cell.configure(with: comment, isLiked: isLiked)
                 }
@@ -1252,13 +1252,13 @@ extension PostDetailsViewController: UITableViewDelegate, UITableViewDataSource 
 // MARK: - CommentCellDelegate
 extension PostDetailsViewController: CommentCellDelegate {
     func didTapLikeButton(for comment: Comment) {
-        guard let userId = SupabaseManager.shared.userID, let commentId = comment.commentId?.description else { return }
+        guard let userId = PostsSupabaseManager.shared.userID, let commentId = comment.commentId?.description else { return }
         
         // Check if already liked
-        SupabaseManager.shared.checkIfUserLikedComment(commentId: commentId, userId: userId) { [weak self] isLiked, _ in
+        PostsSupabaseManager.shared.checkIfUserLikedComment(commentId: commentId, userId: userId) { [weak self] isLiked, _ in
             if isLiked {
                 // Unlike
-                SupabaseManager.shared.removeCommentLike(commentId: commentId, userId: userId) { success, _ in
+                PostsSupabaseManager.shared.removeCommentLike(commentId: commentId, userId: userId) { success, _ in
                     if success {
                         DispatchQueue.main.async {
                             self?.fetchComments() // Refresh comments to update like count
@@ -1267,7 +1267,7 @@ extension PostDetailsViewController: CommentCellDelegate {
                 }
             } else {
                 // Like
-                SupabaseManager.shared.addCommentLike(commentId: commentId, userId: userId) { success, _ in
+                PostsSupabaseManager.shared.addCommentLike(commentId: commentId, userId: userId) { success, _ in
                     if success {
                         DispatchQueue.main.async {
                             self?.fetchComments() // Refresh comments to update like count
@@ -1286,7 +1286,7 @@ extension PostDetailsViewController: CommentCellDelegate {
         let alert = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
         
         // Only allow reporting if not the user's own comment
-        if comment.userId != SupabaseManager.shared.userID {
+        if comment.userId != PostsSupabaseManager.shared.userID {
             alert.addAction(UIAlertAction(title: "Report", style: .destructive) { [weak self] _ in
                 self?.didTapReport(for: comment)
             })
@@ -1326,7 +1326,7 @@ extension PostDetailsViewController: CommentCellDelegate {
         guard let commentId = comment.commentId else { return }
         
         // Fetch replies for this comment
-        SupabaseManager.shared.fetchRepliesForComment(commentId: commentId) { [weak self] replies, error in
+        PostsSupabaseManager.shared.fetchRepliesForComment(commentId: commentId) { [weak self] replies, error in
             if let error = error {
                 print("❌ Error fetching replies: \(error.localizedDescription)")
                 return

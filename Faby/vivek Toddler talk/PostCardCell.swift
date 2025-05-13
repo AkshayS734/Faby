@@ -296,7 +296,7 @@ class PostCardCell: UITableViewCell {
             return
         }
         
-        guard let userId = SupabaseManager.shared.userID else {
+        guard let userId = PostsSupabaseManager.shared.userID else {
             print("❌ User not logged in")
             let alert = UIAlertController(
                 title: "Login Required",
@@ -327,7 +327,7 @@ class PostCardCell: UITableViewCell {
         if isLiked {
             // Adding like
             print("📢 Adding like for post: \(postId)")
-            SupabaseManager.shared.addLike(postId: postId, userId: userId) { [weak self] success, error in
+            PostsSupabaseManager.shared.addLike(postId: postId, userId: userId) { [weak self] success, error in
                 DispatchQueue.main.async {
                     if !success {
                         // Revert UI if like failed
@@ -347,7 +347,7 @@ class PostCardCell: UITableViewCell {
         } else {
             // Removing like
             print("📢 Removing like for post: \(postId)")
-            SupabaseManager.shared.removeLike(postId: postId, userId: userId) { [weak self] success, error in
+            PostsSupabaseManager.shared.removeLike(postId: postId, userId: userId) { [weak self] success, error in
                 DispatchQueue.main.async {
                     if !success {
                         // Revert UI if unlike failed
@@ -442,7 +442,7 @@ class PostCardCell: UITableViewCell {
         }
         
         // Fetch like counts - using new optimized method
-        SupabaseManager.shared.fetchPostLikeCount(postId: post.postId) { [weak self] count, error in
+        PostsSupabaseManager.shared.fetchPostLikeCount(postId: post.postId) { [weak self] count, error in
             DispatchQueue.main.async {
                 self?.likeCountLabel.text = "\(count)"
                 self?.likeCountLabel.isHidden = count == 0
@@ -450,7 +450,7 @@ class PostCardCell: UITableViewCell {
         }
         
         // Fetch comment counts
-        SupabaseManager.shared.fetchComments(for: post.postId) { [weak self] comments, error in
+        PostsSupabaseManager.shared.fetchComments(for: post.postId) { [weak self] comments, error in
             DispatchQueue.main.async {
                 let commentCount = comments?.count ?? 0
                 self?.commentCountLabel.text = "\(commentCount)"

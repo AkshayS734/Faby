@@ -520,13 +520,13 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
     @objc private func handleSendComment() {
         guard let commentText = commentTextField.text, !commentText.isEmpty,
               let post = currentPost,
-              let userId = SupabaseManager.shared.userID else {
+              let userId = PostsSupabaseManager.shared.userID else {
             return
         }
         
         if isInReplyMode, let replyToComment = replyingToComment, let commentId = replyToComment.commentId {
             // We're replying to a specific comment
-            SupabaseManager.shared.addCommentReply(
+            PostsSupabaseManager.shared.addCommentReply(
                 commentId: commentId,
                 postId: post.postId,
                 userId: userId,
@@ -547,7 +547,7 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
             }
         } else {
             // Regular comment (not a reply)
-            SupabaseManager.shared.addComment(postId: post.postId, userId: userId, content: commentText) { [weak self] success, error in
+            PostsSupabaseManager.shared.addComment(postId: post.postId, userId: userId, content: commentText) { [weak self] success, error in
                 DispatchQueue.main.async {
                     if success {
                         self?.commentTextField.text = ""
@@ -624,7 +624,7 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
         }
         
         print("🔄 Fetching comments for post: \(post.postId)")
-        SupabaseManager.shared.fetchComments(for: post.postId) { [weak self] comments, error in
+        PostsSupabaseManager.shared.fetchComments(for: post.postId) { [weak self] comments, error in
             guard let self = self else { return }
             
             if let error = error {
@@ -646,7 +646,7 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
     // MARK: - Data Loading
     private func fetchLikedPosts() {
         print("📢 fetchLikedPosts() called")
-        SupabaseManager.shared.fetchLikedPostIds { [weak self] likedPostIds, error in
+        PostsSupabaseManager.shared.fetchLikedPostIds { [weak self] likedPostIds, error in
             guard let self = self else { return }
             
             if let error = error {
@@ -675,7 +675,7 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
             return
         }
         
-        SupabaseManager.shared.fetchPosts(for: topicUUID) { [weak self] posts, error in
+        PostsSupabaseManager.shared.fetchPosts(for: topicUUID) { [weak self] posts, error in
             guard let self = self else { return }
             
             DispatchQueue.main.async {
@@ -797,8 +797,8 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
                 cell.delegate = self
                 
                 // Check if the user has liked this comment
-                if let commentId = comment.commentId?.description, let userId = SupabaseManager.shared.userID {
-                    SupabaseManager.shared.checkIfUserLikedComment(commentId: commentId, userId: userId) { isLiked, _ in
+                if let commentId = comment.commentId?.description, let userId = PostsSupabaseManager.shared.userID {
+                    PostsSupabaseManager.shared.checkIfUserLikedComment(commentId: commentId, userId: userId) { isLiked, _ in
                         DispatchQueue.main.async {
                             cell.configure(with: comment, isLiked: isLiked)
                         }
@@ -870,9 +870,9 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
         items.append(postText)
         
         // Add deep link or web link for sharing
-        if let deepLink = SupabaseManager.shared.generatePostDeepLink(for: post) {
+        if let deepLink = PostsSupabaseManager.shared.generatePostDeepLink(for: post) {
             items.append(deepLink)
-        } else if let webLink = SupabaseManager.shared.generatePostWebLink(for: post) {
+        } else if let webLink = PostsSupabaseManager.shared.generatePostWebLink(for: post) {
             items.append(webLink)
         }
         
@@ -925,7 +925,7 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
     }
     
     private func savePost(_ post: Post) {
-        SupabaseManager.shared.isPostSaved(postId: post.postId) { [weak self] isSaved, error in
+        PostsSupabaseManager.shared.isPostSaved(postId: post.postId) { [weak self] isSaved, error in
             guard let self = self else { return }
             
             if isSaved {
@@ -935,7 +935,7 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
                                              preferredStyle: .alert)
                 
                 alert.addAction(UIAlertAction(title: "Remove", style: .destructive) { _ in
-                    SupabaseManager.shared.unsavePost(postId: post.postId) { success, error in
+                    PostsSupabaseManager.shared.unsavePost(postId: post.postId) { success, error in
                         DispatchQueue.main.async {
                             if success {
                                 let feedback = UINotificationFeedbackGenerator()
@@ -958,7 +958,7 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
                 
             } else {
                 // Save the post
-                SupabaseManager.shared.savePost(postId: post.postId) { success, error in
+                PostsSupabaseManager.shared.savePost(postId: post.postId) { success, error in
                     DispatchQueue.main.async {
                         if success {
                             let feedback = UINotificationFeedbackGenerator()
@@ -1089,7 +1089,7 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
                 print("🔄 Sending API request to fetch replies for comment ID: \(commentId)")
                 
                 // Fetch replies
-                SupabaseManager.shared.fetchRepliesForComment(commentId: commentId) { [weak self] replies, error in
+                PostsSupabaseManager.shared.fetchRepliesForComment(commentId: commentId) { [weak self] replies, error in
                     guard let self = self else { return }
                     
                     print("🔄 Reply fetch callback received")
@@ -1212,7 +1212,7 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
             return
         }
         
-        guard let userId = SupabaseManager.shared.userID else {
+        guard let userId = PostsSupabaseManager.shared.userID else {
             print("❌ Error: User not logged in")
             let alert = UIAlertController(
                 title: "Login Required",
@@ -1229,7 +1229,7 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
         generator.impactOccurred()
         
         // Check if already liked
-        SupabaseManager.shared.checkIfUserLikedComment(commentId: commentId, userId: userId) { [weak self] isLiked, error in
+        PostsSupabaseManager.shared.checkIfUserLikedComment(commentId: commentId, userId: userId) { [weak self] isLiked, error in
             guard let self = self else { return }
             
             if let error = error {
@@ -1239,7 +1239,7 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
             
             if isLiked {
                 // Unlike comment
-                SupabaseManager.shared.removeCommentLike(commentId: commentId, userId: userId) { success, error in
+                PostsSupabaseManager.shared.removeCommentLike(commentId: commentId, userId: userId) { success, error in
                     if success {
                         print("✅ Successfully unliked comment")
                         
@@ -1251,7 +1251,7 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
                 }
             } else {
                 // Like comment
-                SupabaseManager.shared.addCommentLike(commentId: commentId, userId: userId) { success, error in
+                PostsSupabaseManager.shared.addCommentLike(commentId: commentId, userId: userId) { success, error in
                     if success {
                         print("✅ Successfully liked comment")
                         

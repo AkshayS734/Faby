@@ -292,7 +292,7 @@ class CommentCell: UITableViewCell {
         
         // Fetch like count for this comment
         if let commentId = comment.commentId?.description {
-            SupabaseManager.shared.fetchCommentLikes(commentId: commentId) { [weak self] count, _ in
+            PostsSupabaseManager.shared.fetchCommentLikes(commentId: commentId) { [weak self] count, _ in
                 DispatchQueue.main.async {
                     self?.likeCountLabel.text = count > 0 ? "\(count)" : ""
                 }

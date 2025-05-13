@@ -209,7 +209,7 @@ class MyPostCardCell: UITableViewCell {
     @objc private func handleLikeButton() {
         guard let post = post else { return }
         
-        guard let userId = SupabaseManager.shared.userID else {
+        guard let userId = PostsSupabaseManager.shared.userID else {
             print("❌ User not logged in")
             let alert = UIAlertController(
                 title: "Login Required",
@@ -238,7 +238,7 @@ class MyPostCardCell: UITableViewCell {
         isLiked = !isLiked
         
         // Check if already liked before adding/removing like
-        SupabaseManager.shared.checkIfUserLiked(postId: post.postId, userId: userId) { [weak self] alreadyLiked, error in
+        PostsSupabaseManager.shared.checkIfUserLiked(postId: post.postId, userId: userId) { [weak self] alreadyLiked, error in
             guard let self = self else { return }
             
             if let error = error {
@@ -252,7 +252,7 @@ class MyPostCardCell: UITableViewCell {
             
             if alreadyLiked {
                 // Remove like
-                SupabaseManager.shared.removeLike(postId: post.postId, userId: userId) { success, error in
+                PostsSupabaseManager.shared.removeLike(postId: post.postId, userId: userId) { success, error in
                     if let error = error {
                         print("❌ Failed to remove like: \(error.localizedDescription)")
                         // Revert UI state
@@ -263,7 +263,7 @@ class MyPostCardCell: UITableViewCell {
                 }
             } else {
                 // Add like
-                SupabaseManager.shared.addLike(postId: post.postId, userId: userId) { success, error in
+                PostsSupabaseManager.shared.addLike(postId: post.postId, userId: userId) { success, error in
                     if let error = error {
                         print("❌ Failed to add like: \(error.localizedDescription)")
                         // Revert UI state
@@ -316,7 +316,7 @@ class MyPostCardCell: UITableViewCell {
         
         // Fetch and set topic name
         if let topicUUID = UUID(uuidString: post.topicId) {
-            SupabaseManager.shared.fetchTopics { [weak self] topics, error in
+            PostsSupabaseManager.shared.fetchTopics { [weak self] topics, error in
                 DispatchQueue.main.async {
                     if let topics = topics,
                        let topic = topics.first(where: { UUID(uuidString: $0.id) == topicUUID }) {
@@ -331,7 +331,7 @@ class MyPostCardCell: UITableViewCell {
         }
         
         // Fetch like counts using new optimized method
-        SupabaseManager.shared.fetchPostLikeCount(postId: post.postId) { [weak self] count, error in
+        PostsSupabaseManager.shared.fetchPostLikeCount(postId: post.postId) { [weak self] count, error in
             DispatchQueue.main.async {
                 self?.likeCountLabel.text = "\(count)"
                 self?.likeCountLabel.isHidden = count == 0
@@ -345,7 +345,7 @@ class MyPostCardCell: UITableViewCell {
         }
         
         // Fetch comment counts
-        SupabaseManager.shared.fetchComments(for: post.postId) { [weak self] comments, error in
+        PostsSupabaseManager.shared.fetchComments(for: post.postId) { [weak self] comments, error in
             DispatchQueue.main.async {
                 let commentCount = comments?.count ?? 0
                 self?.commentCountLabel.text = "\(commentCount)"

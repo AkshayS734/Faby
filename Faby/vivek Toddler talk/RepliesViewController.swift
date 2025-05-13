@@ -192,7 +192,7 @@ class RepliesViewController: UIViewController {
         // For debugging, print database schema info
         print("📊 Reply data should have: commentId=\(commentId), postId=\(postId)")
         
-        SupabaseManager.shared.fetchRepliesForComment(commentId: commentId) { [weak self] replies, error in
+        PostsSupabaseManager.shared.fetchRepliesForComment(commentId: commentId) { [weak self] replies, error in
             guard let self = self else { return }
             
             self.loadingIndicator.stopAnimating()

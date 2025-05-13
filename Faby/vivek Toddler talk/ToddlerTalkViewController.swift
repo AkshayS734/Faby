@@ -453,7 +453,7 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
             self.totalImagesCount = 0 // Reset total count
         }
         
-        SupabaseManager.shared.fetchTopics { [weak self] topics, error in
+        PostsSupabaseManager.shared.fetchTopics { [weak self] topics, error in
             guard let self = self else { return }
             
             DispatchQueue.main.async {
@@ -574,7 +574,7 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
         isLoading = true
         loadingLabel.text = "Logging in..."
         
-        SupabaseManager.shared.login(email: "", password: "") { result in
+        PostsSupabaseManager.shared.login(email: "", password: "") { result in
             switch result {
             case .success(let userID):
                 print("🎉 Logged in as: \(userID)")

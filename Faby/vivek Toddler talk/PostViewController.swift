@@ -330,7 +330,7 @@ class PostViewController: UIViewController, UITextViewDelegate, UIImagePickerCon
                     print("⚠️ PostViewController - Invalid URL format for parentimage_url")
                 }
             }
-        } else if let userId = SupabaseManager.shared.userID {
+        } else if let userId = PostsSupabaseManager.shared.userID {
             // If parent data isn't loaded yet but we have a user ID, try to fetch it
             ParentDataModel.shared.updateCurrentParent(userId: userId) { [weak self] success in
                 if success, let currentParent = ParentDataModel.shared.currentParent {
@@ -450,7 +450,7 @@ class PostViewController: UIViewController, UITextViewDelegate, UIImagePickerCon
             }
 
         print("⚠️ Checking for user ID...")
-        guard let userId = SupabaseManager.shared.userID else {
+        guard let userId = PostsSupabaseManager.shared.userID else {
             showAlert(message: "Error: You need to be logged in to create a post!")
             return
         }
@@ -519,7 +519,7 @@ class PostViewController: UIViewController, UITextViewDelegate, UIImagePickerCon
                     throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid UUID format"])
                 }
                 
-                SupabaseManager.shared.addPost(
+                PostsSupabaseManager.shared.addPost(
                     title: title,
                     content: text,
                     topicID: categoryUUID,

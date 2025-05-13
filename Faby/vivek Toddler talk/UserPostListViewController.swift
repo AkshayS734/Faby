@@ -167,7 +167,7 @@ class UserPostListViewController: UIViewController {
     
     // MARK: - Data Fetching
     private func fetchTopics() {
-        SupabaseManager.shared.fetchTopics { [weak self] topics, error in
+        PostsSupabaseManager.shared.fetchTopics { [weak self] topics, error in
             guard let self = self else { return }
             
             DispatchQueue.main.async {
@@ -199,7 +199,7 @@ class UserPostListViewController: UIViewController {
                 
                 refreshControl.beginRefreshing()
                 
-                SupabaseManager.shared.fetchUserPosts(for: userId) { [weak self] posts, error in
+                PostsSupabaseManager.shared.fetchUserPosts(for: userId) { [weak self] posts, error in
                     DispatchQueue.main.async {
                         self?.refreshControl.endRefreshing()
                         
@@ -275,7 +275,7 @@ class UserPostListViewController: UIViewController {
             self.present(loadingAlert, animated: true)
             
             // Call Supabase manager to delete post
-            SupabaseManager.shared.deletePost(postId: post.postId) { success, error in
+            PostsSupabaseManager.shared.deletePost(postId: post.postId) { success, error in
                 DispatchQueue.main.async {
                     // Dismiss loading indicator
                     loadingAlert.dismiss(animated: true) {
@@ -406,7 +406,7 @@ extension UserPostListViewController: PostCardCellDelegate {
     
     func didTapSave(for post: Post) {
         // Implement save functionality
-        SupabaseManager.shared.isPostSaved(postId: post.postId) { [weak self] isSaved, error in
+        PostsSupabaseManager.shared.isPostSaved(postId: post.postId) { [weak self] isSaved, error in
             guard let self = self else { return }
             
             if isSaved {
@@ -416,7 +416,7 @@ extension UserPostListViewController: PostCardCellDelegate {
                                              preferredStyle: .alert)
                 
                 alert.addAction(UIAlertAction(title: "Remove", style: .destructive) { _ in
-                    SupabaseManager.shared.unsavePost(postId: post.postId) { success, error in
+                    PostsSupabaseManager.shared.unsavePost(postId: post.postId) { success, error in
                         DispatchQueue.main.async {
                             if success {
                                 let feedback = UINotificationFeedbackGenerator()
@@ -439,7 +439,7 @@ extension UserPostListViewController: PostCardCellDelegate {
                 
             } else {
                 // Save the post
-                SupabaseManager.shared.savePost(postId: post.postId) { success, error in
+                PostsSupabaseManager.shared.savePost(postId: post.postId) { success, error in
                     DispatchQueue.main.async {
                         if success {
                             let feedback = UINotificationFeedbackGenerator()
@@ -477,9 +477,9 @@ extension UserPostListViewController: PostCardCellDelegate {
         items.append(postText)
         
         // Add deep link or web link for sharing
-        if let deepLink = SupabaseManager.shared.generatePostDeepLink(for: post) {
+        if let deepLink = PostsSupabaseManager.shared.generatePostDeepLink(for: post) {
             items.append(deepLink)
-        } else if let webLink = SupabaseManager.shared.generatePostWebLink(for: post) {
+        } else if let webLink = PostsSupabaseManager.shared.generatePostWebLink(for: post) {
             items.append(webLink)
         }
         
