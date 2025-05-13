@@ -439,9 +439,9 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
         let duration = notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double ?? 0.3
         
         UIView.animate(withDuration: duration) {
-            // Use a more aggressive adjustment to minimize the gap
-            // Subtracting both safe area and a small additional offset
-            self.commentInputBottomConstraint?.constant = -(self.keyboardHeight - safeAreaBottomInset) + 5
+            // Eliminate the gap by setting the constraint to exactly match the keyboard height
+            // The +0 can be adjusted if needed for fine-tuning (positive values increase the gap)
+            self.commentInputBottomConstraint?.constant = -self.keyboardHeight + safeAreaBottomInset + 0
             self.view.layoutIfNeeded()
         }
     }

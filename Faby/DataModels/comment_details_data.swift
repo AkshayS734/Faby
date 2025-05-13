@@ -44,7 +44,8 @@ struct Post: Codable {
         if let parentContainer = try? container.nestedContainer(keyedBy: ParentCodingKeys.self, forKey: .parents) {
             // It's a single object
             let name = try parentContainer.decode(String.self, forKey: .name)
-            parents = [Parent(name: name)]
+            let parentImageUrl = try parentContainer.decodeIfPresent(String.self, forKey: .parentimage_url)
+            parents = [Parent(name: name, parentimage_url: parentImageUrl)]
         } else if let parentsArray = try? container.decodeIfPresent([Parent].self, forKey: .parents) {
             // It's an array
             parents = parentsArray
@@ -57,9 +58,27 @@ struct Post: Codable {
     // Coding keys for parent field
     private enum ParentCodingKeys: String, CodingKey {
         case name
+        case parentimage_url
     }
 
     struct Parent: Codable {
         let name: String
+        let parentimage_url: String?
+        
+        enum CodingKeys: String, CodingKey {
+            case name
+            case parentimage_url
+        }
+        
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            name = try container.decode(String.self, forKey: .name)
+            parentimage_url = try container.decodeIfPresent(String.self, forKey: .parentimage_url)
+        }
+        
+        init(name: String, parentimage_url: String? = nil) {
+            self.name = name
+            self.parentimage_url = parentimage_url
+        }
     }
 }

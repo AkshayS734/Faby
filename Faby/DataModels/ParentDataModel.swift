@@ -42,6 +42,7 @@ class ParentDataModel {
                     let phoneNumber = firstParent["phone_number"] as? String
                     let genderString = firstParent["gender"] as? String ?? "male"
                     let relationString = firstParent["relation"] as? String ?? "guardian"
+                    let parentImageUrl = firstParent["parentimage_url"] as? String
                     
                     // Convert gender and relation strings to enums
                     let gender: Gender = genderString == "female" ? .female : .male
@@ -63,7 +64,8 @@ class ParentDataModel {
                         phoneNumber: phoneNumber,
                         gender: gender,
                         relation: relation,
-                        babyIds: []
+                        babyIds: [],
+                        parentimage_url: parentImageUrl
                     )
                     
                     print("✅ Successfully updated current parent: \(name)")
@@ -79,7 +81,8 @@ class ParentDataModel {
                         email: "",
                         gender: .male,
                         relation: .guardian,
-                        babyIds: []
+                        babyIds: [],
+                        parentimage_url: nil
                     )
                     
                     // Save this new parent to Supabase

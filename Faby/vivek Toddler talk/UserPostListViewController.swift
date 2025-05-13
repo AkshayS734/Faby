@@ -337,13 +337,9 @@ extension UserPostListViewController: UITableViewDelegate, UITableViewDataSource
         tableView.deselectRow(at: indexPath, animated: true)
         let post = posts[indexPath.row]
         
-        let storyboard = UIStoryboard(name: "ToddlerTalk", bundle: nil)
-        if let commentVC = storyboard.instantiateViewController(withIdentifier: "ModernPostDetailViewController") as? ModernPostDetailViewController {
-            commentVC.passedTitle = post.postTitle
-            commentVC.selectedTopicId = post.topicId
-            commentVC.topicName = post.postTitle
-            navigationController?.pushViewController(commentVC, animated: true)
-        }
+        // Navigate to post details view controller
+        let detailsVC = PostDetailsViewController(post: post)
+        navigationController?.pushViewController(detailsVC, animated: true)
     }
 }
 
@@ -465,6 +461,12 @@ extension UserPostListViewController: PostCardCellDelegate {
     
     func didTapReport(for post: Post) {
         // No need for report in own posts
+    }
+    
+    func didTapPostForDetails(_ post: Post) {
+        // Navigate to post details view controller
+        let detailsVC = PostDetailsViewController(post: post)
+        navigationController?.pushViewController(detailsVC, animated: true)
     }
     
     func sharePost(_ post: Post, from viewController: UIViewController) {
