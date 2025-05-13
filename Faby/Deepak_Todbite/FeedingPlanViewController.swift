@@ -118,15 +118,15 @@ class FeedingPlanViewController: UIViewController {
             selectedDay = weekDays.first ?? ""
             selectedDateIndex = 0
         }
-        
+
         // Load existing feeding plans for the current date range
         loadExistingFeedingPlans()
-
+       
         DispatchQueue.main.async {
             self.collectionView.reloadData()
             self.tableView.reloadData()
         }
-
+       
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             if self.selectedDateIndex < self.collectionView.numberOfItems(inSection: 0) {
                 let indexPath = IndexPath(item: self.selectedDateIndex, section: 0)
@@ -261,7 +261,7 @@ class FeedingPlanViewController: UIViewController {
         collectionView.delegate = self
         collectionView.showsHorizontalScrollIndicator = false
         collectionView.backgroundColor = .clear
-        
+
         // Create height constraint for collection view (we'll activate it in setupUI)
         collectionViewHeightConstraint = collectionView.heightAnchor.constraint(equalToConstant: 60)
     }
@@ -396,7 +396,7 @@ class FeedingPlanViewController: UIViewController {
 
         // Collect all meals to save to Supabase
         var mealsToSave: [FeedingMeal] = []
-        
+
         for (category, meals) in summaryVC.savedPlan {
             for meal in meals {
                 var mealDict: [String: String] = [
@@ -602,7 +602,7 @@ class FeedingPlanViewController: UIViewController {
             
             // Hide collection view with animation
             UIView.animate(withDuration: 0.3) {
-                self.collectionView.isHidden = true
+            self.collectionView.isHidden = true
                 self.collectionViewHeightConstraint.constant = 0
                 self.view.layoutIfNeeded()
             }
@@ -614,7 +614,7 @@ class FeedingPlanViewController: UIViewController {
             
             // Show collection view with animation
             UIView.animate(withDuration: 0.3) {
-                self.collectionView.isHidden = false
+            self.collectionView.isHidden = false
                 self.collectionViewHeightConstraint.constant = 60
                 self.view.layoutIfNeeded()
             }

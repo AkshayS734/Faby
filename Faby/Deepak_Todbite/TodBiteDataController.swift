@@ -26,20 +26,7 @@ class BiteSampleData {
 
         return filteredItems
     }
-    
-//    // New method that includes country filtering
-//    func getItems(for category: BiteType, in country: CountryType, in region: RegionType, for ageGroup: AgeGroup) -> [FeedingMeal] {
-//        let allItems = categories[category] ?? []
-//
-//        let filteredItems = allItems.filter { meal in
-//            return meal.region.country == country && meal.region == region && meal.ageGroup == ageGroup
-//        }
-//
-//        print("\n📌 Fetching Meals for \(category.rawValue), Country: \(country.rawValue), Region: \(region.rawValue), Age: \(ageGroup.rawValue)")
-//        print("🔍 Found \(filteredItems.count) meals.")
-//
-//        return filteredItems
-//    }
+
 
    
    func addToMyBowl(_ item: FeedingMeal) {
@@ -180,7 +167,7 @@ extension BiteSampleData {
     }
 }
 
-let client = SupabaseClient(supabaseURL: URL(string: "https://hlkmrimpxzsnxzrgofes.supabase.co")!, supabaseKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhsa21yaW1weHpzbnh6cmdvZmVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDAwNzI1MjgsImV4cCI6MjA1NTY0ODUyOH0.6mvladJjLsy4Q7DTs7x6jnQrLaKrlsnwDUlN-x_ZcFY")
+let client = SupabaseClient(supabaseURL: URL(string: "https://tmnltannywgqrrxavoge.supabase.co")!, supabaseKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRtbmx0YW5ueXdncXJyeGF2b2dlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY5NjQ0MjQsImV4cCI6MjA2MjU0MDQyNH0.pkaPTx--vk4GPULyJ6o3ttI3vCsMUKGU0TWEMDpE1fY")
 
 func fetchMeals() async -> [FeedingMeal] {
     do {
@@ -275,7 +262,7 @@ func loadSampleMeals() -> [FeedingMeal] {
 }
 
 func getImageURL(for meal: FeedingMeal) -> URL? {
-    let baseURL = "https://hlkmrimpxzsnxzrgofes.supabase.co/storage/v1/object/public/meal-images"
+    let baseURL = "https://tmnltannywgqrrxavoge.supabase.co/storage/v1/object/public/meal-images"
     
     // The image path is already complete from the database
     if meal.image_url.lowercased().starts(with: "http") {
@@ -333,6 +320,100 @@ func populateMealData() async {
             let meal = meals[i]
             print("   - \(meal.name) (Region: \(meal.region.rawValue), Age: \(meal.ageGroup.rawValue))")
         }
+    }
+}
+
+// PreloadedDataManager to ensure data is available
+class PreloadedDataManager {
+    static let shared = PreloadedDataManager()
+    private init() {
+        // Start loading data immediately
+        Task {
+            await ensureDataLoaded()
+        }
+    }
+    
+    private var isDataPreloaded = false
+    private var isLoading = false
+    private var loadingTask: Task<Void, Never>?
+    
+    // Public method to force wait for data to load
+    func ensureDataLoaded() async {
+        // If data is already loaded, return immediately
+        if isDataPreloaded {
+            print("✅ Data already preloaded, returning immediately")
+            return
+        }
+        
+        // If already loading, wait for that task to complete
+        if isLoading, let existingTask = loadingTask {
+            print("⏳ Already loading data, waiting for existing task...")
+            await existingTask.value
+            return
+        }
+        
+        // Start loading
+        isLoading = true
+        print("🚀 Starting preloaded data loading process")
+        
+        loadingTask = Task {
+            // Load data using the existing function
+            await populateMealData()
+            
+            // Double check that data was actually loaded
+            if BiteSampleData.shared.categories.isEmpty {
+                print("⚠️ First attempt to load data failed, trying again with sample data")
+                // Force use sample data
+                BiteSampleData.shared.categories = createSampleCategories()
+            }
+            
+            self.isDataPreloaded = true
+            self.isLoading = false
+            print("✅ Preloaded data is now ready")
+        }
+        
+        // Wait for the loading task to complete
+        await loadingTask?.value
+    }
+    
+    // Create sample data as a fallback
+    private func createSampleCategories() -> [BiteType: [FeedingMeal]] {
+        var categories: [BiteType: [FeedingMeal]] = [:]
+        
+        // Add sample meals for each category
+        for category in BiteType.predefinedCases {
+            let sampleMeals = [
+                FeedingMeal(
+                    name: "\(category.rawValue) Sample 1",
+                    description: "Sample meal for \(category.rawValue)",
+                    image: "sample_image.jpg",
+                    category: category,
+                    region: .north,
+                    ageGroup: .months12to15
+                ),
+                FeedingMeal(
+                    name: "\(category.rawValue) Sample 2",
+                    description: "Another sample for \(category.rawValue)",
+                    image: "sample_image.jpg",
+                    category: category,
+                    region: .north,
+                    ageGroup: .months12to15
+                )
+            ]
+            categories[category] = sampleMeals
+        }
+        
+        return categories
+    }
+    
+    // Provide direct access to data 
+    func getFilteredMeals(for category: BiteType, in continent: ContinentType, in country: CountryType, in region: RegionType, for ageGroup: AgeGroup) -> [FeedingMeal] {
+        // Access the BiteSampleData directly but ensure data is loaded first
+        if !isDataPreloaded {
+            print("⚠️ Warning: Accessing filtered meals before data is loaded")
+        }
+        
+        return BiteSampleData.shared.getItems(for: category, in: continent, in: country, in: region, for: ageGroup)
     }
 }
 

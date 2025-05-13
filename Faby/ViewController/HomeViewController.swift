@@ -80,17 +80,6 @@ class HomeViewController: UIViewController {
         return stackView
     }()
     
-    // Separate edit button that will be positioned at the far right
-    private let todaysBitesEditButton: UIButton = {
-        let button = UIButton(type: .system)
-        button.setTitle("Edit", for: .normal)
-        button.setTitleColor(.black, for: .normal)
-        button.titleLabel?.font = UIFont.systemFont(ofSize: 16)
-        button.translatesAutoresizingMaskIntoConstraints = false
-        button.addTarget(self, action: #selector(editTodaysBitesTapped), for: .touchUpInside)
-        return button
-    }()
-    
     private var todaysBitesCollectionView: UICollectionView = {
         let layout = UICollectionViewFlowLayout()
         layout.scrollDirection = .horizontal
@@ -245,7 +234,6 @@ class HomeViewController: UIViewController {
         contentView.addSubview(specialMomentsLabel)
         contentView.addSubview(specialMomentsContainerView)
         contentView.addSubview(todaysBitesLabel)
-        contentView.addSubview(todaysBitesEditButton)
         contentView.addSubview(todaysBitesCollectionView)
         
         // Add empty state views with proper hierarchy
@@ -311,13 +299,7 @@ class HomeViewController: UIViewController {
             
             // Button constraints
             addMealPlanButton.heightAnchor.constraint(equalToConstant: 44),
-            addMealPlanButton.widthAnchor.constraint(equalToConstant: 160),
-            
-            // Edit button constraints
-            todaysBitesEditButton.topAnchor.constraint(equalTo: todaysBitesLabel.topAnchor),
-            todaysBitesEditButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-            todaysBitesEditButton.heightAnchor.constraint(equalToConstant: 44),
-            todaysBitesEditButton.widthAnchor.constraint(equalToConstant: 60)
+            addMealPlanButton.widthAnchor.constraint(equalToConstant: 160)
         ])
         
         addMealPlanButton.addTarget(self, action: #selector(addMealPlanTapped), for: .touchUpInside)
@@ -641,14 +623,6 @@ class HomeViewController: UIViewController {
         } else {
             todaysBitesCollectionView.isHidden = false
             todaysBitesEmptyStateView.isHidden = true
-        }
-    }
-    
-    @objc private func editTodaysBitesTapped() {
-        if let tabBarController = self.tabBarController {
-            tabBarController.selectedIndex = 4  // Switch to TodBite tab
-        } else {
-            print("⚠️ TabBarController not found")
         }
     }
     
