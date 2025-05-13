@@ -105,8 +105,12 @@ class MeasurementDetailsViewController: UIViewController, UITableViewDelegate, U
     
     private func embedSwiftUIView() {
         let swiftUIView = AnyView(
-            MeasurementDetailsView(measurementType: measurementType ?? "", measurements: measurements)
-                .environmentObject(unitSettings)
+            MeasurementDetailsView(
+                measurementType: measurementType ?? "",
+                dataPoints: currentGrowthData,
+                timeLabels: currentTimeLabels
+            )
+            .environmentObject(unitSettings)
         )
 
         let hostingVC = UIHostingController(rootView: swiftUIView)
@@ -176,50 +180,128 @@ class MeasurementDetailsViewController: UIViewController, UITableViewDelegate, U
 
         let calendar = Calendar.current
         let now = Date()
-        let filteredData = measurements.filter { measurement in
-            switch selectedTimeSpan {
-            case "Week":
-                return measurement.date >= calendar.date(byAdding: .day, value: -7, to: now)!
-            case "Month":
-                return measurement.date >= calendar.date(byAdding: .month, value: -1, to: now)!
-            case "6 Months":
-                return measurement.date >= calendar.date(byAdding: .month, value: -6, to: now)!
-            case "Year":
-                return measurement.date >= calendar.date(byAdding: .year, value: -1, to: now)!
-            default:
-                return true
+        let formatter = DateFormatter()
+        formatter.locale = Locale.current
+
+        var timeLabels: [String] = []
+        var values: [Double?] = []
+
+        switch selectedTimeSpan {
+        case "Week":
+            formatter.dateFormat = "EEE"
+            guard let startOfWeek = calendar.date(byAdding: .day, value: -((calendar.component(.weekday, from: now) + 5) % 7), to: now) else { return }
+
+            for i in 0..<7 {
+                guard let date = calendar.date(byAdding: .day, value: i, to: startOfWeek) else { continue }
+                timeLabels.append(formatter.string(from: date))
+
+                let value = measurements.first(where: { calendar.isDate($0.date, inSameDayAs: date) })?.value
+                values.append(value)
             }
+
+        case "Month":
+            formatter.dateFormat = "MMM d"
+            guard let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: now)),
+                  let range = calendar.range(of: .day, in: .month, for: startOfMonth) else { return }
+
+            let totalDays = range.count
+            let interval = totalDays / 4
+
+            for i in 0..<4 {
+                guard let startInterval = calendar.date(byAdding: .day, value: i * interval, to: startOfMonth),
+                      let endInterval = calendar.date(byAdding: .day, value: ((i + 1) * interval) - 1, to: startOfMonth) else { continue }
+
+                timeLabels.append(formatter.string(from: startInterval))
+
+                let dataInRange = measurements.filter {
+                    $0.date >= startInterval && $0.date <= endInterval
+                }
+
+                // Use the last measurement in the range, if available
+                if let lastMeasurement = dataInRange.max(by: { $0.date < $1.date }) {
+                    values.append(lastMeasurement.value)
+                } else {
+                    values.append(nil)
+                }
+            }
+
+        case "6 Months":
+            formatter.dateFormat = "MMM"
+            let currentMonth = calendar.component(.month, from: now)
+            let year = calendar.component(.year, from: now)
+
+            let startMonth = (currentMonth <= 6) ? 1 : 7
+            for i in 0..<6 {
+                let month = startMonth + i
+                guard let start = calendar.date(from: DateComponents(year: year, month: month)),
+                      let end = calendar.date(byAdding: .month, value: 1, to: start)?.addingTimeInterval(-1) else { continue }
+
+                timeLabels.append(formatter.string(from: start))
+
+                let dataInRange = measurements.filter {
+                    $0.date >= start && $0.date <= end
+                }
+
+                // Use the last measurement in the range, if available
+                if let lastMeasurement = dataInRange.max(by: { $0.date < $1.date }) {
+                    values.append(lastMeasurement.value)
+                } else {
+                    values.append(nil)
+                }
+            }
+
+        case "Year":
+            formatter.dateFormat = "MMM"
+            let year = calendar.component(.year, from: now)
+
+            for month in 1...12 {
+                guard let start = calendar.date(from: DateComponents(year: year, month: month)),
+                      let end = calendar.date(byAdding: .month, value: 1, to: start)?.addingTimeInterval(-1) else { continue }
+
+                timeLabels.append(formatter.string(from: start))
+
+                let dataInRange = measurements.filter {
+                    $0.date >= start && $0.date <= end
+                }
+
+                // Use the last measurement in the range, if available
+                if let lastMeasurement = dataInRange.max(by: { $0.date < $1.date }) {
+                    values.append(lastMeasurement.value)
+                } else {
+                    values.append(nil)
+                }
+            }
+
+        default:
+            return
         }
 
-        currentGrowthData = filteredData.sorted { $0.date < $1.date }.map { $0.value }
-        currentTimeLabels = filteredData.sorted { $0.date < $1.date }.map {
-            DateFormatter.localizedString(from: $0.date, dateStyle: .short, timeStyle: .none)
-        }
-
+        currentTimeLabels = timeLabels
+        currentGrowthData = values.map { $0 ?? Double.nan }
         updateLatestMeasurementLabel()
         embedSwiftUIView()
     }
     
     private func updateLatestMeasurementLabel() {
-        guard let lastMeasurement = currentGrowthData.last else {
-            latestMeasurementLabel.text = ""
+        guard let lastValid = currentGrowthData.reversed().first(where: { !$0.isNaN }) else {
+            latestMeasurementLabel.text = "No data"
             latestMeasurementUnitLabel.text = ""
             return
         }
-            
+        
         let unit: String
         let convertedValue: Double
-            
+        
         if measurementType == "Weight" {
             unit = unitSettings.weightUnit
-            convertedValue = convertMeasurement(value: lastMeasurement, to: unit, isWeight: true)
+            convertedValue = convertMeasurement(value: lastValid, to: unit, isWeight: true)
         } else {
             unit = unitSettings.selectedUnit
-            convertedValue = convertMeasurement(value: lastMeasurement, to: unit, isWeight: false)
+            convertedValue = convertMeasurement(value: lastValid, to: unit, isWeight: false)
         }
-            
+        
         latestMeasurementLabel.text = String(format: "%.2f", convertedValue)
-        latestMeasurementUnitLabel.text = "\(unit)"
+        latestMeasurementUnitLabel.text = unit
     }
     
     @IBAction func addButtonTapped(_ sender: UIBarButtonItem) {
