@@ -173,7 +173,7 @@ class CalendarWithIndicators: UIDatePicker {
         // Create circular background
         let circleLayer = CAShapeLayer()
         circleLayer.name = "todayCircle"
-        circleLayer.fillColor = UIColor(hex: "#0076BA").cgColor
+        circleLayer.fillColor = UIColor(hex: "#0076BA")?.cgColor
         
         // Size the circle to fit the text with padding
         let size = min(cell.bounds.width, cell.bounds.height) * 0.8

@@ -27,7 +27,8 @@ struct VaccineCardView: View {
                         .font(.footnote)
                         .foregroundColor(.secondary)
                 }
-                Spacer()                Image(systemName: "calendar.badge.plus")
+                Spacer()
+                Image(systemName: "calendar.badge.plus")
                     .font(.title3)
                     .foregroundColor(Color.accentColor)
                     .frame(width: 44, height: 44) // Optimal tap target size

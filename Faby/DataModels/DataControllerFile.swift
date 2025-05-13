@@ -398,7 +398,7 @@ class HospitalSearchManager {
                 let distance = location.distance(from: item.placemark.location ?? location) / 1000 // in km
                 
                 // Get current baby ID (defaulting to a new UUID if not available)
-                let babyId = UserDefaultsManager.shared.currentBabyId ?? (BabyDataModel.shared.babyList.first?.babyID ?? UUID())
+                let babyId = UserDefaultsManager.shared.currentBabyId ?? (DataController.shared.baby?.babyID ?? UUID())
                 
                 return Hospital(
                     babyId: babyId,
