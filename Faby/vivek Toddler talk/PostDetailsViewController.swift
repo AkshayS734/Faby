@@ -269,6 +269,25 @@ class PostDetailsViewController: UIViewController {
         }
     }
     
+    // Properties for reply functionality
+    private var replyingToComment: Comment?
+    private var isInReplyMode: Bool = false {
+        didSet {
+            updateCommentTextFieldPlaceholder()
+        }
+    }
+    
+    private lazy var cancelReplyButton: UIButton = {
+        let button = UIButton(type: .system)
+        let config = UIImage.SymbolConfiguration(pointSize: 18, weight: .bold)
+        let xImage = UIImage(systemName: "xmark.circle.fill", withConfiguration: config)
+        button.setImage(xImage, for: .normal)
+        button.tintColor = .systemRed
+        button.addTarget(self, action: #selector(simpleCancelReply), for: .touchUpInside)
+        button.frame = CGRect(x: 5, y: 0, width: 30, height: 30)
+        return button
+    }()
+    
     // MARK: - Initialization
     init(post: Post) {
         self.post = post
@@ -525,7 +544,7 @@ class PostDetailsViewController: UIViewController {
             commentSendButton.trailingAnchor.constraint(equalTo: commentInputView.trailingAnchor, constant: -16),
             commentSendButton.centerYAnchor.constraint(equalTo: commentInputView.centerYAnchor),
             commentSendButton.widthAnchor.constraint(equalToConstant: 44),
-            commentSendButton.heightAnchor.constraint(equalToConstant: 44)
+            commentSendButton.heightAnchor.constraint(equalToConstant: 44),
         ])
     }
     
@@ -892,46 +911,46 @@ class PostDetailsViewController: UIViewController {
     }
     
     @objc private func handleSendComment() {
-        guard let commentText = commentTextField.text, !commentText.isEmpty else { return }
-        
-        postComment(commentText)
-        commentTextField.text = ""
-    }
-    
-    private func postComment(_ text: String) {
-        guard let userId = SupabaseManager.shared.userID else {
-            print("❌ User not logged in")
+        guard let commentText = commentTextField.text, !commentText.isEmpty,
+              let userId = SupabaseManager.shared.userID else {
             return
         }
         
-        // Use the addComment function from SupabaseManager
-        SupabaseManager.shared.addComment(postId: post.postId, userId: userId, content: text) { [weak self] success, error in
-            if success {
-                // Update comment count
+        if isInReplyMode, let replyToComment = replyingToComment, let commentId = replyToComment.commentId {
+            // We're replying to a specific comment
+            SupabaseManager.shared.addCommentReply(
+                commentId: commentId,
+                postId: post.postId,
+                userId: userId,
+                content: commentText
+            ) { [weak self] success, error in
                 DispatchQueue.main.async {
-                    self?.updateCommentCount()
-                }
-            } else {
-                print("❌ Failed to post comment: \(error?.localizedDescription ?? "Unknown error")")
-                
-                DispatchQueue.main.async {
-                    let alert = UIAlertController(
-                        title: "Error",
-                        message: "Failed to post comment. Please try again.",
-                        preferredStyle: .alert
-                    )
-                    alert.addAction(UIAlertAction(title: "OK", style: .default))
-                    self?.present(alert, animated: true)
+                    if success {
+                        self?.commentTextField.text = ""
+                        self?.simpleCancelReply()
+                        // Refresh comments
+                        self?.fetchComments()
+                    } else {
+                        let alert = UIAlertController(title: "Error", message: "Failed to add reply. Please try again.", preferredStyle: .alert)
+                        alert.addAction(UIAlertAction(title: "OK", style: .default))
+                        self?.present(alert, animated: true)
+                    }
                 }
             }
-        }
-    }
-    
-    private func updateCommentCount() {
-        SupabaseManager.shared.fetchComments(for: post.postId) { [weak self] comments, error in
-            DispatchQueue.main.async {
-                let commentCount = comments?.count ?? 0
-                self?.commentCountLabel.text = "\(commentCount)"
+        } else {
+            // Regular comment (not a reply)
+            SupabaseManager.shared.addComment(postId: post.postId, userId: userId, content: commentText) { [weak self] success, error in
+                DispatchQueue.main.async {
+                    if success {
+                        self?.commentTextField.text = ""
+                        // Refresh comments
+                        self?.fetchComments()
+                    } else {
+                        let alert = UIAlertController(title: "Error", message: "Failed to add comment. Please try again.", preferredStyle: .alert)
+                        alert.addAction(UIAlertAction(title: "OK", style: .default))
+                        self?.present(alert, animated: true)
+                    }
+                }
             }
         }
     }
@@ -1123,9 +1142,78 @@ class PostDetailsViewController: UIViewController {
         
         present(alert, animated: true)
     }
+    
+    // MARK: - Reply Functionality
+    @objc private func simpleCancelReply() {
+        // Haptic feedback
+        let generator = UIImpactFeedbackGenerator(style: .medium)
+        generator.impactOccurred()
+        
+        // Clear all reply state
+        isInReplyMode = false
+        replyingToComment = nil
+        
+        // Update text field right view
+        updateTextFieldForReplyMode(isReplying: false)
+        
+        // Clear text fields
+        commentTextField.text = ""
+        // Reset placeholder
+        commentTextField.placeholder = "Write a comment..."
+    }
+    
+    private func startReplyToComment(_ comment: Comment) {
+        // Store the comment we're replying to
+        replyingToComment = comment
+        isInReplyMode = true
+        
+        // Update the text field for reply mode
+        updateTextFieldForReplyMode(isReplying: true)
+        
+        // Update placeholder text
+        updateCommentTextFieldPlaceholder()
+        
+        // Focus on the text field
+        commentTextField.becomeFirstResponder()
+    }
+    
+    private func updateCommentTextFieldPlaceholder() {
+        if isInReplyMode {
+            commentTextField.placeholder = "Reply to \(replyingToComment?.parentName ?? "comment")..."
+        } else {
+            commentTextField.placeholder = "Write a comment..."
+        }
+    }
+    
+    private func updateTextFieldForReplyMode(isReplying: Bool) {
+        if isReplying {
+            // Create a new container for the right view
+            let rightViewContainer = UIView(frame: CGRect(x: 0, y: 0, width: 40, height: 30))
+            
+            // Configure the cancel button
+            cancelReplyButton.frame = CGRect(x: 5, y: 0, width: 30, height: 30)
+            
+            // Add button to the container
+            rightViewContainer.addSubview(cancelReplyButton)
+            
+            // Set as right view
+            commentTextField.rightView = rightViewContainer
+        } else {
+            // Reset to empty right view
+            let emptyRightView = UIView(frame: CGRect(x: 0, y: 0, width: 10, height: 30))
+            commentTextField.rightView = emptyRightView
+        }
+    }
+    
+    private func updateCommentCount() {
+        SupabaseManager.shared.fetchComments(for: post.postId) { [weak self] comments, error in
+            DispatchQueue.main.async {
+                let commentCount = comments?.count ?? 0
+                self?.commentCountLabel.text = "\(commentCount)"
+            }
+        }
+    }
 }
-
-
 
 // MARK: - UITableViewDelegate & UITableViewDataSource
 extension PostDetailsViewController: UITableViewDelegate, UITableViewDataSource {
@@ -1191,32 +1279,7 @@ extension PostDetailsViewController: CommentCellDelegate {
     }
     
     func didTapReplyButton(for comment: Comment) {
-        guard let commentId = comment.commentId else { return }
-        
-        let alert = UIAlertController(title: "Reply to comment", message: nil, preferredStyle: .alert)
-        alert.addTextField { textField in
-            textField.placeholder = "Write your reply..."
-        }
-        
-        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
-        let replyAction = UIAlertAction(title: "Reply", style: .default) { [weak self, weak alert] _ in
-            guard let replyText = alert?.textFields?.first?.text, !replyText.isEmpty,
-                  let self = self, let userId = SupabaseManager.shared.userID else { return }
-            
-            SupabaseManager.shared.addCommentReply(commentId: commentId, postId: self.post.postId, userId: userId, content: replyText) { success, error in
-                if success {
-                    DispatchQueue.main.async {
-                        self.fetchComments() // Refresh to show updated reply count
-                    }
-                } else if let error = error {
-                    print("❌ Error adding reply: \(error.localizedDescription)")
-                }
-            }
-        }
-        
-        alert.addAction(cancelAction)
-        alert.addAction(replyAction)
-        present(alert, animated: true)
+        startReplyToComment(comment)
     }
     
     func didTapMore(for comment: Comment) {
