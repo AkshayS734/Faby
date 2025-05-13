@@ -37,32 +37,40 @@ class TodBiteViewController: UIViewController, UITableViewDelegate, UISearchBarD
         if segmentedControl.selectedSegmentIndex == 0 {
             setupNavigationButtonsForRecommendedMeal()
             
-            // Always load data when the view appears for recommended meal tab
-            // Show loading indicator
-            let activityIndicator = UIActivityIndicatorView(style: .large)
-            activityIndicator.center = view.center
-            activityIndicator.startAnimating()
-            view.addSubview(activityIndicator)
-            
-            // Hide collection view until data is loaded
-            collectionView.isHidden = true
-            
-            // Reload data
-            Task {
-                await fetchAndPopulateMealData()
-                await MainActor.run {
-                    activityIndicator.stopAnimating()
-                    activityIndicator.removeFromSuperview()
-                    
-                    if BiteSampleData.shared.categories.count > 0 {
-                        applyDefaultFilters()
-                        collectionView.isHidden = false
-                        collectionView.reloadData()
-                        print("✅ Data loaded and collection view reloaded in viewWillAppear")
-                    } else {
-                        print("⚠️ No data available after loading in viewWillAppear")
+            // If initial data load is not complete or filteredMeals is empty
+            if !initialDataLoadComplete || filteredMeals.isEmpty {
+                // Show loading indicator
+                let activityIndicator = UIActivityIndicatorView(style: .large)
+                activityIndicator.center = view.center
+                activityIndicator.startAnimating()
+                view.addSubview(activityIndicator)
+                
+                // Hide collection view until data is loaded
+                collectionView.isHidden = true
+                
+                // Reload data
+                Task {
+                    await fetchAndPopulateMealData()
+                    await MainActor.run {
+                        activityIndicator.stopAnimating()
+                        activityIndicator.removeFromSuperview()
+                        
+                        if BiteSampleData.shared.categories.count > 0 {
+                            applyDefaultFilters()
+                            collectionView.isHidden = false
+                            collectionView.reloadData()
+                            print("✅ Data loaded and collection view reloaded")
+                        } else {
+                            print("⚠️ No data available after loading")
+                        }
                     }
                 }
+            } else {
+                // Data is already loaded, just make sure UI is correct
+                collectionView.isHidden = false
+                tableView.isHidden = true
+                collectionView.reloadData()
+                print("✅ Using cached data in viewWillAppear")
             }
         } else {
             // For My Bowl tab
@@ -96,7 +104,7 @@ class TodBiteViewController: UIViewController, UITableViewDelegate, UISearchBarD
         setupCollectionView()
         setupTableView()
         setupSearchBar()
-        setupPlaceholderLabel() 
+        setupPlaceholderLabel()
         
         // Show loading indicator while data is being fetched
         let activityIndicator = UIActivityIndicatorView(style: .large)
@@ -130,7 +138,7 @@ class TodBiteViewController: UIViewController, UITableViewDelegate, UISearchBarD
                     print("✅ Collection view reloaded in viewDidLoad")
                 }
                 
-                loadDefaultContent()
+        loadDefaultContent()
                 activityIndicator.stopAnimating()
                 activityIndicator.removeFromSuperview()
             }
@@ -305,7 +313,7 @@ class TodBiteViewController: UIViewController, UITableViewDelegate, UISearchBarD
         // First load UI components
         if initialDataLoadComplete && BiteSampleData.shared.categories.count > 0 {
             // Only show collection view if we have data
-            collectionView.isHidden = false
+        collectionView.isHidden = false
         } else {
             collectionView.isHidden = true
         }
@@ -332,7 +340,7 @@ class TodBiteViewController: UIViewController, UITableViewDelegate, UISearchBarD
             // Force load data using PreloadedDataManager
             Task {
                 await PreloadedDataManager.shared.ensureDataLoaded()
-                await MainActor.run {
+            await MainActor.run {
                     // Retry applying filters on main thread
                     self.applyDefaultFilters()
                 }
@@ -422,32 +430,38 @@ class TodBiteViewController: UIViewController, UITableViewDelegate, UISearchBarD
             // Set up the correct navigation buttons for Recommended Meal tab
             setupNavigationButtonsForRecommendedMeal()
             
-            // Always reload data when switching to this tab
-            // Show loading indicator
-            let activityIndicator = UIActivityIndicatorView(style: .large)
-            activityIndicator.center = view.center
-            activityIndicator.startAnimating()
-            view.addSubview(activityIndicator)
-            
-            // Hide collection view until data is loaded
-            collectionView.isHidden = true
-            
-            // Reload data
-            Task {
-                await fetchAndPopulateMealData()
-                await MainActor.run {
-                    activityIndicator.stopAnimating()
-                    activityIndicator.removeFromSuperview()
-                    
-                    if BiteSampleData.shared.categories.count > 0 {
-                        applyDefaultFilters()
-                        collectionView.isHidden = false
-                        collectionView.reloadData()
-                        print("✅ Data loaded from tab change and collection view reloaded")
-                    } else {
-                        print("⚠️ No data available after loading from tab change")
+            // Check if data needs to be loaded
+            if !initialDataLoadComplete || filteredMeals.isEmpty {
+                // Show loading indicator
+                let activityIndicator = UIActivityIndicatorView(style: .large)
+                activityIndicator.center = view.center
+                activityIndicator.startAnimating()
+                view.addSubview(activityIndicator)
+                
+                // Hide collection view until data is loaded
+                collectionView.isHidden = true
+                
+                // Reload data
+                Task {
+                    await fetchAndPopulateMealData()
+                    await MainActor.run {
+                        activityIndicator.stopAnimating()
+                        activityIndicator.removeFromSuperview()
+                        
+                        if BiteSampleData.shared.categories.count > 0 {
+                            applyDefaultFilters()
+                            collectionView.isHidden = false
+                            collectionView.reloadData()
+                            print("✅ Data loaded from tab change and collection view reloaded")
+                        } else {
+                            print("⚠️ No data available after loading from tab change")
+                        }
                     }
                 }
+            } else {
+                // We already have data, just reload the collection view
+                print("🔄 Reloading collection view with existing data in segmentedControlTapped")
+                collectionView.reloadData()
             }
 
         case 1: // MyBowl
@@ -508,13 +522,14 @@ class TodBiteViewController: UIViewController, UITableViewDelegate, UISearchBarD
 
 
     private func updatePlaceholderVisibility() {
-        let isMyBowlEmpty = myBowlItemsDict.isEmpty
-        placeholderLabel.isHidden = !isMyBowlEmpty
-        tableView.isHidden = isMyBowlEmpty
-        
-        // Only update the navigation buttons if we're on the My Bowl tab
         if segmentedControl.selectedSegmentIndex == 1 {
+            let isMyBowlEmpty = myBowlItemsDict.isEmpty
+            placeholderLabel.isHidden = !isMyBowlEmpty
+            tableView.isHidden = isMyBowlEmpty
             setupNavigationButtonsForMyBowl()
+        } else {
+            // Always hide the placeholder in Recommended Meal tab
+            placeholderLabel.isHidden = true
         }
     }
     private func updateFilteredMeals() {
@@ -535,14 +550,14 @@ class TodBiteViewController: UIViewController, UITableViewDelegate, UISearchBarD
     
     func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
         guard segmentedControl.selectedSegmentIndex == 1 else { return nil }
-        
+
         let headerView = UIView()
         headerView.backgroundColor = .white
-        
+
         let titleLabel = UILabel()
         titleLabel.font = UIFont.boldSystemFont(ofSize: 16)
         titleLabel.textColor = .black
-        
+
         let intervalLabel = UILabel()
         intervalLabel.font = UIFont.systemFont(ofSize: 14)
         intervalLabel.textColor = .darkGray
@@ -572,19 +587,19 @@ class TodBiteViewController: UIViewController, UITableViewDelegate, UISearchBarD
         
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         intervalLabel.translatesAutoresizingMaskIntoConstraints = false
-        
+
         headerView.addSubview(titleLabel)
         headerView.addSubview(intervalLabel)
-        
+
         NSLayoutConstraint.activate([
             titleLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
             titleLabel.topAnchor.constraint(equalTo: headerView.topAnchor, constant: 5),
-            
+
             intervalLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
             intervalLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 2),
             intervalLabel.bottomAnchor.constraint(equalTo: headerView.bottomAnchor, constant: -5)
         ])
-        
+
         return headerView
     }
     func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
@@ -790,7 +805,7 @@ extension TodBiteViewController: UICollectionViewDataSource {
                 for: selectedAgeGroup
             )
             print("🔄 Displaying \(meals.count) meals for \(category.rawValue) in \(selectedRegion.rawValue) & Age: \(selectedAgeGroup.rawValue)")
-            return meals.count
+        return meals.count
         }
     }
 
@@ -968,8 +983,8 @@ extension TodBiteViewController: UITableViewDataSource {
         
         if let item = item {
             cell.configure(with: item)
-            cell.moreOptionsButton.tag = indexPath.row
-            cell.moreOptionsButton.addTarget(self, action: #selector(moreOptionsTapped(_:)), for: .touchUpInside)
+        cell.moreOptionsButton.tag = indexPath.row
+        cell.moreOptionsButton.addTarget(self, action: #selector(moreOptionsTapped(_:)), for: .touchUpInside)
         }
 
         return cell
@@ -990,16 +1005,16 @@ extension TodBiteViewController: UITableViewDataSource {
             
             guard section < filteredCategories.count else { return nil }
             let category = filteredCategories[section]
-            let interval = getTimeInterval(for: category)
-            
-            return "\(category.rawValue)\n\(interval)"
-        }
+        let interval = getTimeInterval(for: category)
         
+        return "\(category.rawValue)\n\(interval)"
+    }
+
         // Normal (non-search) case
         guard section < categories.count else { return nil }
         let category = categories[section]
         let interval = getTimeInterval(for: category)
-        
+
         return "\(category.rawValue)\n\(interval)"
     }
 
@@ -1047,7 +1062,7 @@ extension TodBiteViewController: UITableViewDataSource {
                 item = myBowlItemsDict[category]?[indexPath.row]
                 
                 // Remove directly
-                myBowlItemsDict[category]?.remove(at: indexPath.row)
+            myBowlItemsDict[category]?.remove(at: indexPath.row)
             }
             
             // Clean up empty categories
@@ -1243,7 +1258,7 @@ extension TodBiteViewController: UISearchResultsUpdating {
             // Reset search state
             filteredMeals.removeAll()
             if segmentedControl.selectedSegmentIndex == 0 {
-                collectionView.reloadData()
+            collectionView.reloadData()
             } else {
                 // For My Bowl tab, no filtering needed when search is empty
                 tableView.reloadData()
@@ -1254,17 +1269,17 @@ extension TodBiteViewController: UISearchResultsUpdating {
         // Handle search differently based on which tab is active
         if segmentedControl.selectedSegmentIndex == 0 {
             // For Recommended Meal tab - search in available meals
-            filteredMeals.removeAll()
+        filteredMeals.removeAll()
 
-            for category in BiteType.predefinedCases {
-                // Get meals using the three-level geographical hierarchy
+        for category in BiteType.predefinedCases {
+            // Get meals using the three-level geographical hierarchy
                 let allMeals = BiteSampleData.shared.getItems(for: category, in: selectedContinent, in: selectedCountry, in: selectedRegion, for: selectedAgeGroup)
-                
-                // Filter by search text
-                filteredMeals[category] = allMeals.filter { $0.name.lowercased().contains(searchText.lowercased()) }
-            }
+            
+            // Filter by search text
+            filteredMeals[category] = allMeals.filter { $0.name.lowercased().contains(searchText.lowercased()) }
+        }
 
-            collectionView.reloadData()
+        collectionView.reloadData()
         } else {
             // For My Bowl tab - implement search within myBowlItemsDict
             // This is a simple implementation - you might want to enhance it
@@ -1305,12 +1320,6 @@ extension TodBiteViewController {
         // Implementation that uses the new PreloadedDataManager
         print("📲 Starting to populate meal data using PreloadedDataManager...")
         
-        // Reset initialDataLoadComplete if no data is currently available
-        if BiteSampleData.shared.categories.isEmpty {
-            initialDataLoadComplete = false
-            print("⚠️ Resetting initialDataLoadComplete because categories are empty")
-        }
-        
         // Wait for the preloaded data to be ready
         await PreloadedDataManager.shared.ensureDataLoaded()
         
@@ -1321,13 +1330,8 @@ extension TodBiteViewController {
             print("   - \(category.rawValue): \(meals.count) meals")
         }
         
-        // Only set initialDataLoadComplete to true if we actually have data
-        if !BiteSampleData.shared.categories.isEmpty {
-            initialDataLoadComplete = true
-            print("✅ Setting initialDataLoadComplete = true, data is available")
-        } else {
-            print("⚠️ Data still not available after loading attempt")
-        }
+        // Set flag indicating initial data load is complete
+        initialDataLoadComplete = true
     }
     
     // Helper method to set up navigation buttons for Recommended Meal tab (index 0)
