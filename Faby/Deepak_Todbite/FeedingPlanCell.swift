@@ -34,7 +34,7 @@ class FeedingPlanCell: UITableViewCell {
     
     private let mealNameLabel: UILabel = {
         let label = UILabel()
-        label.font = UIFont.systemFont(ofSize: 18, weight: .semibold)
+        label.font = UIFont.systemFont(ofSize: 16, weight: .semibold)
         label.textColor = .black
         label.numberOfLines = 1
         label.translatesAutoresizingMaskIntoConstraints = false
