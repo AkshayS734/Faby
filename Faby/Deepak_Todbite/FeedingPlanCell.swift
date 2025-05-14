@@ -2,11 +2,23 @@ import UIKit
 
 class FeedingPlanCell: UITableViewCell {
     // MARK: - UI Elements
-     let contentStackView: UIStackView = {
+    private let cardView: UIView = {
+        let view = UIView()
+        view.backgroundColor = .white
+        view.layer.cornerRadius = 12
+        view.layer.shadowColor = UIColor.black.cgColor
+        view.layer.shadowOffset = CGSize(width: 0, height: 2)
+        view.layer.shadowRadius = 4
+        view.layer.shadowOpacity = 0.1
+        view.translatesAutoresizingMaskIntoConstraints = false
+        return view
+    }()
+    
+    private let contentStackView: UIStackView = {
         let stack = UIStackView()
         stack.axis = .horizontal
         stack.alignment = .center
-        stack.spacing = 10
+        stack.spacing = 12
         stack.translatesAutoresizingMaskIntoConstraints = false
         return stack
     }()
@@ -22,7 +34,7 @@ class FeedingPlanCell: UITableViewCell {
     
     private let mealNameLabel: UILabel = {
         let label = UILabel()
-        label.font = UIFont.systemFont(ofSize: 16, weight: .medium)
+        label.font = UIFont.systemFont(ofSize: 18, weight: .semibold)
         label.textColor = .black
         label.numberOfLines = 1
         label.translatesAutoresizingMaskIntoConstraints = false
@@ -41,25 +53,39 @@ class FeedingPlanCell: UITableViewCell {
 
     // MARK: - UI Setup
     private func setupUI() {
+        contentView.backgroundColor = UIColor(white: 0.95, alpha: 1.0) // Light gray background
+        selectionStyle = .none // Disable selection highlight
+        
+        // Add card view to content view
+        contentView.addSubview(cardView)
+        
         // Add image view constraints
         NSLayoutConstraint.activate([
-            mealImageView.widthAnchor.constraint(equalToConstant: 50),
-            mealImageView.heightAnchor.constraint(equalToConstant: 50)
+            mealImageView.widthAnchor.constraint(equalToConstant: 60),
+            mealImageView.heightAnchor.constraint(equalToConstant: 60)
         ])
         
         // Add subviews to stack view
         contentStackView.addArrangedSubview(mealImageView)
         contentStackView.addArrangedSubview(mealNameLabel)
         
-        // Add stack view to content view
-        contentView.addSubview(contentStackView)
+        // Add stack view to card view
+        cardView.addSubview(contentStackView)
         
-        // Add stack view constraints
+        // Add card view constraints
         NSLayoutConstraint.activate([
-            contentStackView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-            contentStackView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-            contentStackView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 8),
-            contentStackView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -8)
+            cardView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            cardView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+            cardView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 8),
+            cardView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -8)
+        ])
+        
+        // Add stack view constraints within card view
+        NSLayoutConstraint.activate([
+            contentStackView.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 16),
+            contentStackView.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -16),
+            contentStackView.topAnchor.constraint(equalTo: cardView.topAnchor, constant: 12),
+            contentStackView.bottomAnchor.constraint(equalTo: cardView.bottomAnchor, constant: -12)
         ])
     }
 

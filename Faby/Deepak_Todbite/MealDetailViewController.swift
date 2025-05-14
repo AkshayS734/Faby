@@ -166,10 +166,8 @@ class MealDetailViewController: UIViewController, UITableViewDataSource, UITable
     }
 
     @objc private func showMoreOptions() {
-        let sheet = UIAlertController(title: "More Options", message: nil, preferredStyle: .actionSheet)
+        let sheet = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
         sheet.addAction(UIAlertAction(title: "Share Meal", style: .default, handler: shareMeal))
-        sheet.addAction(UIAlertAction(title: "View Nutrition Facts", style: .default, handler: showNutritionFacts))
-        sheet.addAction(UIAlertAction(title: "Add to Calendar", style: .default, handler: addToCalendar))
         sheet.addAction(UIAlertAction(title: "Cancel", style: .cancel))
         present(sheet, animated: true)
     }

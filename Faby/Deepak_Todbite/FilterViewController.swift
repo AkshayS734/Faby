@@ -37,89 +37,167 @@ class FilterViewController: UIViewController {
     }
     
     private func setupUI() {
+        // Title and subtitle
+        let titleLabel = UILabel()
+        titleLabel.text = "Filter Meals"
+        titleLabel.font = .systemFont(ofSize: 28, weight: .bold)
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(titleLabel)
+        
+        let subtitleLabel = UILabel()
+        subtitleLabel.text = "Customize your meal preferences"
+        subtitleLabel.font = .systemFont(ofSize: 16)
+        subtitleLabel.textColor = .gray
+        subtitleLabel.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(subtitleLabel)
+        
         // Continent Selection
+        let continentIconView = createIconView(systemName: "globe")
+        
         let continentLabel = UILabel()
         continentLabel.text = "Select Continent"
-        continentLabel.font = .boldSystemFont(ofSize: 16)
+        continentLabel.font = .systemFont(ofSize: 18, weight: .semibold)
         
-        continentButton.setTitle("Choose Continent", for: .normal)
-        continentButton.setTitleColor(.black, for: .normal)
-        continentButton.layer.cornerRadius = 10
-        continentButton.layer.borderWidth = 1
-        continentButton.layer.borderColor = UIColor.lightGray.cgColor
+        stylePillButton(continentButton)
         continentButton.addTarget(self, action: #selector(selectContinent), for: .touchUpInside)
         
+        let continentStackView = createLabelRow(with: continentIconView, label: continentLabel)
+        
         // Country Selection
+        let countryIconView = createIconView(systemName: "mappin.and.ellipse")
+        
         let countryLabel = UILabel()
         countryLabel.text = "Select Country"
-        countryLabel.font = .boldSystemFont(ofSize: 16)
+        countryLabel.font = .systemFont(ofSize: 18, weight: .semibold)
         
-        countryButton.setTitle("Choose Country", for: .normal)
-        countryButton.setTitleColor(.black, for: .normal)
-        countryButton.layer.cornerRadius = 10
-        countryButton.layer.borderWidth = 1
-        countryButton.layer.borderColor = UIColor.lightGray.cgColor
+        stylePillButton(countryButton)
         countryButton.addTarget(self, action: #selector(selectCountry), for: .touchUpInside)
+        
+        let countryStackView = createLabelRow(with: countryIconView, label: countryLabel)
 
         // Region Selection
+        let regionIconView = createIconView(systemName: "map")
+        
         let regionLabel = UILabel()
         regionLabel.text = "Select Region"
-        regionLabel.font = .boldSystemFont(ofSize: 16)
+        regionLabel.font = .systemFont(ofSize: 18, weight: .semibold)
         
-        regionButton.setTitle("Choose Region", for: .normal)
-        regionButton.setTitleColor(.black, for: .normal)
-        regionButton.layer.cornerRadius = 10
-        regionButton.layer.borderWidth = 1
-        regionButton.layer.borderColor = UIColor.lightGray.cgColor
+        stylePillButton(regionButton)
         regionButton.addTarget(self, action: #selector(selectRegion), for: .touchUpInside)
+        
+        let regionStackView = createLabelRow(with: regionIconView, label: regionLabel)
 
         // Age Group Selection
+        let ageIconView = createIconView(systemName: "clock")
+        
         let ageLabel = UILabel()
         ageLabel.text = "Select Age Group"
-        ageLabel.font = .boldSystemFont(ofSize: 16)
+        ageLabel.font = .systemFont(ofSize: 18, weight: .semibold)
 
-        ageButton.setTitle("Choose Age Group", for: .normal)
-        ageButton.setTitleColor(.black, for: .normal)
-        ageButton.layer.cornerRadius = 10
-        ageButton.layer.borderWidth = 1
-        ageButton.layer.borderColor = UIColor.lightGray.cgColor
+        stylePillButton(ageButton)
         ageButton.addTarget(self, action: #selector(selectAgeGroup), for: .touchUpInside)
+        
+        let ageStackView = createLabelRow(with: ageIconView, label: ageLabel)
 
         // Apply Button
         let applyButton = UIButton(type: .system)
         applyButton.setTitle("Apply Filters", for: .normal)
-        applyButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 16)
+        applyButton.titleLabel?.font = UIFont.systemFont(ofSize: 18, weight: .semibold)
         applyButton.backgroundColor = .systemBlue
         applyButton.setTitleColor(.white, for: .normal)
-        applyButton.layer.cornerRadius = 10
+        applyButton.layer.cornerRadius = 20
+        applyButton.translatesAutoresizingMaskIntoConstraints = false
         applyButton.addTarget(self, action: #selector(applyFilters), for: .touchUpInside)
 
-        // Stack View
-        let stackView = UIStackView(arrangedSubviews: [
-            continentLabel, continentButton,
-            countryLabel, countryButton,
-            regionLabel, regionButton,
-            ageLabel, ageButton,
+        // Main Stack View
+        let mainStackView = UIStackView(arrangedSubviews: [
+            continentStackView, continentButton,
+            countryStackView, countryButton,
+            regionStackView, regionButton,
+            ageStackView, ageButton,
             applyButton
         ])
-        stackView.axis = .vertical
-        stackView.spacing = 16
-        stackView.alignment = .fill
-        stackView.translatesAutoresizingMaskIntoConstraints = false
+        mainStackView.axis = .vertical
+        mainStackView.spacing = 20
+        mainStackView.setCustomSpacing(10, after: continentStackView)
+        mainStackView.setCustomSpacing(10, after: countryStackView)
+        mainStackView.setCustomSpacing(10, after: regionStackView)
+        mainStackView.setCustomSpacing(10, after: ageStackView)
+        mainStackView.setCustomSpacing(30, after: ageButton)
+        mainStackView.alignment = .fill
+        mainStackView.translatesAutoresizingMaskIntoConstraints = false
 
-        view.addSubview(stackView)
+        view.addSubview(mainStackView)
         
         NSLayoutConstraint.activate([
-            stackView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            stackView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
-            stackView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            stackView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+            titleLabel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
+            titleLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
+            titleLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
             
-            continentButton.heightAnchor.constraint(equalToConstant: 45),
-            countryButton.heightAnchor.constraint(equalToConstant: 45),
-            regionButton.heightAnchor.constraint(equalToConstant: 45),
-            ageButton.heightAnchor.constraint(equalToConstant: 45),
-            applyButton.heightAnchor.constraint(equalToConstant: 45)
+            subtitleLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 8),
+            subtitleLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
+            subtitleLabel.trailingAnchor.constraint(equalTo: titleLabel.trailingAnchor),
+            
+            mainStackView.topAnchor.constraint(equalTo: subtitleLabel.bottomAnchor, constant: 32),
+            mainStackView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
+            mainStackView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
+            
+            continentButton.heightAnchor.constraint(equalToConstant: 50),
+            countryButton.heightAnchor.constraint(equalToConstant: 50),
+            regionButton.heightAnchor.constraint(equalToConstant: 50),
+            ageButton.heightAnchor.constraint(equalToConstant: 50),
+            applyButton.heightAnchor.constraint(equalToConstant: 50)
+        ])
+    }
+    
+    // Helper method to create the icon views
+    private func createIconView(systemName: String) -> UIImageView {
+        let iconView = UIImageView()
+        iconView.image = UIImage(systemName: systemName)?.withRenderingMode(.alwaysTemplate)
+        iconView.tintColor = .black
+        iconView.contentMode = .scaleAspectFit
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+        
+        NSLayoutConstraint.activate([
+            iconView.widthAnchor.constraint(equalToConstant: 24),
+            iconView.heightAnchor.constraint(equalToConstant: 24)
+        ])
+        
+        return iconView
+    }
+    
+    // Helper method to create a row with icon and label
+    private func createLabelRow(with iconView: UIImageView, label: UILabel) -> UIStackView {
+        let stackView = UIStackView(arrangedSubviews: [iconView, label])
+        stackView.axis = .horizontal
+        stackView.spacing = 12
+        stackView.alignment = .center
+        return stackView
+    }
+    
+    // Helper method to style all buttons consistently
+    private func stylePillButton(_ button: UIButton) {
+        button.backgroundColor = .white
+        button.setTitleColor(.black, for: .normal)
+        button.contentHorizontalAlignment = .left
+        button.titleEdgeInsets = UIEdgeInsets(top: 0, left: 16, bottom: 0, right: 0)
+        button.layer.cornerRadius = 20
+        button.layer.shadowColor = UIColor.black.withAlphaComponent(0.1).cgColor
+        button.layer.shadowOffset = CGSize(width: 0, height: 2)
+        button.layer.shadowRadius = 4
+        button.layer.shadowOpacity = 1
+        
+        // Add chevron indicator
+        let chevron = UIImageView(image: UIImage(systemName: "chevron.right"))
+        chevron.tintColor = .gray
+        chevron.translatesAutoresizingMaskIntoConstraints = false
+        button.addSubview(chevron)
+        
+        NSLayoutConstraint.activate([
+            chevron.centerYAnchor.constraint(equalTo: button.centerYAnchor),
+            chevron.trailingAnchor.constraint(equalTo: button.trailingAnchor, constant: -16),
+            chevron.widthAnchor.constraint(equalToConstant: 12),
+            chevron.heightAnchor.constraint(equalToConstant: 20)
         ])
     }
     

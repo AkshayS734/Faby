@@ -21,7 +21,7 @@ class FeedingPlanSummaryViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "Saved Plan"
-        view.backgroundColor = .white
+        view.backgroundColor = UIColor(white: 0.97, alpha: 1.0) // Light gray background to match Feeding Plan screen
 
         setupDateLabel()
         setupTableView()
@@ -55,6 +55,8 @@ class FeedingPlanSummaryViewController: UIViewController {
         tableView.dataSource = self
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "FeedingPlanCell")
         tableView.translatesAutoresizingMaskIntoConstraints = false
+        tableView.backgroundColor = UIColor(white: 0.97, alpha: 1.0) // Match the same light gray background
+        tableView.separatorStyle = .none // Clean look without separators
         view.addSubview(tableView)
 
         NSLayoutConstraint.activate([
@@ -88,22 +90,43 @@ class FeedingPlanSummaryViewController: UIViewController {
         return text
     }
 
-    // ✅ Function to Get Ordered Bite Types (Predefined first, then custom)
+    // Function to Get Ordered Bite Types (Predefined first, then custom)
     private func getOrderedBiteTypes() -> [BiteType] {
-        var orderedBites: [BiteType] = []
-
-      
-        for bite in fixedBiteOrder {
-            if savedPlan[bite] != nil {
-                orderedBites.append(bite)
+        var categories: [BiteType] = []
+        
+        // First add fixed order categories
+        for category in fixedBiteOrder {
+            if savedPlan[category] != nil && !(savedPlan[category]?.isEmpty ?? true) {
+                categories.append(category)
             }
         }
-
-      
-        let customBites = savedPlan.keys.filter { !fixedBiteOrder.contains($0) }
-        orderedBites.append(contentsOf: customBites)
-
-        return orderedBites
+        
+        // Then add any custom categories
+        for category in savedPlan.keys {
+            if !fixedBiteOrder.contains(category) {
+                categories.append(category)
+            }
+        }
+        
+        return categories
+    }
+    
+    // Helper method to get formatted time display for each bite type
+    private func getBiteTimeForDisplay(for biteType: BiteType) -> String {
+        switch biteType {
+        case .EarlyBite:
+            return "7:30 AM - 8:00 AM"
+        case .NourishBite:
+            return "10:00 AM - 10:30 AM"
+        case .MidDayBite:
+            return "12:30 PM - 1:00 PM"
+        case .SnackBite:
+            return "4:00 PM - 4:30 PM"
+        case .NightBite:
+            return "8:00 PM - 8:30 PM"
+        default:
+            return "Flexible Time Slot"
+        }
     }
 }
 
@@ -113,9 +136,51 @@ extension FeedingPlanSummaryViewController: UITableViewDelegate, UITableViewData
         return getOrderedBiteTypes().count
     }
 
-    func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+    func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
+        let headerView = UIView()
+        headerView.backgroundColor = UIColor(white: 0.97, alpha: 1.0) // Same background as the view
+        
+        let titleLabel = UILabel()
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        titleLabel.font = UIFont.systemFont(ofSize: 20, weight: .bold)
+        titleLabel.textColor = .black
+        
+        let timeLabel = UILabel()
+        timeLabel.translatesAutoresizingMaskIntoConstraints = false
+        timeLabel.font = UIFont.systemFont(ofSize: 14, weight: .regular)
+        timeLabel.textColor = .darkGray
+        
+        // Get bite category and title
         let categories = getOrderedBiteTypes()
-        return categories[section].rawValue
+        let biteType = categories[section]
+        titleLabel.text = biteType.rawValue
+        
+        // Set time based on bite type
+        if fixedBiteOrder.contains(biteType) {
+            timeLabel.text = getBiteTimeForDisplay(for: biteType) // Get the standard time
+        } else {
+            timeLabel.text = "Flexible Time Slot" // For custom bites
+        }
+        
+        headerView.addSubview(titleLabel)
+        headerView.addSubview(timeLabel)
+        
+        NSLayoutConstraint.activate([
+            titleLabel.topAnchor.constraint(equalTo: headerView.topAnchor, constant: 20),
+            titleLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
+            titleLabel.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -16),
+            
+            timeLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 4),
+            timeLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
+            timeLabel.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -16),
+            timeLabel.bottomAnchor.constraint(equalTo: headerView.bottomAnchor, constant: -8)
+        ])
+        
+        return headerView
+    }
+    
+    func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
+        return 70 // Consistent height for section headers
     }
 
 
@@ -130,7 +195,51 @@ extension FeedingPlanSummaryViewController: UITableViewDelegate, UITableViewData
         let categories = getOrderedBiteTypes()
         let category = categories[indexPath.section]
         let meals = savedPlan[category] ?? []
-        cell.textLabel?.text = meals[indexPath.row].name
+        
+        // Configure cell to match card style from Feeding Plan
+        cell.backgroundColor = .clear
+        cell.selectionStyle = .none
+        
+        // Create card container view
+        let cardView = UIView()
+        cardView.backgroundColor = .white
+        cardView.layer.cornerRadius = 12
+        cardView.layer.shadowColor = UIColor.black.cgColor
+        cardView.layer.shadowOffset = CGSize(width: 0, height: 2)
+        cardView.layer.shadowRadius = 4
+        cardView.layer.shadowOpacity = 0.1
+        cardView.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Add cardView to cell's contentView
+        if let existingCardView = cell.contentView.viewWithTag(100) {
+            existingCardView.removeFromSuperview()
+        }
+        cardView.tag = 100
+        cell.contentView.addSubview(cardView)
+        
+        // Setup meal name label
+        let nameLabel = UILabel()
+        nameLabel.text = meals[indexPath.row].name
+        nameLabel.font = UIFont.systemFont(ofSize: 16, weight: .semibold)
+        nameLabel.translatesAutoresizingMaskIntoConstraints = false
+        cardView.addSubview(nameLabel)
+        
+        // Setup constraints
+        NSLayoutConstraint.activate([
+            cardView.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 16),
+            cardView.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -16),
+            cardView.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 6),
+            cardView.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -6),
+            
+            nameLabel.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 16),
+            nameLabel.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -16),
+            nameLabel.centerYAnchor.constraint(equalTo: cardView.centerYAnchor)
+        ])
+        
         return cell
+    }
+    
+    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
+        return 70 // Consistent height for card cells
     }
 }

@@ -83,13 +83,15 @@ class HomeViewController: UIViewController {
     private var todaysBitesCollectionView: UICollectionView = {
         let layout = UICollectionViewFlowLayout()
         layout.scrollDirection = .horizontal
-        layout.itemSize = CGSize(width: 220, height: 160)
-        layout.minimumLineSpacing = 15
+        layout.itemSize = CGSize(width: 280, height: 220) // Wider card to match design
+        layout.minimumLineSpacing = 16
+        layout.sectionInset = UIEdgeInsets(top: 8, left: 16, bottom: 8, right: 16)
         
         let collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
         collectionView.translatesAutoresizingMaskIntoConstraints = false
         collectionView.backgroundColor = .clear
         collectionView.showsHorizontalScrollIndicator = false
+        collectionView.contentInsetAdjustmentBehavior = .always
         return collectionView
     }()
     private let upcomingVaccinationLabel: UILabel = {
@@ -355,7 +357,7 @@ class HomeViewController: UIViewController {
         vaccineCardsView.didMove(toParent: self)
         
         NSLayoutConstraint.activate([
-            vaccineCardsView.view.topAnchor.constraint(equalTo: todaysBitesCollectionView.bottomAnchor, constant: 20),
+            vaccineCardsView.view.topAnchor.constraint(equalTo: todaysBitesCollectionView.bottomAnchor, constant: 8),
             vaccineCardsView.view.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
             vaccineCardsView.view.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
             vaccineCardsView.view.heightAnchor.constraint(equalToConstant: 200)
@@ -365,7 +367,7 @@ class HomeViewController: UIViewController {
             lastConstraint.isActive = false
         }
         
-        contentView.bottomAnchor.constraint(equalTo: vaccineCardsView.view.bottomAnchor, constant: 20).isActive = true
+        contentView.bottomAnchor.constraint(equalTo: vaccineCardsView.view.bottomAnchor, constant: 10).isActive = true
         
         vaccineView = vaccineCardsView.view
     }
@@ -400,14 +402,37 @@ class HomeViewController: UIViewController {
         }
     }
     @objc private func openTodBiteViewController() {
-        // Create a new view controller to show all of today's bites
-        let todaysBitesListVC = TodaysBitesListViewController()
+        // Switch to the TodBite tab when chevron is clicked
+        // First try using the tab bar controller
+        if let tabBarController = self.tabBarController {
+            // Look for the TodBite tab by its identifier
+            for (index, controller) in (tabBarController.viewControllers ?? []).enumerated() {
+                // Check if it's the TodBite tab
+                if controller is UINavigationController,
+                   let navController = controller as? UINavigationController,
+                   navController.viewControllers.first is TodBiteViewController {
+                    // Found the TodBite tab, select it
+                    tabBarController.selectedIndex = index
+                    return
+                }
+                
+                // Some apps might use the tab's title to identify it
+                if controller.tabBarItem.title == "TodBite" {
+                    tabBarController.selectedIndex = index
+                    return
+                }
+            }
+            
+            // If we couldn't find it by class or title, try the standard position (usually last tab)
+            if let lastIndex = tabBarController.viewControllers?.count, lastIndex > 0 {
+                tabBarController.selectedIndex = lastIndex - 1 // Try the last tab
+            }
+        }
         
-        // Pass the current meal data to the list view controller
-        todaysBitesListVC.meals = todaysBitesData
+        // As a fallback, post a notification for tab switching
+        NotificationCenter.default.post(name: NSNotification.Name("SwitchToTodBiteTab"), object: nil)
         
-        // Push the view controller onto the navigation stack
-        navigationController?.pushViewController(todaysBitesListVC, animated: true)
+        print("✅ Attempting to navigate to TodBite tab")
     }
     @objc private func updateTodaysBites() {
         print("✅ Fetching Today's Bites...")
@@ -549,17 +574,40 @@ class HomeViewController: UIViewController {
             // Try both "image" and "image_url" keys for backward compatibility
             let imageKey = meal["image"] ?? meal["image_url"] ?? ""
             
-            if let title = meal["category"], let time = meal["time"] {
-                updatedBites.append(TodayBite(title: title, time: time, imageName: imageKey))
+            // Get the meal name, category, and time
+            if let mealName = meal["name"], let category = meal["category"], let time = meal["time"] {
+                // Create a TodayBite with the meal name as the title and the category as a separate field
+                updatedBites.append(TodayBite(
+                    title: mealName,
+                    time: time,
+                    imageName: imageKey,
+                    category: category
+                ))
             }
         }
         
         // Sort bites by predefined mealtime order
         let predefinedOrder: [String] = ["EarlyBite", "NourishBite", "MidDayBite", "SnackBite", "NightBite"]
         updatedBites.sort { (a, b) -> Bool in
-            let indexA = predefinedOrder.firstIndex(of: a.title) ?? predefinedOrder.count
-            let indexB = predefinedOrder.firstIndex(of: b.title) ?? predefinedOrder.count
-            return indexA < indexB
+            // Get category for sorting or use empty string if nil
+            let categoryA = a.category ?? ""
+            let categoryB = b.category ?? ""
+            
+            // Find indices in predefined order
+            let indexA = predefinedOrder.firstIndex(of: categoryA) ?? predefinedOrder.count
+            let indexB = predefinedOrder.firstIndex(of: categoryB) ?? predefinedOrder.count
+            
+            if indexA != indexB {
+                // Sort by the predefined order
+                return indexA < indexB
+            } else if categoryA == categoryB {
+                // If same category, maintain original order
+                return true
+            } else {
+                // This handles custom categories, which all have the same index (predefinedOrder.count)
+                // We'll just sort them alphabetically
+                return categoryA < categoryB
+            }
         }
         
         todaysBitesData = updatedBites
@@ -643,7 +691,7 @@ extension HomeViewController: UICollectionViewDelegate, UICollectionViewDataSour
         return cell
     }
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
-        return CGSize(width: 225, height: 190)
+        return CGSize(width: 225, height: 220)
     }
 }
 

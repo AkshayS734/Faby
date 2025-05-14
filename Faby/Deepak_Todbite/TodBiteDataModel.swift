@@ -307,6 +307,7 @@ struct TodayBite {
     let title: String
     let time: String
     let imageName: String
+    let category: String?
 }
 
 struct MyBowlItem {

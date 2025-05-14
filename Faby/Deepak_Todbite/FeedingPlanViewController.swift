@@ -204,20 +204,20 @@ class FeedingPlanViewController: UIViewController {
     }
 
     private func getWeekDaysWithDates() -> [String] {
-            let calendar = Calendar.current
-            let today = Date()
-            let weekday = calendar.component(.weekday, from: today) - 1
-
-            var weekDaysWithDates: [String] = []
-
-            for i in 0..<7 {
-                if let dayDate = calendar.date(byAdding: .day, value: i - weekday, to: today) {
-                    weekDaysWithDates.append(getFormattedDate(dayDate))
-                }
+        let calendar = Calendar.current
+        let today = Date()
+        
+        var weekDaysWithDates: [String] = []
+        
+        // Start with today and get the next 6 days
+        for i in 0..<7 {
+            if let dayDate = calendar.date(byAdding: .day, value: i, to: today) {
+                weekDaysWithDates.append(getFormattedDate(dayDate))
             }
-
-            return weekDaysWithDates
         }
+        
+        return weekDaysWithDates
+    }
     private func getFormattedDate(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "E d MMM"
@@ -271,7 +271,7 @@ class FeedingPlanViewController: UIViewController {
     // MARK: - Setup UI
     private func setupUI() {
         title = "Feeding Plan"
-        view.backgroundColor = .white
+        view.backgroundColor = UIColor(white: 0.97, alpha: 1.0) // Light gray background to match TodBiteViewController
 
         navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Save", style: .done, target: self, action: #selector(savePlanTapped))
 
@@ -317,7 +317,20 @@ class FeedingPlanViewController: UIViewController {
     private func setupTableView() {
         tableView.delegate = self
         tableView.dataSource = self
-        tableView.register(UITableViewCell.self, forCellReuseIdentifier: "FeedingPlanCell")
+        tableView.translatesAutoresizingMaskIntoConstraints = false
+        tableView.showsVerticalScrollIndicator = false
+        tableView.separatorStyle = .none
+        tableView.backgroundColor = UIColor(white: 0.97, alpha: 1.0) // Light gray background to match TodBiteViewController
+        
+        // Adjust the appearance of section headers
+        tableView.sectionHeaderTopPadding = 0
+        tableView.sectionHeaderHeight = UITableView.automaticDimension
+        tableView.estimatedSectionHeaderHeight = 60
+        
+        // Show empty cells in the UI
+        tableView.tableFooterView = UIView()
+        
+        view.addSubview(tableView)
     }
     
     // MARK: - Actions
@@ -731,15 +744,71 @@ extension FeedingPlanViewController: UITableViewDelegate, UITableViewDataSource 
 
 
 
-    func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+    func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
+        let headerView = UIView()
+        headerView.backgroundColor = UIColor(white: 0.95, alpha: 1.0) // Light gray background
+        
+        let titleLabel = UILabel()
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        titleLabel.font = UIFont.systemFont(ofSize: 20, weight: .bold)
+        titleLabel.textColor = .black
+        
+        let timeLabel = UILabel()
+        timeLabel.translatesAutoresizingMaskIntoConstraints = false
+        timeLabel.font = UIFont.systemFont(ofSize: 14, weight: .regular)
+        timeLabel.textColor = .darkGray
+        
+        // Get bite category and title
         let predefinedCount = fixedBiteOrder.count
-
+        let biteTitle: String
+        let biteTime: String
+        
         if section < predefinedCount {
-            return fixedBiteOrder[section].rawValue
+            let biteType = fixedBiteOrder[section]
+            biteTitle = biteType.rawValue
+            biteTime = getBiteTimeForDisplay(for: biteType) // Get the formatted time
         } else {
             let customIndex = section - predefinedCount
-            let customCategory = Array(customBitesDict.keys)[customIndex]
-            return customCategory
+            let customBiteKey = Array(customBitesDict.keys)[customIndex]
+            biteTitle = customBiteKey
+            
+            // Since FeedingMeal doesn't have a time property, use a default time for custom bites
+            biteTime = "Flexible Time Slot"
+        }
+        
+        titleLabel.text = biteTitle
+        timeLabel.text = biteTime
+        
+        headerView.addSubview(titleLabel)
+        headerView.addSubview(timeLabel)
+        
+        NSLayoutConstraint.activate([
+            titleLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
+            titleLabel.topAnchor.constraint(equalTo: headerView.topAnchor, constant: 16),
+            
+            timeLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
+            timeLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 4),
+            timeLabel.bottomAnchor.constraint(equalTo: headerView.bottomAnchor, constant: -8)
+        ])
+        
+        return headerView
+    }
+    
+    // Helper method to format bite times for display
+    private func getBiteTimeForDisplay(for biteType: BiteType) -> String {
+        switch biteType {
+        case .EarlyBite:
+            return "7:30 AM - 8:00 AM"
+        case .NourishBite:
+            return "10:00 AM - 10:30 AM"
+        case .MidDayBite:
+            return "12:30 PM - 1:00 PM"
+        case .SnackBite:
+            return "4:00 PM - 4:30 PM"
+        case .NightBite:
+            return "8:00 PM - 8:30 PM"
+        default:
+            return "" // Handle any additional cases added to the enum
         }
     }
 
@@ -772,9 +841,7 @@ extension FeedingPlanViewController: UITableViewDelegate, UITableViewDataSource 
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        guard let cell = tableView.dequeueReusableCell(withIdentifier: "FeedingPlanCell", for: indexPath) as? FeedingPlanCell else {
-            fatalError("❌ Error: Could not dequeue FeedingPlanCell. Check if the identifier is correctly set.")
-        }
+        let cell = tableView.dequeueReusableCell(withIdentifier: "FeedingPlanCell", for: indexPath) as? FeedingPlanCell ?? FeedingPlanCell(style: .default, reuseIdentifier: "FeedingPlanCell")
 
         let predefinedCount = fixedBiteOrder.count
         let meals: [FeedingMeal]?
@@ -806,81 +873,44 @@ extension FeedingPlanViewController: UITableViewDelegate, UITableViewDataSource 
     
     // Helper method to configure placeholder cell
     private func configurePlaceholderCell(_ cell: FeedingPlanCell) {
-        cell.contentView.subviews.forEach { $0.removeFromSuperview() }
+        // Create a clean placeholder cell with card styling
+        let cardView = UIView()
+        cardView.backgroundColor = .white
+        cardView.layer.cornerRadius = 12
+        cardView.layer.shadowColor = UIColor.black.cgColor
+        cardView.layer.shadowOffset = CGSize(width: 0, height: 2)
+        cardView.layer.shadowRadius = 4
+        cardView.layer.shadowOpacity = 0.1
+        cardView.translatesAutoresizingMaskIntoConstraints = false
         
         let placeholderLabel = UILabel()
         placeholderLabel.text = "No items added in the plan"
-        placeholderLabel.font = UIFont.systemFont(ofSize: 14, weight: .light)
+        placeholderLabel.font = UIFont.systemFont(ofSize: 14)
         placeholderLabel.textColor = .gray
         placeholderLabel.textAlignment = .center
         placeholderLabel.translatesAutoresizingMaskIntoConstraints = false
         
-        cell.contentView.addSubview(placeholderLabel)
-        
-        NSLayoutConstraint.activate([
-            placeholderLabel.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 16),
-            placeholderLabel.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -16),
-            placeholderLabel.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 8),
-            placeholderLabel.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -8)
-        ])
-        
-        // Disable selection for placeholder cells
+        cell.contentView.subviews.forEach { $0.removeFromSuperview() }
+        cell.contentView.backgroundColor = UIColor(white: 0.95, alpha: 1.0) // Light gray background
         cell.selectionStyle = .none
-    }
-
-    func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
-        let headerView = UIView()
-        headerView.backgroundColor = .systemGroupedBackground
-
-        let titleLabel = UILabel()
-        titleLabel.font = UIFont.systemFont(ofSize: 18, weight: .bold)
-        titleLabel.textColor = .black
-
-        let intervalLabel = UILabel()
-        intervalLabel.font = UIFont.systemFont(ofSize: 14, weight: .regular)
-        intervalLabel.textColor = .gray
-
-        let predefinedBitesCount = fixedBiteOrder.count
-
-        if section < predefinedBitesCount {
-            
-            let category = fixedBiteOrder[section]
-            titleLabel.text = category.rawValue.prefix(1).capitalized + category.rawValue.dropFirst()
-            intervalLabel.text = getTimeInterval(for: category)
-        } else {
-            let customIndex = section - predefinedBitesCount
-            let customBites = Array(customBitesDict.keys)
-
-            //  Prevent out-of-bounds crash
-            guard customIndex < customBites.count else { return nil }
-
-            let customCategory = customBites[customIndex]
-            titleLabel.text = customCategory
-
-           
-            intervalLabel.text = customBiteTimes[BiteType.custom(customCategory)] ?? "Custom Time"
-        }
-
-        // Add labels to headerView
-        headerView.addSubview(titleLabel)
-        headerView.addSubview(intervalLabel)
-
-        titleLabel.translatesAutoresizingMaskIntoConstraints = false
-        intervalLabel.translatesAutoresizingMaskIntoConstraints = false
-
+        
+        cardView.addSubview(placeholderLabel)
+        cell.contentView.addSubview(cardView)
+        
         NSLayoutConstraint.activate([
-            titleLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
-            titleLabel.topAnchor.constraint(equalTo: headerView.topAnchor, constant: 5),
-
-            intervalLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
-            intervalLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 2),
-            intervalLabel.bottomAnchor.constraint(equalTo: headerView.bottomAnchor, constant: -5)
+            cardView.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 16),
+            cardView.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -16),
+            cardView.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 8),
+            cardView.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -8),
+            
+            placeholderLabel.centerXAnchor.constraint(equalTo: cardView.centerXAnchor),
+            placeholderLabel.centerYAnchor.constraint(equalTo: cardView.centerYAnchor),
+            placeholderLabel.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 20),
+            placeholderLabel.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -20),
+            placeholderLabel.heightAnchor.constraint(equalToConstant: 40)
         ])
-
-        return headerView
     }
-
-
+    
     func tableView(_ tableView: UITableView, canMoveRowAt indexPath: IndexPath) -> Bool {
         // Disable row moving since we removed drag and drop
         return false

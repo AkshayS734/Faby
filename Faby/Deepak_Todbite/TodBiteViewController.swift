@@ -1,6 +1,8 @@
 import UIKit
 import Supabase
 
+// Use the global fixedBiteOrder constant that's already defined in the project
+
 class TodBiteViewController: UIViewController, UITableViewDelegate, UISearchBarDelegate, HeaderCollectionReusableViewDelegate {
 
     // MARK: - UI Components
@@ -289,6 +291,8 @@ class TodBiteViewController: UIViewController, UITableViewDelegate, UISearchBarD
         tableView.isHidden = true
         tableView.rowHeight = UITableView.automaticDimension
         tableView.estimatedRowHeight = 100
+        tableView.backgroundColor = UIColor(white: 0.97, alpha: 1.0) // Light gray background to match screenshot
+        tableView.separatorStyle = .none // Remove cell separators for a cleaner look
         view.addSubview(tableView)
         
         NSLayoutConstraint.activate([
@@ -297,7 +301,6 @@ class TodBiteViewController: UIViewController, UITableViewDelegate, UISearchBarD
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
-        
     }
     private func setupPlaceholderLabel() {
         view.addSubview(placeholderLabel)
@@ -552,18 +555,18 @@ class TodBiteViewController: UIViewController, UITableViewDelegate, UISearchBarD
         guard segmentedControl.selectedSegmentIndex == 1 else { return nil }
 
         let headerView = UIView()
-        headerView.backgroundColor = .white
+        headerView.backgroundColor = UIColor(white: 0.97, alpha: 1.0) // Light background like in the screenshot
 
         let titleLabel = UILabel()
-        titleLabel.font = UIFont.boldSystemFont(ofSize: 16)
+        titleLabel.font = UIFont.systemFont(ofSize: 20, weight: .bold) // Cleaner font style from second image
         titleLabel.textColor = .black
 
         let intervalLabel = UILabel()
-        intervalLabel.font = UIFont.systemFont(ofSize: 14)
+        intervalLabel.font = UIFont.systemFont(ofSize: 14, weight: .regular) // Smaller, lighter font for time interval
         intervalLabel.textColor = .darkGray
         
         // Get the appropriate category based on search state
-        let categories = Array(myBowlItemsDict.keys)
+        let categories = getSortedCategories()
         let category: BiteType
         
         if isSearching, let searchText = searchController.searchBar.text, !searchText.isEmpty {
@@ -593,37 +596,46 @@ class TodBiteViewController: UIViewController, UITableViewDelegate, UISearchBarD
 
         NSLayoutConstraint.activate([
             titleLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
-            titleLabel.topAnchor.constraint(equalTo: headerView.topAnchor, constant: 5),
+            titleLabel.topAnchor.constraint(equalTo: headerView.topAnchor, constant: 12),
 
             intervalLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
-            intervalLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 2),
-            intervalLabel.bottomAnchor.constraint(equalTo: headerView.bottomAnchor, constant: -5)
+            intervalLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 4),
+            intervalLabel.bottomAnchor.constraint(equalTo: headerView.bottomAnchor, constant: -12)
         ])
 
         return headerView
     }
     func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
-        return 50
+        return 70 // Increased height for the header to match screenshot
+    }
+    
+    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
+        return 100 // Increased height for the card cells
     }
 
 
 
     private func createCompositionalLayout() -> UICollectionViewLayout {
+        // Create a two-column layout with wider items
         let itemSize = NSCollectionLayoutSize(
-            widthDimension: .fractionalWidth(0.5),
+            widthDimension: .fractionalWidth(0.47), // Adjusted to allow for wider appearance
             heightDimension: .fractionalHeight(1.0)
         )
         let item = NSCollectionLayoutItem(layoutSize: itemSize)
-        item.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 8, bottom: 0, trailing: 0)
+        
+        // Keep original padding
+        item.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 4)
 
         let groupSize = NSCollectionLayoutSize(
-            widthDimension: .fractionalWidth(0.9),
-            heightDimension: .absolute(215)
+            widthDimension: .fractionalWidth(1.05), // Slightly wider than screen to allow bigger cards
+            heightDimension: .absolute(230)
         )
-        let group = NSCollectionLayoutGroup.horizontal(layoutSize: groupSize, subitems: [item])
-        group.interItemSpacing = .fixed(0)
+        // Create group with exactly 2 items and consistent spacing
+        let group = NSCollectionLayoutGroup.horizontal(layoutSize: groupSize, subitem: item, count: 2)
+        group.interItemSpacing = .fixed(4)
 
         let section = NSCollectionLayoutSection(group: group)
+        section.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 8, bottom: 0, trailing: 2)
         section.orthogonalScrollingBehavior = .continuous
 
         let headerSize = NSCollectionLayoutSize(
@@ -898,13 +910,34 @@ extension TodBiteViewController: UICollectionViewDelegate {
 
 // MARK: - UITableViewDataSource
 extension TodBiteViewController: UITableViewDataSource {
+    // Helper method to get categories in a fixed order
+    private func getSortedCategories() -> [BiteType] {
+        var categories: [BiteType] = []
+        
+        // First add the fixed order categories if they exist in myBowlItemsDict
+        for category in fixedBiteOrder {
+            if myBowlItemsDict[category] != nil {
+                categories.append(category)
+            }
+        }
+        
+        // Then add any custom categories that aren't in the fixed order
+        for category in myBowlItemsDict.keys {
+            if !fixedBiteOrder.contains(category) {
+                categories.append(category)
+            }
+        }
+        
+        return categories
+    }
+    
     func numberOfSections(in tableView: UITableView) -> Int {
         guard segmentedControl.selectedSegmentIndex == 1 else { return 0 }
         
         // If we're searching, we need to check which categories contain matching meals
         if isSearching, let searchText = searchController.searchBar.text, !searchText.isEmpty {
             // Only include sections that have meals matching the search text
-            return myBowlItemsDict.keys.filter { category in
+            return getSortedCategories().filter { category in
                 return myBowlItemsDict[category]?.contains(where: { meal in
                     return meal.name.lowercased().contains(searchText.lowercased())
                 }) ?? false
@@ -917,7 +950,7 @@ extension TodBiteViewController: UITableViewDataSource {
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         guard segmentedControl.selectedSegmentIndex == 1 else { return 0 }
         
-        let categories = Array(myBowlItemsDict.keys)
+        let categories = getSortedCategories()
         
         // If we're searching, only show meals that match the search
         if isSearching, let searchText = searchController.searchBar.text, !searchText.isEmpty {
@@ -950,7 +983,7 @@ extension TodBiteViewController: UITableViewDataSource {
         let cell = tableView.dequeueReusableCell(withIdentifier: "TableViewCell", for: indexPath) as! TodBiteTableViewCell
         
         // Get category and item based on whether we're searching
-        let categories = Array(myBowlItemsDict.keys)
+        let categories = getSortedCategories()
         let category: BiteType
         let item: FeedingMeal?
         
@@ -983,8 +1016,21 @@ extension TodBiteViewController: UITableViewDataSource {
         
         if let item = item {
             cell.configure(with: item)
-        cell.moreOptionsButton.tag = indexPath.row
-        cell.moreOptionsButton.addTarget(self, action: #selector(moreOptionsTapped(_:)), for: .touchUpInside)
+            
+            // Store section and row in the button's tag
+            // We'll use a combined tag: section * 1000 + row to encode both values
+            cell.moreOptionsButton.tag = (indexPath.section * 1000) + indexPath.row
+            
+            // Remove any existing targets to avoid duplicate actions
+            cell.moreOptionsButton.removeTarget(nil, action: nil, for: .allEvents)
+            
+            // Add the target for touch up inside
+            cell.moreOptionsButton.addTarget(self, action: #selector(moreOptionsTapped(_:)), for: .touchUpInside)
+            
+            // Make sure the button is enabled and user interaction is enabled
+            cell.moreOptionsButton.isEnabled = true
+            cell.moreOptionsButton.isUserInteractionEnabled = true
+            cell.contentView.isUserInteractionEnabled = true
         }
 
         return cell
@@ -993,7 +1039,7 @@ extension TodBiteViewController: UITableViewDataSource {
     func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
         guard segmentedControl.selectedSegmentIndex == 1 else { return nil }
 
-        let categories = Array(myBowlItemsDict.keys)
+        let categories = getSortedCategories()
         
         // If we're searching, only show categories that contain matching meals
         if isSearching, let searchText = searchController.searchBar.text, !searchText.isEmpty {
@@ -1093,32 +1139,36 @@ extension TodBiteViewController: UITableViewDataSource {
     }
 
     @objc private func moreOptionsTapped(_ sender: UIButton) {
-        guard let cell = sender.superview?.superview as? TodBiteTableViewCell,
-              let indexPath = tableView.indexPath(for: cell) else { return }
-
-        let category = Array(myBowlItemsDict.keys)[indexPath.section]
-        let item = myBowlItemsDict[category]?[indexPath.row]
+        // Extract section and row from the tag
+        let tag = sender.tag
+        let section = tag / 1000
+        let row = tag % 1000
+        
+        // Make sure we have valid categories
+        let categories = getSortedCategories()
+        guard section < categories.count else { return }
+        
+        let category = categories[section]
+        guard let items = myBowlItemsDict[category], row < items.count else { return }
+        let itemSafe = items[row] // Non-optional item
         
         // Create an action sheet with options
         let actionSheet = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
         
-        // Add to Favorites option
-        actionSheet.addAction(UIAlertAction(title: "Add to Favorites", style: .default, handler: { [weak self] _ in
-            guard let self = self, let item = item else { return }
-            // Handle adding to favorites
-            self.MealItemDetails(message: "Added to favorites!")
-        }))
-        
         // Add to Other Bites option (change bite type)
         actionSheet.addAction(UIAlertAction(title: "Add to Other Bites", style: .default, handler: { [weak self] _ in
-            guard let self = self, let item = item else { return }
-            self.showBiteTypeOptions(for: item, currentCategory: category, at: indexPath)
+            guard let self = self else { return }
+            // Create an IndexPath for the method calls that expect it
+            let indexPath = IndexPath(row: row, section: section)
+            self.showBiteTypeOptions(for: itemSafe, currentCategory: category, at: indexPath)
         }))
         
         // Delete option
         actionSheet.addAction(UIAlertAction(title: "Delete", style: .destructive, handler: { [weak self] _ in
-            guard let self = self, let item = item else { return }
-            self.deleteItem(item, from: category, at: indexPath)
+            guard let self = self else { return }
+            // Create an IndexPath for the method calls that expect it
+            let indexPath = IndexPath(row: row, section: section)
+            self.deleteItem(itemSafe, from: category, at: indexPath)
         }))
         
         // Cancel option
