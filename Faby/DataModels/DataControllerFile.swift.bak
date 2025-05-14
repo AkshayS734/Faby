@@ -283,12 +283,7 @@ class AdministeredVaccineManager {
         
         return rawAdministered.map { raw in
             let dateFormatter = ISO8601DateFormatter()
-            let administeredDate: Date
-            if let dateString = raw.administeredDate, !dateString.isEmpty {
-                administeredDate = dateFormatter.date(from: dateString) ?? Date()
-            } else {
-                administeredDate = Date()
-            }
+            let administeredDate = dateFormatter.date(from: raw.administeredDate) ?? Date()
             
             // Handle optional scheduleId
             let scheduleUUID: UUID? = raw.scheduleId != nil ? UUID(uuidString: raw.scheduleId!) : nil
@@ -316,12 +311,7 @@ class AdministeredVaccineManager {
         let rawAdministered = try JSONDecoder().decode([SupabaseVaccineAdministered].self, from: data)
         return rawAdministered.map { raw in
             let dateFormatter = ISO8601DateFormatter()
-            let administeredDate: Date
-            if let dateString = raw.administeredDate, !dateString.isEmpty {
-                administeredDate = dateFormatter.date(from: dateString) ?? Date()
-            } else {
-                administeredDate = Date()
-            }
+            let administeredDate = dateFormatter.date(from: raw.administeredDate) ?? Date()
             
             // Handle optional scheduleId
             let scheduleUUID: UUID? = raw.scheduleId != nil ? UUID(uuidString: raw.scheduleId!) : nil

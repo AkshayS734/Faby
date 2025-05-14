@@ -18,6 +18,10 @@ class ModernSignInViewController: UIViewController {
     private let registerNowButton = UIButton(type: .system)
     private let orLabel = UILabel()
     
+    // Activity indicator for loading state
+    private let activityIndicator = UIActivityIndicatorView(style: .large)
+    private let blurEffectView = UIVisualEffectView(effect: UIBlurEffect(style: .systemMaterial))
+    
     // MARK: - Supabase Client
     
     let supabase = SupabaseClient(
@@ -29,9 +33,21 @@ class ModernSignInViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        print("🚀🚀🚀 DEBUG: ModernSignInViewController viewDidLoad")
         setupUI()
         setupConstraints()
         setupActions()
+        setupActivityIndicator()
+        setupKeyboardObservers()
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        print("🚀🚀🚀 DEBUG: ModernSignInViewController viewWillAppear")
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
     
     // MARK: - UI Setup
@@ -237,6 +253,55 @@ class ModernSignInViewController: UIViewController {
         view.addGestureRecognizer(tapGesture)
     }
     
+    // MARK: - Keyboard Handling
+    
+    private func setupKeyboardObservers() {
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillShow(_:)), name: UIResponder.keyboardWillShowNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillHide(_:)), name: UIResponder.keyboardWillHideNotification, object: nil)
+    }
+    
+    @objc private func keyboardWillShow(_ notification: Notification) {
+        if let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
+            let keyboardHeight = keyboardFrame.height
+            self.view.frame.origin.y = -keyboardHeight / 2
+        }
+    }
+    
+    @objc private func keyboardWillHide(_ notification: Notification) {
+        self.view.frame.origin.y = 0
+    }
+    
+    // MARK: - Loading Indicator Setup
+    
+    private func setupActivityIndicator() {
+        blurEffectView.frame = view.bounds
+        blurEffectView.alpha = 0
+        blurEffectView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        view.addSubview(blurEffectView)
+        
+        activityIndicator.translatesAutoresizingMaskIntoConstraints = false
+        blurEffectView.contentView.addSubview(activityIndicator)
+        
+        NSLayoutConstraint.activate([
+            activityIndicator.centerXAnchor.constraint(equalTo: blurEffectView.centerXAnchor),
+            activityIndicator.centerYAnchor.constraint(equalTo: blurEffectView.centerYAnchor)
+        ])
+    }
+    
+    private func showLoading(_ isLoading: Bool) {
+        DispatchQueue.main.async {
+            if isLoading {
+                self.blurEffectView.alpha = 0.5
+                self.activityIndicator.startAnimating()
+                self.view.isUserInteractionEnabled = false
+            } else {
+                self.activityIndicator.stopAnimating()
+                self.blurEffectView.alpha = 0
+                self.view.isUserInteractionEnabled = true
+            }
+        }
+    }
+    
     // MARK: - Actions
     
     @objc private func dismissKeyboard() {
@@ -244,34 +309,45 @@ class ModernSignInViewController: UIViewController {
     }
     
     @objc private func loginButtonTapped() {
+        print("🔐 DEBUG: Login button tapped - THIS SHOULD APPEAR IN CONSOLE")
+        print("🔐 DEBUG: Login button tapped - THIS SHOULD APPEAR IN CONSOLE")
+        print("🔐 DEBUG: Login button tapped - THIS SHOULD APPEAR IN CONSOLE")
+        
         guard let email = emailTextField.text, !email.isEmpty,
               let password = passwordTextField.text, !password.isEmpty else {
+            print("⛔ DEBUG: Email or password empty")
             showAlert(title: "Sign in failed", message: "Please enter email and password")
             return
         }
         
-        // Show loading indicator
-        let loadingIndicator = UIActivityIndicatorView(style: .medium)
-        loadingIndicator.center = view.center
-        loadingIndicator.hidesWhenStopped = true
-        view.addSubview(loadingIndicator)
-        loadingIndicator.startAnimating()
+        print("📧 DEBUG: Email: \(email)")
         
-        // Disable login button during sign-in process
-        loginButton.isEnabled = false
+        // Show loading indicator
+        showLoading(true)
+        print("⏳ DEBUG: Loading indicator shown")
         
         Task {
             do {
+                print("🔑 DEBUG: Attempting sign in...")
                 let session = try await supabase.auth.signIn(email: email, password: password)
+                print("✅ DEBUG: Sign in successful for user ID: \(session.user.id.uuidString)")
+                
+                // Load baby data before navigating to home screen
+                print("👶 DEBUG: About to load baby data...")
+                await DataController.shared.loadBabyData()
+                print("📊 DEBUG: Baby data loaded. Baby: \(DataController.shared.baby?.name ?? "No baby found")")
+                print("🆔 DEBUG: Baby ID: \(DataController.shared.baby?.babyID.uuidString ?? "No ID")")
+                
                 await MainActor.run {
-                    loadingIndicator.stopAnimating()
-                    loginButton.isEnabled = true
+                    print("🏁 DEBUG: On main thread, hiding loading indicator")
+                    showLoading(false)
+                    print("🏠 DEBUG: Navigating to home screen")
                     navigateToHome()
                 }
             } catch {
+                print("❌ DEBUG: Login failed with error: \(error.localizedDescription)")
                 await MainActor.run {
-                    loadingIndicator.stopAnimating()
-                    loginButton.isEnabled = true
+                    showLoading(false)
                     showAlert(title: "Login failed", message: error.localizedDescription)
                 }
             }
