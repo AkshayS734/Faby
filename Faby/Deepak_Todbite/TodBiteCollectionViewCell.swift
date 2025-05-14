@@ -11,7 +11,8 @@ class TodBiteCollectionViewCell: UICollectionViewCell {
     @IBOutlet weak var nutritionLabel: UILabel!
     @IBOutlet weak var myImageView: UIImageView!
     private let addButton = UIButton(type: .system)
-
+    private let cardContentView = UIView()
+    
     // MARK: - Properties
     weak var delegate: TodBiteCollectionViewCellDelegate?
     private var currentItem: FeedingMeal?
@@ -20,23 +21,56 @@ class TodBiteCollectionViewCell: UICollectionViewCell {
     // MARK: - Lifecycle
     override func awakeFromNib() {
         super.awakeFromNib()
+        setupCardView()
         setupCellAppearance()
         setupAddButton()
         setupConstraints()
     }
+    
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        // Update shadow path based on actual bounds
+        self.layer.shadowPath = UIBezierPath(roundedRect: self.bounds, cornerRadius: 12).cgPath
+    }
 
     // MARK: - Cell Setup
+    private func setupCardView() {
+        // Setup main content view - this will be our card
+        cardContentView.backgroundColor = .white
+        cardContentView.layer.cornerRadius = 12
+        cardContentView.layer.masksToBounds = true
+        cardContentView.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Add enhanced, more prominent shadow to the cell
+        self.layer.shadowColor = UIColor(red: 0, green: 0, blue: 0, alpha: 0.3).cgColor
+        self.layer.shadowOffset = CGSize(width: 0, height: 5)
+        self.layer.shadowRadius = 8
+        self.layer.shadowOpacity = 0.7
+        self.layer.shadowPath = UIBezierPath(roundedRect: self.bounds, cornerRadius: 12).cgPath
+        self.layer.masksToBounds = false
+        self.layer.rasterizationScale = UIScreen.main.scale
+        self.layer.shouldRasterize = true // Improves shadow performance
+        
+        contentView.addSubview(cardContentView)
+        
+        NSLayoutConstraint.activate([
+            cardContentView.topAnchor.constraint(equalTo: contentView.topAnchor),
+            cardContentView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
+            cardContentView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
+            cardContentView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor)
+        ])
+    }
+    
     private func setupCellAppearance() {
-        self.layer.cornerRadius = 12
-        self.layer.masksToBounds = true
-
         // Configure Image View
+        myImageView.clipsToBounds = true
+        myImageView.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
         myImageView.layer.cornerRadius = 12
-        myImageView.layer.masksToBounds = true
         myImageView.contentMode = .scaleAspectFill
+        myImageView.backgroundColor = .lightGray
 
         // Configure Food Name Label
-        foodNameLabel.font = UIFont.boldSystemFont(ofSize: 12)
+        foodNameLabel.font = UIFont.boldSystemFont(ofSize: 14)
         foodNameLabel.textAlignment = .left
         foodNameLabel.textColor = .black
         foodNameLabel.lineBreakMode = .byTruncatingTail
@@ -51,19 +85,25 @@ class TodBiteCollectionViewCell: UICollectionViewCell {
     }
 
     private func setupAddButton() {
-        addButton.setImage(UIImage(systemName: "plus.square.fill"), for: .normal)
+        addButton.setImage(UIImage(systemName: "plus"), for: .normal)
         addButton.tintColor = .white
-        addButton.backgroundColor = .clear
-        addButton.layer.cornerRadius = 15
+        addButton.backgroundColor = UIColor.darkGray
+        addButton.layer.cornerRadius = 5
         addButton.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Create a subtle shadow effect on the button
+        addButton.layer.shadowColor = UIColor.black.cgColor
+        addButton.layer.shadowOffset = CGSize(width: 0, height: 1)
+        addButton.layer.shadowRadius = 1
+        addButton.layer.shadowOpacity = 0.2
 
         contentView.addSubview(addButton)
 
         NSLayoutConstraint.activate([
-            addButton.trailingAnchor.constraint(equalTo: myImageView.trailingAnchor, constant: -5),
-            addButton.bottomAnchor.constraint(equalTo: myImageView.bottomAnchor, constant: -5),
-            addButton.widthAnchor.constraint(equalToConstant: 30),
-            addButton.heightAnchor.constraint(equalToConstant: 30)
+            addButton.trailingAnchor.constraint(equalTo: cardContentView.trailingAnchor, constant: -12),
+            addButton.centerYAnchor.constraint(equalTo: foodNameLabel.centerYAnchor),
+            addButton.widthAnchor.constraint(equalToConstant: 20),
+            addButton.heightAnchor.constraint(equalToConstant: 20)
         ])
 
         addButton.addTarget(self, action: #selector(addButtonTapped), for: .touchUpInside)
@@ -74,32 +114,37 @@ class TodBiteCollectionViewCell: UICollectionViewCell {
         nutritionLabel.translatesAutoresizingMaskIntoConstraints = false
         myImageView.translatesAutoresizingMaskIntoConstraints = false
 
-        contentView.addSubview(foodNameLabel)
-        contentView.addSubview(nutritionLabel)
+        cardContentView.addSubview(myImageView)
+        cardContentView.addSubview(foodNameLabel)
+        cardContentView.addSubview(nutritionLabel)
 
         NSLayoutConstraint.activate([
-            // Image View Constraints
-            myImageView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 8),
-            myImageView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-            myImageView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-            myImageView.heightAnchor.constraint(equalTo: myImageView.widthAnchor),
+            // Image View Constraints - make it fill the top part of the card
+            myImageView.topAnchor.constraint(equalTo: cardContentView.topAnchor),
+            myImageView.leadingAnchor.constraint(equalTo: cardContentView.leadingAnchor),
+            myImageView.trailingAnchor.constraint(equalTo: cardContentView.trailingAnchor),
+            myImageView.heightAnchor.constraint(equalTo: cardContentView.heightAnchor, multiplier: 0.7),
 
             // Food Name Label Constraints
             foodNameLabel.topAnchor.constraint(equalTo: myImageView.bottomAnchor, constant: 8),
-            foodNameLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 6),
-            foodNameLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+            foodNameLabel.leadingAnchor.constraint(equalTo: cardContentView.leadingAnchor, constant: 12),
+            foodNameLabel.trailingAnchor.constraint(equalTo: addButton.leadingAnchor, constant: -8),
 
             // Nutrition Label Constraints
-            nutritionLabel.topAnchor.constraint(equalTo: foodNameLabel.bottomAnchor, constant: 1),
-            nutritionLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 6),
-            nutritionLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-            nutritionLabel.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -8)
+            nutritionLabel.topAnchor.constraint(equalTo: foodNameLabel.bottomAnchor, constant: 2),
+            nutritionLabel.leadingAnchor.constraint(equalTo: cardContentView.leadingAnchor, constant: 12),
+            nutritionLabel.trailingAnchor.constraint(equalTo: cardContentView.trailingAnchor, constant: -12),
+            nutritionLabel.bottomAnchor.constraint(lessThanOrEqualTo: cardContentView.bottomAnchor, constant: -8)
         ])
     }
     func updateButtonState(_ isAdded: Bool) {
-        let buttonImage = isAdded ? "checkmark.circle.fill" : "plus.square.fill"
-        addButton.setImage(UIImage(systemName: buttonImage), for: .normal)
-        addButton.tintColor = isAdded ? .systemGreen : .white
+        if isAdded {
+            addButton.setImage(UIImage(systemName: "checkmark"), for: .normal)
+            addButton.backgroundColor = UIColor.systemGreen
+        } else {
+            addButton.setImage(UIImage(systemName: "plus"), for: .normal)
+            addButton.backgroundColor = UIColor.systemBlue
+        }
     }
 
 
@@ -111,13 +156,28 @@ class TodBiteCollectionViewCell: UICollectionViewCell {
         // Update UI with item details
         foodNameLabel.text = item.name
         nutritionLabel.text = item.description
-        myImageView.image = UIImage(named: item.image)
+        
+        // Image loading with proper error handling
+        myImageView.image = UIImage(named: "placeholder")
+        
+        if let url = URL(string: item.image_url) {
+            let task = URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
+                guard let self = self,
+                      error == nil,
+                      let data = data,
+                      let image = UIImage(data: data) else {
+                    return
+                }
+                
+                DispatchQueue.main.async {
+                    self.myImageView.image = image
+                }
+            }
+            task.resume()
+        }
 
         // Update button state (Plus or Tick)
-        let buttonImage = isAdded ? "checkmark.circle.fill" : "plus.square.fill"
-        addButton.setImage(UIImage(systemName: buttonImage), for: .normal)
-        addButton.tintColor = isAdded ? .systemGreen : .white
-
+        updateButtonState(isAdded)
     }
 
     // MARK: - Button Action

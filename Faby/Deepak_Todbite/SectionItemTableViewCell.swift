@@ -34,6 +34,7 @@ class SectionItemTableViewCell: UITableViewCell {
         itemImageView.clipsToBounds = true
         itemImageView.layer.cornerRadius = 8
         contentView.addSubview(itemImageView)
+        
 
         // Configure Title Label
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -85,8 +86,20 @@ class SectionItemTableViewCell: UITableViewCell {
 
     // MARK: - Configuration
     func configure(with item: FeedingMeal) {
-        currentItem = item
-        itemImageView.image = UIImage(named: item.image)
+        currentItem = item//itemImageView
+        if let url = URL(string: item.image_url) {
+                    // Show a placeholder while loading
+            itemImageView.image = UIImage(named: "placeholder")
+                    URLSession.shared.dataTask(with: url) { data, _, _ in
+                        if let data = data, let image = UIImage(data: data) {
+                            DispatchQueue.main.async {
+                                self.itemImageView.image = image
+                            }
+                        }
+                    }.resume()
+                } else {
+                    itemImageView.image = UIImage(named: "placeholder")
+                }
         titleLabel.text = item.name
         descriptionLabel.text = item.description
     }

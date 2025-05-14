@@ -61,24 +61,39 @@ class HomeViewController: UIViewController {
         chevronIcon.translatesAutoresizingMaskIntoConstraints = false
         chevronIcon.widthAnchor.constraint(equalToConstant: 16).isActive = true
         
+        // Make sure chevron can receive touches
+        chevronIcon.isUserInteractionEnabled = true
+        
+        // Add specific tap gesture to the chevron icon
+        let chevronTapGesture = UITapGestureRecognizer(target: self, action: #selector(openTodBiteViewController))
+        chevronIcon.addGestureRecognizer(chevronTapGesture)
+        
         let stackView = UIStackView(arrangedSubviews: [label, chevronIcon])
         stackView.axis = .horizontal
         stackView.spacing = 1
         stackView.alignment = .center
         stackView.translatesAutoresizingMaskIntoConstraints = false
         
+        // Keep the general tap gesture on the whole stack view too for better UX
+        stackView.isUserInteractionEnabled = true
+        let stackTapGesture = UITapGestureRecognizer(target: self, action: #selector(openTodBiteViewController))
+        stackView.addGestureRecognizer(stackTapGesture)
+        
         return stackView
     }()
+    
     private var todaysBitesCollectionView: UICollectionView = {
         let layout = UICollectionViewFlowLayout()
         layout.scrollDirection = .horizontal
-        layout.itemSize = CGSize(width: 220, height: 160)
-        layout.minimumLineSpacing = 15
+        layout.itemSize = CGSize(width: 280, height: 220) // Wider card to match design
+        layout.minimumLineSpacing = 16
+        layout.sectionInset = UIEdgeInsets(top: 8, left: 16, bottom: 8, right: 16)
         
         let collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
         collectionView.translatesAutoresizingMaskIntoConstraints = false
         collectionView.backgroundColor = .clear
         collectionView.showsHorizontalScrollIndicator = false
+        collectionView.contentInsetAdjustmentBehavior = .always
         return collectionView
     }()
     private let upcomingVaccinationLabel: UILabel = {
@@ -183,7 +198,7 @@ class HomeViewController: UIViewController {
         navigationItem.title = "Home"
         
         // Setup the navigation bar with gradient and blur effects
-        setupNavigationBar()
+//        setupNavigationBar()
         
         navigationItem.rightBarButtonItem = UIBarButtonItem(
             image: UIImage(systemName: "person.crop.circle"),
@@ -204,8 +219,6 @@ class HomeViewController: UIViewController {
         todaysBitesCollectionView.delegate = self
         todaysBitesCollectionView.dataSource = self
         todaysBitesCollectionView.register(TodayBiteCollectionViewCell.self, forCellWithReuseIdentifier: "BitesCell")
-        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(openTodBiteViewController))
-        todaysBitesLabel.addGestureRecognizer(tapGesture)
         
         setupUI()
         setupDelegates()
@@ -252,7 +265,8 @@ class HomeViewController: UIViewController {
         
         loadVaccinations() // Reload vaccinations when view appears
         updateSpecialMoments()
-        updateDateLabel()
+        // Always update Today's Bites when returning to this view
+        updateTodaysBites()
     }
     
     override func viewWillDisappear(_ animated: Bool) {
@@ -646,103 +660,229 @@ class HomeViewController: UIViewController {
     }
     
     @objc private func openTodBiteViewController() {
+        // Switch to the TodBite tab when chevron is clicked
+        // First try using the tab bar controller
         if let tabBarController = self.tabBarController {
-            tabBarController.selectedIndex = 4
-        } else {
-            print("⚠️ TabBarController not found")
-        }
-    }
-    
-    // Setup background gradient - exactly like AuthViewController
-    private func setupNavigationBar() {
-        // Match the AuthViewController exactly
-        gradientLayer.colors = [
-            UIColor(red: 0.85, green: 0.95, blue: 1.0, alpha: 1.0).cgColor,  // Light blue at top - exact match to AuthViewController
-            UIColor.white.cgColor  // White at bottom - exact match to AuthViewController
-        ]
-        gradientLayer.locations = [0.0, 1.0]
-        gradientLayer.startPoint = CGPoint(x: 0.5, y: 0.0)
-        gradientLayer.endPoint = CGPoint(x: 0.5, y: 0.3)  // Gradient fades to white faster
-        
-        // Apply gradient to the entire view just like in AuthViewController
-        gradientLayer.frame = view.bounds
-        view.layer.insertSublayer(gradientLayer, at: 0)
-        
-        // Set background to white so it matches AuthViewController
-        view.backgroundColor = .white
-        
-        // Configure navigation bar with modern iOS appearance
-        if let navigationBar = navigationController?.navigationBar {
-            // Enable large titles properly
-            navigationBar.prefersLargeTitles = true
-            navigationItem.largeTitleDisplayMode = .always
+            // Look for the TodBite tab by its identifier
+            for (index, controller) in (tabBarController.viewControllers ?? []).enumerated() {
+                // Check if it's the TodBite tab
+                if controller is UINavigationController,
+                   let navController = controller as? UINavigationController,
+                   navController.viewControllers.first is TodBiteViewController {
+                    // Found the TodBite tab, select it
+                    tabBarController.selectedIndex = index
+                    return
+                }
+                
+                // Some apps might use the tab's title to identify it
+                if controller.tabBarItem.title == "TodBite" {
+                    tabBarController.selectedIndex = index
+                    return
+                }
+            }
             
-            // iOS 15+ appearance with different states
-            if #available(iOS 15.0, *) {
-                // Create large title appearance
-                let appearance = UINavigationBarAppearance()
-                appearance.configureWithTransparentBackground()
-                
-                // Standard appearance (when scrolled) - with blur effect
-                appearance.backgroundEffect = UIBlurEffect(style: .systemUltraThinMaterialLight)
-                appearance.backgroundColor = UIColor(red: 0.85, green: 0.95, blue: 1.0, alpha: 0.7)
-                
-                // Large title text attributes - make them bold and larger
-                appearance.largeTitleTextAttributes = [
-                    .foregroundColor: UIColor.black,
-                    .font: UIFont.systemFont(ofSize: 34, weight: .bold)
-                ]
-                
-                // Apply appearances to all navigation bar states
-                navigationBar.standardAppearance = appearance
-                navigationBar.compactAppearance = appearance
-                
-                // Scroll edge appearance should be transparent to show the gradient
-                let scrollEdgeAppearance = UINavigationBarAppearance()
-                scrollEdgeAppearance.configureWithTransparentBackground()
-                scrollEdgeAppearance.largeTitleTextAttributes = appearance.largeTitleTextAttributes
-                navigationBar.scrollEdgeAppearance = scrollEdgeAppearance
-            } else {
-                // iOS 14 and below
-                navigationBar.setBackgroundImage(UIImage(), for: .default)
-                navigationBar.shadowImage = UIImage()
-                navigationBar.isTranslucent = true
-                navigationBar.largeTitleTextAttributes = [
-                    .foregroundColor: UIColor.black,
-                    .font: UIFont.systemFont(ofSize: 34, weight: .bold)
-                ]
+            // If we couldn't find it by class or title, try the standard position (usually last tab)
+            if let lastIndex = tabBarController.viewControllers?.count, lastIndex > 0 {
+                tabBarController.selectedIndex = lastIndex - 1 // Try the last tab
             }
         }
+        
+        // As a fallback, post a notification for tab switching
+        NotificationCenter.default.post(name: NSNotification.Name("SwitchToTodBiteTab"), object: nil)
+        
+        print("✅ Attempting to navigate to TodBite tab")
+    }
+    @objc private func updateTodaysBites() {
+        print("✅ Fetching Today's Bites...")
+        
+        // Clear existing data
+        todaysBitesData.removeAll()
+        
+        // STEP 1: First load from UserDefaults
+        let savedMeals = UserDefaults.standard.array(forKey: "todaysBites") as? [[String: String]]
+        let savedDate = UserDefaults.standard.string(forKey: "selectedDay")
+        
+        // Get today's date in the same format as stored in meal history
+        let today = Date()
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "E d MMM" // e.g. "Wed 7 May"
+        let todayFormattedDate = dateFormatter.string(from: today)
+        
+        // STEP 2: Load from meal history for today's date
+        // This handles cases where a weekly plan is stored but today's date is different from selected date
+        let mealHistory = UserDefaults.standard.dictionary(forKey: "mealPlanHistory") as? [String: [[String: String]]] ?? [:]
+        
+        var todaysMeals: [[String: String]] = []
+        
+        // First try to get today's meals from history
+        if let mealsForToday = mealHistory[todayFormattedDate] {
+            print("📌 Found meals for today (\(todayFormattedDate)): \(mealsForToday.count) meals")
+            todaysMeals = mealsForToday
+        } 
+        // If not found, use saved meals from todaysBites
+        else if let savedMeals = savedMeals, !savedMeals.isEmpty {
+            print("📌 Using saved meals from todaysBites")
+            todaysMeals = savedMeals
+        }
+        
+        // If we still have no meals, try to get from Supabase asynchronously
+        if todaysMeals.isEmpty {
+            print("⚠️ No meals found in UserDefaults for today, trying to fetch from Supabase...")
+            // This would ideally fetch from Supabase, but for now we'll show empty state
+            loadMealsFromSupabase()
+        } else {
+            // Process and display meals
+            processMealsForDisplay(todaysMeals)
+        }
     }
     
-    @objc private func updateTodaysBites() {
-        guard let savedMeals = UserDefaults.standard.array(forKey: "todaysBites") as? [[String: String]],
-              let savedDate = UserDefaults.standard.string(forKey: "selectedDay") else {
-//            print("⚠️ No saved meals found!")
+    // New helper method to load meals from Supabase
+    private func loadMealsFromSupabase() {
+        // Check if we can access the Supabase client
+        guard let sceneDelegate = UIApplication.shared.connectedScenes.first?.delegate as? SceneDelegate else {
+            print("❌ Could not access SceneDelegate for Supabase client")
+            DispatchQueue.main.async {
+                self.updateTodaysBitesEmptyState()
+            }
             return
         }
         
-//        print("📌 Saved Meals: \(savedMeals)")
-//        print("📌 Saved Date: \(savedDate)")
-//
-        var updatedBites: [TodayBite] = []
+        // Get Supabase client
+        let supabaseClient = sceneDelegate.supabase
         
-        for meal in savedMeals {
-            if let title = meal["category"], let time = meal["time"], let imageName = meal["image"] {
-                updatedBites.append(TodayBite(title: title, time: time, imageName: imageName))
+        // Create date range (today)
+        let today = Date()
+        
+        // Asynchronously load feeding plans
+        Task {
+            do {
+                print("🔄 Attempting to load meals from Supabase...")
+                
+                // This assumes you have a SupabaseManager.loadFeedingPlansWithMeals method
+                // that returns meals organized by date and category
+                if let feedingPlans = try? await SupabaseManager.loadFeedingPlansWithMeals(
+                    startDate: today,
+                    endDate: today, 
+                    using: supabaseClient
+                ) {
+                    // Convert Supabase response to meal dictionaries
+                    let dateFormatter = DateFormatter()
+                    dateFormatter.dateFormat = "E d MMM"
+                    let todayKey = dateFormatter.string(from: today)
+                    
+                    if let todayPlans = feedingPlans[todayKey], !todayPlans.isEmpty {
+                        // Convert to array of meal dictionaries
+                        var mealsArray: [[String: String]] = []
+                        
+                        for (category, meals) in todayPlans {
+                            for meal in meals {
+                                var mealDict: [String: String] = [
+                                    "category": category.rawValue,
+                                    "time": getTimeInterval(for: category),
+                                    "name": meal.name,
+                                    "image": meal.image_url,
+                                    "description": meal.description
+                                ]
+                                mealsArray.append(mealDict)
+                            }
+                        }
+                        
+                        // Process and display on main thread
+                        DispatchQueue.main.async {
+                            self.processMealsForDisplay(mealsArray)
+                        }
+                        
+                        // Save to UserDefaults for future use
+                        UserDefaults.standard.set(mealsArray, forKey: "todaysBites")
+                        return
+                    }
+                }
+                
+                // If we get here, no meals were found in Supabase
+                print("⚠️ No meals found in Supabase for today")
+                DispatchQueue.main.async {
+                    self.updateTodaysBitesEmptyState()
+                }
+            } catch {
+                print("❌ Error loading meals from Supabase: \(error)")
+                DispatchQueue.main.async {
+                    self.updateTodaysBitesEmptyState()
+                }
             }
         }
+    }
+    
+    // Helper method to get time interval string for category
+    private func getTimeInterval(for category: BiteType) -> String {
+        switch category {
+        case .EarlyBite: return "7:30 AM - 8:00 AM"
+        case .NourishBite: return "10:00 AM - 10:30 AM"
+        case .MidDayBite: return "12:30 PM - 1:00 PM"
+        case .SnackBite: return "4:00 PM - 4:30 PM"
+        case .NightBite: return "8:00 PM - 8:30 PM"
+        case .custom(_): return "No Time Set"
+        }
+    }
+    
+    // Helper method to process meals and display them
+    private func processMealsForDisplay(_ meals: [[String: String]]) {
+        var updatedBites: [TodayBite] = []
+        
+        for meal in meals {
+            // Try both "image" and "image_url" keys for backward compatibility
+            let imageKey = meal["image"] ?? meal["image_url"] ?? ""
+            
+            // Get the meal name, category, and time
+            if let mealName = meal["name"], let category = meal["category"], let time = meal["time"] {
+                // Create a TodayBite with the meal name as the title and the category as a separate field
+                updatedBites.append(TodayBite(
+                    title: mealName,
+                    time: time,
+                    imageName: imageKey,
+                    category: category
+                ))
+            }
+        }
+        
+        // Sort bites by predefined mealtime order
         let predefinedOrder: [String] = ["EarlyBite", "NourishBite", "MidDayBite", "SnackBite", "NightBite"]
         updatedBites.sort { (a, b) -> Bool in
-            let indexA = predefinedOrder.firstIndex(of: a.title) ?? predefinedOrder.count
-            let indexB = predefinedOrder.firstIndex(of: b.title) ?? predefinedOrder.count
-            return indexA < indexB
+            // Get category for sorting or use empty string if nil
+            let categoryA = a.category ?? ""
+            let categoryB = b.category ?? ""
+            
+            // Find indices in predefined order
+            let indexA = predefinedOrder.firstIndex(of: categoryA) ?? predefinedOrder.count
+            let indexB = predefinedOrder.firstIndex(of: categoryB) ?? predefinedOrder.count
+            
+            if indexA != indexB {
+                // Sort by the predefined order
+                return indexA < indexB
+            } else if categoryA == categoryB {
+                // If same category, maintain original order
+                return true
+            } else {
+                // This handles custom categories, which all have the same index (predefinedOrder.count)
+                // We'll just sort them alphabetically
+                return categoryA < categoryB
+            }
         }
-        todaysBitesData = updatedBites
-        todaysBitesCollectionView.reloadData()
         
-        // Update the empty state
-        updateTodaysBitesEmptyState()
+        todaysBitesData = updatedBites
+        
+        // Update UI on main thread
+        DispatchQueue.main.async {
+            // Force collection view to reload with animation
+            UIView.transition(with: self.todaysBitesCollectionView,
+                            duration: 0.35,
+                             options: .transitionCrossDissolve,
+                          animations: {
+                              self.todaysBitesCollectionView.reloadData()
+                          })
+            
+            // Update empty state visibility
+            self.updateTodaysBitesEmptyState()
+        }
     }
     
     @objc private func handleNewVaccineScheduled(_ notification: Notification) {
@@ -843,7 +983,7 @@ extension HomeViewController: UICollectionViewDelegate, UICollectionViewDataSour
         return cell
     }
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
-        return CGSize(width: 225, height: 190)
+        return CGSize(width: 225, height: 220)
     }
 }
 

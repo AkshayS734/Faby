@@ -5,6 +5,7 @@ class MealTableViewCell: UITableViewCell {
  
     let mealImageView = UIImageView()
     let mealNameLabel = UILabel()
+    let mealDetailsLabel = UILabel()
 
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
@@ -26,28 +27,52 @@ class MealTableViewCell: UITableViewCell {
         mealNameLabel.font = UIFont.boldSystemFont(ofSize: 16)
         mealNameLabel.translatesAutoresizingMaskIntoConstraints = false
 
-     
-        let stackView = UIStackView(arrangedSubviews: [mealImageView, mealNameLabel])
-        stackView.axis = .horizontal
-        stackView.spacing = 10
-        stackView.alignment = .center
-        stackView.translatesAutoresizingMaskIntoConstraints = false
+        // Details label for category and region
+        mealDetailsLabel.font = UIFont.systemFont(ofSize: 12)
+        mealDetailsLabel.textColor = .darkGray
+        mealDetailsLabel.translatesAutoresizingMaskIntoConstraints = false
 
-        contentView.addSubview(stackView)
+        // Create vertical stack for name and details
+        let textStackView = UIStackView(arrangedSubviews: [mealNameLabel, mealDetailsLabel])
+        textStackView.axis = .vertical
+        textStackView.spacing = 4
+        textStackView.alignment = .leading
+     
+        // Main horizontal stack with image and text stack
+        let mainStackView = UIStackView(arrangedSubviews: [mealImageView, textStackView])
+        mainStackView.axis = .horizontal
+        mainStackView.spacing = 10
+        mainStackView.alignment = .center
+        mainStackView.translatesAutoresizingMaskIntoConstraints = false
+
+        contentView.addSubview(mainStackView)
 
         NSLayoutConstraint.activate([
             mealImageView.widthAnchor.constraint(equalToConstant: 50),
             mealImageView.heightAnchor.constraint(equalToConstant: 50),
             
-            stackView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-            stackView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-            stackView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 12),
-            stackView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -12)
+            mainStackView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            mainStackView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+            mainStackView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 12),
+            mainStackView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -12)
         ])
     }
 
-    func configure(with meal: FeedingMeal) {
-        mealImageView.image = UIImage(named: meal.image)
+    func configure(with meal: FeedingMeal) {//mealImageView
+        if let url = URL(string: meal.image_url) {
+                    // Show a placeholder while loading
+            mealImageView.image = UIImage(named: "placeholder")
+                    URLSession.shared.dataTask(with: url) { data, _, _ in
+                        if let data = data, let image = UIImage(data: data) {
+                            DispatchQueue.main.async {
+                                self.mealImageView.image = image
+                            }
+                        }
+                    }.resume()
+                } else {
+                    mealImageView.image = UIImage(named: "placeholder")
+                }
         mealNameLabel.text = meal.name
+        mealDetailsLabel.text = "\(meal.category.rawValue) • \(meal.region.rawValue) Region"
     }
 }

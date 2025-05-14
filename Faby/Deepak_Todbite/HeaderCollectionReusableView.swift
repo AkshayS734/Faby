@@ -1,9 +1,17 @@
 import UIKit
+
+protocol HeaderCollectionReusableViewDelegate: AnyObject {
+    func didTapSectionHeader(category: String)
+}
+
 class HeaderCollectionReusableView: UICollectionReusableView {
     let headerLabel = UILabel()
     let intervalLabel = UILabel()
     let chevronImageView = UIImageView()
-
+    
+    weak var delegate: HeaderCollectionReusableViewDelegate?
+    private var category: String?
+    
     override init(frame: CGRect) {
         super.init(frame: frame)
         setupSubviews()
@@ -44,10 +52,21 @@ class HeaderCollectionReusableView: UICollectionReusableView {
             chevronImageView.widthAnchor.constraint(equalToConstant: 16),
             chevronImageView.heightAnchor.constraint(equalToConstant: 16)
         ])
+        
+        // Add tap gesture recognizer to the entire header view
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleTap))
+        self.addGestureRecognizer(tapGesture)
+        self.isUserInteractionEnabled = true
     }
 
     func configure(with title: String, interval: String) {
         headerLabel.text = title
         intervalLabel.text = interval
+        category = title
+    }
+    
+    @objc private func handleTap() {
+        guard let category = category else { return }
+        delegate?.didTapSectionHeader(category: category)
     }
 }
