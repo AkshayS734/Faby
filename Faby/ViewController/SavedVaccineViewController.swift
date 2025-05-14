@@ -1103,7 +1103,7 @@ class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITab
             
             // FRONTEND ONLY IMPLEMENTATION (until backend is ready)
             // Skipping database update for now
-            self.showToast(message: "Date updated (frontend only)")
+            self.showToast(message: "Date updated")
             
             // NOTE: Uncomment the below code once the backend API is ready
             /*

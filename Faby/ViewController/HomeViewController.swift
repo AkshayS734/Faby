@@ -180,7 +180,7 @@ class HomeViewController: UIViewController {
         
         // Set up navigation bar with large title
         navigationController?.navigationBar.prefersLargeTitles = true
-        navigationItem.title = baby?.name ?? "Home"
+        navigationItem.title = "Home"
         
         // Setup the navigation bar with gradient and blur effects
         setupNavigationBar()
@@ -219,7 +219,7 @@ class HomeViewController: UIViewController {
                     loadVaccinations()
                     // Update UI with baby name
                     if let babyName = baby?.name {
-                        title = "\(babyName)'s Home"
+                        title = "\(babyName)"
                     }
                 }
             } catch {
@@ -803,10 +803,10 @@ class HomeViewController: UIViewController {
         vaccineReminderVC.hidesBottomBarWhenPushed = true // Hide bottom tab bar for a cleaner detail view
         
         // Add smooth iOS-native transition animation
-        UIView.transition(with: navigationController!.view, 
-                          duration: 0.3, 
-                          options: .transitionCrossDissolve, 
-                          animations: nil, 
+        UIView.transition(with: navigationController!.view,
+                          duration: 0.3,
+                          options: .transitionCrossDissolve,
+                          animations: nil,
                           completion: nil)
         
         // Navigate to the vaccine details screen
@@ -854,7 +854,7 @@ struct VaccineCardsView: View {
     var onVaccineCompleted: ((VaccineSchedule, String)) -> Void
     var onVaccineCardTapped: ((VaccineSchedule, String)) -> Void
     
-    init(vaccines: [(VaccineSchedule, String)], 
+    init(vaccines: [(VaccineSchedule, String)],
          onVaccineCompleted: @escaping ((VaccineSchedule, String)) -> Void,
          onVaccineCardTapped: @escaping ((VaccineSchedule, String)) -> Void) {
         self.vaccines = vaccines
@@ -872,7 +872,7 @@ struct VaccineCardsView: View {
             }
         }
         .frame(height: 160)
-        .background(Color(.white))
+        .background(Color.clear) // Using transparent background to blend with main screen
     }
     
     // Break down complex SwiftUI expressions into smaller views
@@ -880,16 +880,15 @@ struct VaccineCardsView: View {
         HStack {
             Image(systemName: "syringe")
                 .font(.system(size: 24))
-                .foregroundColor(.gray)
+                .foregroundColor(.white)
             Text("No upcoming vaccinations")
                 .font(.system(size: 16))
                 .foregroundColor(.gray)
         }
         .frame(height: 100)
         .padding(16)
-        .background(Color(UIColor.systemGray6))
+        .background(Color.clear) // Using transparent background to blend with main screen
         .cornerRadius(16)
-        .shadow(color: Color(.systemGray4).opacity(0.3), radius: 6, x: 0, y: 2)
     }
     
     private var vaccineCardsListView: some View {
@@ -903,6 +902,7 @@ struct VaccineCardsView: View {
             .padding(.bottom, 4)
         }
         .frame(height: 120)
+        .background(Color.clear) // Using transparent background to blend with main screen
         .animation(.default, value: displayedVaccines.count)
     }
     
@@ -982,9 +982,6 @@ struct VaccineCard: View {
             }
             .contentShape(Rectangle()) // Make entire row tappable
             
-            Divider()
-                .padding(.vertical, 2)
-            
             // Date and Hospital Info
             VStack(alignment: .leading, spacing: 8) {
                 // Create a variable for formatted date string outside the HStack
@@ -1020,7 +1017,7 @@ struct VaccineCard: View {
         }
         .padding(16)
         .frame(width: 280, height: 130)
-        .background(Color(UIColor.systemGray6))
+        .background(Color.white) // Changed from .clear to .white
         .cornerRadius(16)
         .shadow(color: Color(.systemGray4).opacity(0.3), radius: 6, x: 0, y: 2)
         .contentShape(Rectangle()) // Make entire card tappable
@@ -1051,70 +1048,71 @@ struct VaccineCard: View {
         formatter.dateStyle = .medium
         return formatter.string(from: date)
     }
-    struct RescheduleVaccineView: View {
-        let vaccine: VaccineSchedule
-        let vaccineName: String
-        @State private var selectedDate = Date()
-        @Environment(\.presentationMode) var presentationMode
-        
-        var body: some View {
-            NavigationView {
-                VStack(spacing: 20) {
-                    Text("Reschedule \(vaccineName)")
-                        .font(.headline)
-                        .padding(.top)
-                    
-                    DatePicker(
-                        "Select New Date",
-                        selection: $selectedDate,
-                        displayedComponents: .date
-                    )
-                    .datePickerStyle(GraphicalDatePickerStyle())
-                    .padding()
-                    
-                    Button(action: {
-                        // Here you would implement the actual rescheduling logic
-                        // connecting to your VaccineScheduleManager
-                        Task {
-                            do {
-                                try await VaccineScheduleManager.shared.updateSchedule(
-                                    recordId: vaccine.id,
-                                    newDate: selectedDate,
-                                    newHospital: Hospital(
-                                        id: UUID(),
-                                        babyId: vaccine.babyID,
-                                        name: vaccine.hospital,
-                                        address: vaccine.location,
-                                        distance: 0.0
-                                    )
+}
+
+struct RescheduleVaccineView: View {
+    let vaccine: VaccineSchedule
+    let vaccineName: String
+    @State private var selectedDate = Date()
+    @Environment(\.presentationMode) var presentationMode
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                Text("Reschedule \(vaccineName)")
+                    .font(.headline)
+                    .padding(.top)
+                
+                DatePicker(
+                    "Select New Date",
+                    selection: $selectedDate,
+                    displayedComponents: .date
+                )
+                .datePickerStyle(GraphicalDatePickerStyle())
+                .padding()
+                
+                Button(action: {
+                    // Here you would implement the actual rescheduling logic
+                    // connecting to your VaccineScheduleManager
+                    Task {
+                        do {
+                            try await VaccineScheduleManager.shared.updateSchedule(
+                                recordId: vaccine.id,
+                                newDate: selectedDate,
+                                newHospital: Hospital(
+                                    id: UUID(),
+                                    babyId: vaccine.babyID,
+                                    name: vaccine.hospital,
+                                    address: vaccine.location,
+                                    distance: 0.0
                                 )
-                                // Post notification to refresh the view
-                                NotificationCenter.default.post(
-                                    name: NSNotification.Name("NewVaccineScheduled"),
-                                    object: nil
-                                )
-                            } catch {
-                                print("Failed to reschedule vaccine: \(error)")
-                            }
+                            )
+                            // Post notification to refresh the view
+                            NotificationCenter.default.post(
+                                name: NSNotification.Name("NewVaccineScheduled"),
+                                object: nil
+                            )
+                        } catch {
+                            print("Failed to reschedule vaccine: \(error)")
                         }
-                        presentationMode.wrappedValue.dismiss()
-                    }) {
-                        Text("Save New Date")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .frame(height: 50)
-                            .frame(maxWidth: .infinity)
-                            .background(Color.blue)
-                            .cornerRadius(10)
                     }
-                    .padding(.horizontal)
-                    
-                    Spacer()
-                }
-                .navigationBarItems(trailing: Button("Cancel") {
                     presentationMode.wrappedValue.dismiss()
-                })
+                }) {
+                    Text("Save New Date")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .frame(height: 50)
+                        .frame(maxWidth: .infinity)
+                        .background(Color.blue)
+                        .cornerRadius(10)
+                }
+                .padding(.horizontal)
+                
+                Spacer()
             }
+            .navigationBarItems(trailing: Button("Cancel") {
+                presentationMode.wrappedValue.dismiss()
+            })
         }
     }
 }

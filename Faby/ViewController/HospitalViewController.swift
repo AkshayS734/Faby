@@ -43,12 +43,50 @@ class HospitalViewController: UIViewController, UITableViewDataSource, UITableVi
         return table
     }()
     
-    // Loading indicator
+    // Enhanced Apple-style loading indicator with background and text
+    lazy var loadingContainer: UIView = {
+        let container = UIView()
+        container.translatesAutoresizingMaskIntoConstraints = false
+        container.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.7)
+        container.layer.cornerRadius = 12
+        container.isHidden = true
+        
+        // Add blur effect for modern iOS appearance
+        let blurEffect = UIBlurEffect(style: .systemMaterial)
+        let blurEffectView = UIVisualEffectView(effect: blurEffect)
+        blurEffectView.translatesAutoresizingMaskIntoConstraints = false
+        blurEffectView.layer.cornerRadius = 12
+        blurEffectView.clipsToBounds = true
+        container.addSubview(blurEffectView)
+        
+        // Configure constraints for blur effect
+        NSLayoutConstraint.activate([
+            blurEffectView.topAnchor.constraint(equalTo: container.topAnchor),
+            blurEffectView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            blurEffectView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            blurEffectView.bottomAnchor.constraint(equalTo: container.bottomAnchor)
+        ])
+        
+        return container
+    }()
+    
+    // Activity indicator
     let activityIndicator: UIActivityIndicatorView = {
         let indicator = UIActivityIndicatorView(style: .large)
         indicator.translatesAutoresizingMaskIntoConstraints = false
         indicator.hidesWhenStopped = true
         return indicator
+    }()
+    
+    // Loading text label
+    let loadingLabel: UILabel = {
+        let label = UILabel()
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.text = "Loading..."
+        label.font = UIFont.systemFont(ofSize: 14, weight: .medium)
+        label.textColor = .secondaryLabel
+        label.textAlignment = .center
+        return label
     }()
     
     // Add a status label for location errors
@@ -89,8 +127,8 @@ class HospitalViewController: UIViewController, UITableViewDataSource, UITableVi
         tableView.delegate = self
         mapView.delegate = self
         
-        // Show loading indicator
-        activityIndicator.startAnimating()
+        // Show Apple-style loading indicator
+        showLoading(true)
     }
     
     private func setupLocationManager() {
@@ -120,7 +158,7 @@ class HospitalViewController: UIViewController, UITableViewDataSource, UITableVi
     }
     
     private func showLocationAccessError() {
-        activityIndicator.stopAnimating()
+        showLoading(false)
         statusLabel.isHidden = false
         statusLabel.text = "Location access is required to find nearby hospitals.\nPlease enable location access in Settings."
         
@@ -139,8 +177,33 @@ class HospitalViewController: UIViewController, UITableViewDataSource, UITableVi
     }
     
     @objc private func openSettings() {
-        if let url = URL(string: UIApplication.openSettingsURLString) {
-            UIApplication.shared.open(url)
+        guard let settingsURL = URL(string: UIApplication.openSettingsURLString) else { return }
+        if UIApplication.shared.canOpenURL(settingsURL) {
+            UIApplication.shared.open(settingsURL)
+        }
+    }
+    
+    // MARK: - Loading Indicator Methods
+    
+    /// Shows or hides the loading indicator with smooth animation
+    private func showLoading(_ show: Bool) {
+        if show {
+            // Show loading indicator with fade-in animation
+            loadingContainer.alpha = 0
+            loadingContainer.isHidden = false
+            activityIndicator.startAnimating()
+            
+            UIView.animate(withDuration: 0.3) {
+                self.loadingContainer.alpha = 1
+            }
+        } else {
+            // Hide loading indicator with fade-out animation
+            UIView.animate(withDuration: 0.3, animations: {
+                self.loadingContainer.alpha = 0
+            }) { _ in
+                self.loadingContainer.isHidden = true
+                self.activityIndicator.stopAnimating()
+            }
         }
     }
     
@@ -150,7 +213,12 @@ class HospitalViewController: UIViewController, UITableViewDataSource, UITableVi
         view.addSubview(searchBar)
         view.addSubview(mapView)
         view.addSubview(tableView)
-        view.addSubview(activityIndicator)
+        view.addSubview(loadingContainer)
+        
+        // Add activity indicator and label to loading container
+        loadingContainer.addSubview(activityIndicator)
+        loadingContainer.addSubview(loadingLabel)
+        
         view.addSubview(statusLabel)
         
         NSLayoutConstraint.activate([
@@ -168,8 +236,16 @@ class HospitalViewController: UIViewController, UITableViewDataSource, UITableVi
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             
-            activityIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            activityIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            loadingContainer.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            loadingContainer.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            loadingContainer.widthAnchor.constraint(equalToConstant: 120),
+            loadingContainer.heightAnchor.constraint(equalToConstant: 100),
+            
+            activityIndicator.centerXAnchor.constraint(equalTo: loadingContainer.centerXAnchor),
+            activityIndicator.centerYAnchor.constraint(equalTo: loadingContainer.centerYAnchor, constant: -10),
+            
+            loadingLabel.centerXAnchor.constraint(equalTo: loadingContainer.centerXAnchor),
+            loadingLabel.topAnchor.constraint(equalTo: activityIndicator.bottomAnchor, constant: 8),
             
             statusLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             statusLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor),
@@ -194,7 +270,7 @@ class HospitalViewController: UIViewController, UITableViewDataSource, UITableVi
     
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         print("Location Manager Error: \(error.localizedDescription)")
-        activityIndicator.stopAnimating()
+        showLoading(false)
         statusLabel.isHidden = false
         statusLabel.text = "Unable to determine your location.\nPlease check your device settings."
     }
@@ -207,7 +283,7 @@ class HospitalViewController: UIViewController, UITableViewDataSource, UITableVi
                 self.hospitals = hospitals
                 self.tableView.reloadData()
                 self.addAnnotationsToMap()
-                self.activityIndicator.stopAnimating()
+                self.showLoading(false)
                 
                 if hospitals.isEmpty {
                     self.statusLabel.isHidden = false

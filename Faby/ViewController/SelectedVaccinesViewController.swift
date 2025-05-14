@@ -256,19 +256,18 @@ class SelectedVaccinesViewController: UIViewController {
 
     @objc private func continueButtonTapped() {
         if selectedVaccines.isEmpty {
-            let noSelectionAlert = UIAlertController(
-                title: "No Vaccines Selected",
-                message: "Please select at least one vaccine to continue.",
-                preferredStyle: .alert
-            )
-            noSelectionAlert.addAction(UIAlertAction(title: "OK", style: .default))
-            present(noSelectionAlert, animated: true)
+            // Skip showing alert and just return if no vaccines selected
             return
         }
         
-        // Show loading indicator
-        let loadingAlert = UIAlertController(title: "Saving Vaccines", message: "Please wait...", preferredStyle: .alert)
-        present(loadingAlert, animated: true)
+        // Add a loading indicator to the view instead of using an alert
+        let loadingIndicator = UIActivityIndicatorView(style: .large)
+        loadingIndicator.center = view.center
+        loadingIndicator.startAnimating()
+        view.addSubview(loadingIndicator)
+        
+        // Disable the continue button while saving
+        continueButton.isEnabled = false
         
         // Save the selected vaccines to the administered_vaccines table
         Task {
@@ -284,37 +283,24 @@ class SelectedVaccinesViewController: UIViewController {
                     administeredDates: selectedDates
                 )
                 
-                // Dismiss the loading alert
+                // Remove loading indicator and navigate directly
                 await MainActor.run {
-                    loadingAlert.dismiss(animated: true) {
-                        // Show success message
-                        let successAlert = UIAlertController(
-                            title: "Success",
-                            message: "\(self.selectedVaccines.count) vaccines have been saved successfully.",
-                            preferredStyle: .alert
-                        )
-                        successAlert.addAction(UIAlertAction(title: "OK", style: .default) { _ in
-                            // Navigate to VacciAlertViewController after successful save
-                            let vacciAlertVC = VacciAlertViewController()
-                            self.navigationController?.pushViewController(vacciAlertVC, animated: true)
-                        })
-                        self.present(successAlert, animated: true)
-                    }
+                    loadingIndicator.removeFromSuperview()
+                    continueButton.isEnabled = true
+                    
+                    // Navigate directly to VacciAlertViewController after successful save
+                    let vacciAlertVC = VacciAlertViewController()
+                    self.navigationController?.pushViewController(vacciAlertVC, animated: true)
                 }
             } catch {
-                // Dismiss the loading alert and show error message
+                // Handle error without showing an alert
                 await MainActor.run {
-                    loadingAlert.dismiss(animated: true) {
-                        let errorAlert = UIAlertController(
-                            title: "Error",
-                            message: "Failed to save vaccines: \(error.localizedDescription)",
-                            preferredStyle: .alert
-                        )
-                        errorAlert.addAction(UIAlertAction(title: "OK", style: .default))
-                        self.present(errorAlert, animated: true)
-                    }
+                    loadingIndicator.removeFromSuperview()
+                    continueButton.isEnabled = true
+                    
+                    // Just print the error instead of showing an alert
+                    print("❌ Error saving administered vaccines: \(error)")
                 }
-                print("❌ Error saving administered vaccines: \(error)")
             }
         }
     }
