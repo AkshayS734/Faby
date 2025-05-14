@@ -127,47 +127,53 @@ class ModernCommentCell: UITableViewCell {
         viewRepliesButton.isHidden = true
         
         NSLayoutConstraint.activate([
+            // User Image
             userImageView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 8),
             userImageView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
             userImageView.widthAnchor.constraint(equalToConstant: 30),
             userImageView.heightAnchor.constraint(equalToConstant: 30),
             
+            // Comment Bubble
             commentBubble.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 8),
             commentBubble.leadingAnchor.constraint(equalTo: userImageView.trailingAnchor, constant: 8),
             commentBubble.trailingAnchor.constraint(lessThanOrEqualTo: contentView.trailingAnchor, constant: -16),
             
+            // Username
             usernameLabel.topAnchor.constraint(equalTo: commentBubble.topAnchor, constant: 8),
             usernameLabel.leadingAnchor.constraint(equalTo: commentBubble.leadingAnchor, constant: 12),
             usernameLabel.trailingAnchor.constraint(equalTo: commentBubble.trailingAnchor, constant: -12),
             
-            commentLabel.topAnchor.constraint(equalTo: usernameLabel.bottomAnchor, constant: 2),
+            // Comment Text
+            commentLabel.topAnchor.constraint(equalTo: usernameLabel.bottomAnchor, constant: 4),
             commentLabel.leadingAnchor.constraint(equalTo: commentBubble.leadingAnchor, constant: 12),
             commentLabel.trailingAnchor.constraint(equalTo: commentBubble.trailingAnchor, constant: -12),
-            commentLabel.bottomAnchor.constraint(equalTo: commentBubble.bottomAnchor, constant: -8),
             
-            timeLabel.topAnchor.constraint(equalTo: commentBubble.bottomAnchor, constant: 4),
-            timeLabel.leadingAnchor.constraint(equalTo: commentBubble.leadingAnchor),
+            // Time Label
+            timeLabel.topAnchor.constraint(equalTo: commentLabel.bottomAnchor, constant: 6),
+            timeLabel.leadingAnchor.constraint(equalTo: commentBubble.leadingAnchor, constant: 12),
             
-            // Action stack view positioning
-            actionsStackView.topAnchor.constraint(equalTo: timeLabel.bottomAnchor, constant: 2),
-            actionsStackView.leadingAnchor.constraint(equalTo: commentBubble.leadingAnchor),
+            // Action Stack (like/reply)
+            actionsStackView.topAnchor.constraint(equalTo: timeLabel.bottomAnchor, constant: 6),
+            actionsStackView.leadingAnchor.constraint(equalTo: commentBubble.leadingAnchor, constant: 12),
             actionsStackView.heightAnchor.constraint(equalToConstant: 24),
+            actionsStackView.bottomAnchor.constraint(equalTo: commentBubble.bottomAnchor, constant: -8),
             
-            // View replies button
-            viewRepliesButton.topAnchor.constraint(equalTo: actionsStackView.bottomAnchor, constant: 4),
-            viewRepliesButton.leadingAnchor.constraint(equalTo: userImageView.trailingAnchor, constant: 20), // Indented more than the comment
+            // View Replies Button (outside bubble)
+            viewRepliesButton.topAnchor.constraint(equalTo: commentBubble.bottomAnchor, constant: 10),
+            viewRepliesButton.leadingAnchor.constraint(equalTo: commentBubble.leadingAnchor, constant: 40),
             viewRepliesButton.heightAnchor.constraint(equalToConstant: 22),
             viewRepliesButton.widthAnchor.constraint(lessThanOrEqualTo: contentView.widthAnchor, constant: -80),
             
-            // Indent line for replies (Instagram style)
-            indentLineView.topAnchor.constraint(equalTo: actionsStackView.bottomAnchor, constant: 8),
+            // Indent Line
+            indentLineView.topAnchor.constraint(equalTo: commentBubble.topAnchor),
             indentLineView.leadingAnchor.constraint(equalTo: userImageView.trailingAnchor, constant: 4),
             indentLineView.widthAnchor.constraint(equalToConstant: 1.5),
             indentLineView.bottomAnchor.constraint(equalTo: viewRepliesButton.bottomAnchor),
-            
-            // Content bottom constraint
+
+            // Final bottom constraint for cell
             viewRepliesButton.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -8)
         ])
+
     }
     
     // MARK: - Configuration

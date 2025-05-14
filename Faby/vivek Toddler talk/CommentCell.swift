@@ -130,6 +130,17 @@ class CommentCell: UITableViewCell {
     private var comment: Comment?
     weak var delegate: CommentCellDelegate?
     
+    // Property to control visibility of reply button for nested reply comments
+    var hideViewRepliesButton: Bool = false {  
+        didSet {
+            // Update UI when the property changes
+            if hideViewRepliesButton {
+                viewRepliesButton.isHidden = true
+                indentLineView.isHidden = true
+            }
+        }
+    }
+    
     // MARK: - Initialization
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
@@ -166,66 +177,69 @@ class CommentCell: UITableViewCell {
         
         // Setup constraints
         NSLayoutConstraint.activate([
+            // Container fills cell
             containerView.topAnchor.constraint(equalTo: contentView.topAnchor),
             containerView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
             containerView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
             containerView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
             
-            avatarImageView.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 16),
+            // Avatar
+            avatarImageView.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 12),
             avatarImageView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 16),
             avatarImageView.widthAnchor.constraint(equalToConstant: 40),
             avatarImageView.heightAnchor.constraint(equalToConstant: 40),
             
-            commentBubble.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 16),
-            commentBubble.leadingAnchor.constraint(equalTo: avatarImageView.trailingAnchor, constant: 12),
-            commentBubble.trailingAnchor.constraint(lessThanOrEqualTo: moreButton.leadingAnchor, constant: -12),
-            
-            usernameLabel.topAnchor.constraint(equalTo: commentBubble.topAnchor, constant: 10),
-            usernameLabel.leadingAnchor.constraint(equalTo: commentBubble.leadingAnchor, constant: 16),
-            usernameLabel.trailingAnchor.constraint(equalTo: commentBubble.trailingAnchor, constant: -16),
-            
-            commentLabel.topAnchor.constraint(equalTo: usernameLabel.bottomAnchor, constant: 6),
-            commentLabel.leadingAnchor.constraint(equalTo: commentBubble.leadingAnchor, constant: 16),
-            commentLabel.trailingAnchor.constraint(equalTo: commentBubble.trailingAnchor, constant: -16),
-            commentLabel.bottomAnchor.constraint(equalTo: commentBubble.bottomAnchor, constant: -10),
-            
-            timeLabel.topAnchor.constraint(equalTo: commentBubble.bottomAnchor, constant: 4),
-            timeLabel.leadingAnchor.constraint(equalTo: commentBubble.leadingAnchor),
-            
-            likeButton.centerYAnchor.constraint(equalTo: timeLabel.centerYAnchor, constant: 8),
-            likeButton.leadingAnchor.constraint(equalTo: timeLabel.trailingAnchor, constant: 16),
-            likeButton.widthAnchor.constraint(equalToConstant: 16),
-            likeButton.heightAnchor.constraint(equalToConstant: 16),
-
-
-            
-            likeCountLabel.centerYAnchor.constraint(equalTo: likeButton.centerYAnchor),
-            likeCountLabel.leadingAnchor.constraint(equalTo: likeButton.trailingAnchor, constant: 4),
-            
-            replyButton.centerYAnchor.constraint(equalTo: timeLabel.centerYAnchor, constant: 8),
-            replyButton.leadingAnchor.constraint(equalTo: likeCountLabel.trailingAnchor, constant: 16),
-            replyButton.heightAnchor.constraint(equalToConstant: 22),
-            
+            // More button (three dots)
             moreButton.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 12),
             moreButton.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
             moreButton.widthAnchor.constraint(equalToConstant: 24),
             moreButton.heightAnchor.constraint(equalToConstant: 24),
             
-            // View replies button - Instagram style
-            viewRepliesButton.topAnchor.constraint(equalTo: replyButton.bottomAnchor, constant: 12),
-            viewRepliesButton.leadingAnchor.constraint(equalTo: avatarImageView.trailingAnchor, constant: 24), // Indented
-            viewRepliesButton.heightAnchor.constraint(equalToConstant: 24),
-            viewRepliesButton.widthAnchor.constraint(lessThanOrEqualTo: contentView.widthAnchor, constant: -80),
+            // Username (top right of avatar)
+            usernameLabel.topAnchor.constraint(equalTo: avatarImageView.topAnchor),
+            usernameLabel.leadingAnchor.constraint(equalTo: avatarImageView.trailingAnchor, constant: 12),
+            usernameLabel.trailingAnchor.constraint(equalTo: moreButton.leadingAnchor, constant: -8),
             
-            // Indent line for replies (Instagram style)
-            indentLineView.topAnchor.constraint(equalTo: timeLabel.bottomAnchor, constant: 8),
+            // Comment (multi-line under username)
+            commentLabel.topAnchor.constraint(equalTo: usernameLabel.bottomAnchor, constant: 4),
+            commentLabel.leadingAnchor.constraint(equalTo: usernameLabel.leadingAnchor),
+            commentLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
+            
+            // Time label
+            timeLabel.topAnchor.constraint(equalTo: commentLabel.bottomAnchor, constant: 8),
+            timeLabel.leadingAnchor.constraint(equalTo: commentLabel.leadingAnchor),
+            
+            // Like button
+            likeButton.centerYAnchor.constraint(equalTo: timeLabel.centerYAnchor),
+            likeButton.leadingAnchor.constraint(equalTo: timeLabel.trailingAnchor, constant: 20),
+            likeButton.widthAnchor.constraint(equalToConstant: 16),
+            likeButton.heightAnchor.constraint(equalToConstant: 16),
+            
+            // Like count (optional)
+            likeCountLabel.centerYAnchor.constraint(equalTo: likeButton.centerYAnchor),
+            likeCountLabel.leadingAnchor.constraint(equalTo: likeButton.trailingAnchor, constant: 4),
+            
+            // Reply button
+            replyButton.centerYAnchor.constraint(equalTo: timeLabel.centerYAnchor),
+            replyButton.leadingAnchor.constraint(equalTo: likeCountLabel.trailingAnchor, constant: 20),
+            replyButton.heightAnchor.constraint(equalToConstant: 22),
+            
+            // View Replies
+            viewRepliesButton.topAnchor.constraint(equalTo: timeLabel.bottomAnchor, constant: 12),
+            viewRepliesButton.leadingAnchor.constraint(equalTo: avatarImageView.trailingAnchor, constant: 24),
+            viewRepliesButton.heightAnchor.constraint(equalToConstant: 20),
+            viewRepliesButton.widthAnchor.constraint(lessThanOrEqualTo: containerView.widthAnchor, constant: -80),
+            
+            // Indent line for replies
+            indentLineView.topAnchor.constraint(equalTo: avatarImageView.bottomAnchor, constant: 4),
             indentLineView.leadingAnchor.constraint(equalTo: avatarImageView.trailingAnchor, constant: 4),
             indentLineView.widthAnchor.constraint(equalToConstant: 1.5),
             indentLineView.bottomAnchor.constraint(equalTo: viewRepliesButton.bottomAnchor),
             
-            // Bottom constraint (dynamic based on reply button visibility)
+            // Final bottom constraint
             viewRepliesButton.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -12)
         ])
+
     }
     
     // MARK: - Configuration
@@ -299,8 +313,12 @@ class CommentCell: UITableViewCell {
             }
         }
         
-        // Show/hide view replies button based on replies count
-        if let repliesCount = comment.repliesCount, repliesCount > 0 {
+        // Show/hide view replies button based on replies count and hideViewRepliesButton property
+        if hideViewRepliesButton {
+            // Always hide the button for nested reply comments
+            viewRepliesButton.isHidden = true
+            indentLineView.isHidden = true
+        } else if let repliesCount = comment.repliesCount, repliesCount > 0 {
             viewRepliesButton.isHidden = false
             indentLineView.isHidden = false
             

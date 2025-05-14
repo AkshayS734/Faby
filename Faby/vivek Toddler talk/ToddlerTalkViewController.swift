@@ -32,12 +32,7 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
         return view
     }()
     
-//    // Search bar container to animate hiding/showing
-//    private let searchBarContainer: UIView = {
-//        let view = UIView()
-//        view.translatesAutoresizingMaskIntoConstraints = false
-//        return view
-//    }()
+
 
     // Original topics data from Supabase
     private var allTopics: [Topics] = []
@@ -86,94 +81,20 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
         return control
     }()
     
-//    // Variables for search bar hiding
-//    private var lastContentOffset: CGFloat = 0
-//    private var searchBarHeight: CGFloat = 56
-//    private var searchBarHeightConstraint: NSLayoutConstraint?
-//    private var isSearchBarHidden = false
-    
+
     // MARK: - View Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
-        //setupNavigationBar()
         setupLoadingUI()
-      //  setupSearchBarContainer()
         showInitialLoadingState()
         loadCachedTopics()
-        loginAndFetchTopics()
     }
-//    
-//    override func viewWillAppear(_ animated: Bool) {
-//        super.viewWillAppear(animated)
-//        
-//        // Ensure large title is displayed when this view appears
-//        navigationItem.largeTitleDisplayMode = .always
-//        
-//        // Also show search bar when returning to this view
-//        if isSearchBarHidden {
-//            showSearchBar()
-//        }
-//    }
-//    
-//    private func setupNavigationBar() {
-//        // Configure navigation bar with large title
-//        navigationController?.navigationBar.prefersLargeTitles = true
-//        title = "Toddler Talk"
-//        
-//        // Configure appearance
-//        if let navigationBar = navigationController?.navigationBar {
-//            navigationBar.largeTitleTextAttributes = [
-//                NSAttributedString.Key.foregroundColor: UIColor.label
-//            ]
-//        }
-//    }
-//    
-//    private func setupSearchBarContainer() {
-//        // Remove searchBar from its superview if needed
-//        searchBar.removeFromSuperview()
-//        
-//        // Add searchBar to the container
-//        searchBarContainer.addSubview(searchBar)
-//        view.addSubview(searchBarContainer)
-//        
-//        // Setup constraints
-//        searchBar.translatesAutoresizingMaskIntoConstraints = false
-//        NSLayoutConstraint.activate([
-//            searchBarContainer.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-//            searchBarContainer.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-//            searchBarContainer.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-//            
-//            searchBar.topAnchor.constraint(equalTo: searchBarContainer.topAnchor),
-//            searchBar.leadingAnchor.constraint(equalTo: searchBarContainer.leadingAnchor),
-//            searchBar.trailingAnchor.constraint(equalTo: searchBarContainer.trailingAnchor),
-//            searchBar.bottomAnchor.constraint(equalTo: searchBarContainer.bottomAnchor)
-//        ])
-        
-//        // Create height constraint to animate
-//        searchBarHeightConstraint = searchBarContainer.heightAnchor.constraint(equalToConstant: searchBarHeight)
-//        searchBarHeightConstraint?.isActive = true
-//        
-//        // Update collection view constraints
-//        let constraints = collectionView.constraints
-//        for constraint in constraints {
-//            if constraint.firstAttribute == .top {
-//                collectionView.removeConstraint(constraint)
-//            }
-//        }
-//        
-//        collectionView.translatesAutoresizingMaskIntoConstraints = false
-//        NSLayoutConstraint.activate([
-//            collectionView.topAnchor.constraint(equalTo: searchBarContainer.bottomAnchor),
-//            collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-//            collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-//            collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
-//        ])
-    //}
     
     private func showInitialLoadingState() {
         isLoading = true
         loadingLabel.text = "Loading topics..."
+        loadingContainer.isHidden = false
         collectionView.isHidden = true
         searchBar.isHidden = true
     }
@@ -184,9 +105,6 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
         searchBar.delegate = self
         searchBar.placeholder = "Search Topics ...."
         searchBar.showsCancelButton = false
-
-        // Configure scroll behavior for large titles
-      //  collectionView.contentInsetAdjustmentBehavior = .always
 
         let layout = createCompositionalLayout()
         collectionView.collectionViewLayout = layout
@@ -201,80 +119,6 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
         navigationItem.rightBarButtonItem = historyButton
     }
     
-//    // MARK: - UIScrollViewDelegate
-//    func scrollViewDidScroll(_ scrollView: UIScrollView) {
-//        let currentOffset = scrollView.contentOffset.y
-//        
-//        // Don't respond to bouncing at the top of the scroll view
-//        if currentOffset <= 0 {
-//            showSearchBar()
-//            lastContentOffset = currentOffset
-//            return
-//        }
-//        
-//        // Calculate the difference
-//        let difference = currentOffset - lastContentOffset
-//        
-//        // If scrolling up (positive difference) and search bar is visible
-//        if difference > 5 && !isSearchBarHidden {
-//            hideSearchBar()
-//        }
-//        // If scrolling down (negative difference) and search bar is hidden
-//        else if difference < -5 && isSearchBarHidden {
-//            showSearchBar()
-//        }
-//        
-//        // Update scroll appearance for navigation bar
-//        updateNavigationBarAppearance(for: scrollView)
-//        
-//        // Update last offset
-//        lastContentOffset = currentOffset
-//    }
-//    
-//    private func hideSearchBar() {
-//        guard !isSearchBarHidden else { return }
-//        
-//        UIView.animate(withDuration: 0.25, delay: 0, options: .curveEaseOut, animations: {
-//            self.searchBarHeightConstraint?.constant = 0
-//            self.view.layoutIfNeeded()
-//        }) { _ in
-//            self.isSearchBarHidden = true
-//        }
-//    }
-//    
-//    private func showSearchBar() {
-//        guard isSearchBarHidden else { return }
-//        
-//        UIView.animate(withDuration: 0.25, delay: 0, options: .curveEaseOut, animations: {
-//            self.searchBarHeightConstraint?.constant = self.searchBarHeight
-//            self.view.layoutIfNeeded()
-//        }) { _ in
-//            self.isSearchBarHidden = false
-//        }
-//    }
-//    
-//    private func updateNavigationBarAppearance(for scrollView: UIScrollView) {
-//        // Get the navigation bar height
-//        let navBarHeight = navigationController?.navigationBar.frame.height ?? 0
-//        
-//        // Get the large title height (approximate)
-//        let largeTitleHeight: CGFloat = 52
-//        
-//        // Calculate a transition point
-//        let transitionPoint = navBarHeight + largeTitleHeight
-//        
-//        if scrollView.contentOffset.y > transitionPoint {
-//            // When scrolled beyond transition point, ensure we're in compact mode
-//            navigationItem.largeTitleDisplayMode = .never
-//        } else {
-//            // Otherwise use large title
-//            navigationItem.largeTitleDisplayMode = .always
-//        }
-//        
-//        // Apply changes immediately to navigation bar
-//        navigationController?.navigationBar.sizeToFit()
-//    }
-    
     // MARK: - Caching Methods
     private func loadCachedTopics() {
         if let cachedData = UserDefaults.standard.data(forKey: topicsCacheKey),
@@ -282,6 +126,19 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
             self.allTopics = topics
             self.filteredCardData = topics
             self.collectionView.reloadData()
+            
+            // Show content immediately if we have cached data
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+                self.isLoading = false
+                self.collectionView.isHidden = false
+                self.searchBar.isHidden = false
+            }
+        }
+        
+        // Always fetch fresh data from Supabase after checking cache
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            self?.fetchTopicsFromSupabase()
         }
     }
     
@@ -400,17 +257,25 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
         // Safely calculate percentage
         let percentage: Int
         if totalImagesCount > 0 {
-            let floatPercentage = (Float(loadedImagesCount) / Float(totalImagesCount)) * 100
-            percentage = min(Int(floatPercentage.rounded()), 100) // Ensure we don't exceed 100%
+            percentage = Int((Float(loadedImagesCount) / Float(totalImagesCount)) * 100)
         } else {
             percentage = 0
         }
         
-        loadingLabel.text = "Gathering info... \(percentage)%"
+        // Update loading label with progress
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.loadingLabel.text = "Gathering info... \(percentage)%"
+        }
         
         if loadedImagesCount >= totalImagesCount {
             isLoading = false
-            collectionView.isHidden = false
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+                self.collectionView.isHidden = false
+                self.searchBar.isHidden = false
+                self.loadingContainer.isHidden = true
+            }
             searchBar.isHidden = false
         }
     }
@@ -449,6 +314,9 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
             guard let self = self else { return }
             self.isLoading = true
             self.loadingLabel.text = "Gathering info..."
+            self.loadingContainer.isHidden = false
+            self.collectionView.isHidden = true
+            self.searchBar.isHidden = true
             self.loadedImagesCount = 0
             self.totalImagesCount = 0 // Reset total count
         }
@@ -565,27 +433,6 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
                 self.loadingContainer.isHidden = true
                 self.collectionView.isHidden = false
                // self.searchBarContainer.isHidden = false
-            }
-        }
-    }
-    
-    // MARK: - Login and Fetch Topics
-    func loginAndFetchTopics() {
-        isLoading = true
-        loadingLabel.text = "Logging in..."
-        
-        PostsSupabaseManager.shared.login(email: "", password: "") { result in
-            switch result {
-            case .success(let userID):
-                print("🎉 Logged in as: \(userID)")
-                DispatchQueue.main.async {
-                    self.loadingLabel.text = "Fetching topics..."
-                }
-                self.fetchTopicsFromSupabase() //Fetch topics after login
-            case .failure(let error):
-                print("⚠️ Login failed: \(error.localizedDescription)")
-                self.isLoading = false
-                self.showError(message: "Failed to login. Please try again.")
             }
         }
     }
