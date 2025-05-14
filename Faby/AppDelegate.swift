@@ -10,16 +10,18 @@ import Supabase
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
     
-    let supabaseManager = SupabaseManager()
-    
     let supabase = SupabaseClient(
         supabaseURL: URL(string: "https://tmnltannywgqrrxavoge.supabase.co")!,
         supabaseKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRtbmx0YW5ueXdncXJyeGF2b2dlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY5NjQ0MjQsImV4cCI6MjA2MjU0MDQyNH0.pkaPTx--vk4GPULyJ6o3ttI3vCsMUKGU0TWEMDpE1fY"
     )
-
+    var supabaseManager: SupabaseManager!
+    var supabaseVaccineManager: SupabaseVaccineManager!
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
+        supabaseManager = SupabaseManager()
+        SupabaseVaccineManager.initialize(client: supabase)
+
         DataController.initialize(supabaseManager: supabaseManager)
         return true
     }

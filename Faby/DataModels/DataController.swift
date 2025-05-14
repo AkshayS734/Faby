@@ -24,6 +24,7 @@ class DataController {
     var baby: Baby?
     
     func loadBabyData() async {
+        print("Load baby data Called")
         if let userID = await supabaseManager.getCurrentUserID() {
             print(userID)
 

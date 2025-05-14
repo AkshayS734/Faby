@@ -501,6 +501,10 @@ class AuthViewController: UIViewController {
         Task {
             do {
                 let session = try await supabase.auth.signIn(email: email, password: password)
+                
+                // ✅ Load baby data after successful login
+                await DataController.shared.loadBabyData()
+                
                 await MainActor.run {
                     // Hide loading indicator
                     signInLoadingIndicator.stopAnimating()
@@ -510,7 +514,6 @@ class AuthViewController: UIViewController {
                 }
             } catch {
                 await MainActor.run {
-                    // Hide loading indicator and re-enable button on error
                     signInLoadingIndicator.stopAnimating()
                     signInButton.setTitle("Sign In", for: .normal)
                     signInButton.isEnabled = true

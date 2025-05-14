@@ -887,8 +887,8 @@ struct VaccineCardsView: View {
         }
         .frame(height: 100)
         .padding(16)
-        .background(Color.clear) // Using transparent background to blend with main screen
-        .cornerRadius(16)
+        /*.background(Color.clear)*/ // Using transparent background to blend with main screen
+//        .cornerRadius(16)
     }
     
     private var vaccineCardsListView: some View {

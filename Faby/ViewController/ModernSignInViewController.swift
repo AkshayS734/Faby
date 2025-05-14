@@ -243,6 +243,7 @@ class ModernSignInViewController: UIViewController {
     }
     
     private func setupActions() {
+        print("Setup action called ...")
         loginButton.addTarget(self, action: #selector(loginButtonTapped), for: .touchUpInside)
         forgotPasswordButton.addTarget(self, action: #selector(forgotPasswordTapped), for: .touchUpInside)
         signInWithAppleButton.addTarget(self, action: #selector(signInWithAppleTapped), for: .touchUpInside)
@@ -309,8 +310,6 @@ class ModernSignInViewController: UIViewController {
     }
     
     @objc private func loginButtonTapped() {
-        print("🔐 DEBUG: Login button tapped - THIS SHOULD APPEAR IN CONSOLE")
-        print("🔐 DEBUG: Login button tapped - THIS SHOULD APPEAR IN CONSOLE")
         print("🔐 DEBUG: Login button tapped - THIS SHOULD APPEAR IN CONSOLE")
         
         guard let email = emailTextField.text, !email.isEmpty,
