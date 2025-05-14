@@ -73,32 +73,48 @@ struct VaccineListView: View {
     let babyBirthDate: Date
     let onVaccineTap: (Vaccine) -> Void
     let refreshAction: () -> Void
-    
-    @State private var isRefreshing = false
+    var isLoading: Bool
     
     var body: some View {
-        ScrollView {
-            RefreshControl(isRefreshing: $isRefreshing, onRefresh: refreshAction)
-            
-            if vaccines.isEmpty {
-                EmptyStateView()
-                    .padding(.top, 100) // Add padding to make empty state more visible
-            } else {
-                VStack(spacing: 12) {
-                    // Use ForEach directly instead of VaccinesList
-                    ForEach(vaccines) { vaccine in
-                        VaccineCardView(
-                            vaccine: vaccine,
-                            babyBirthDate: babyBirthDate,
-                            onTap: { onVaccineTap(vaccine) }
-                        )
-                        .padding(.horizontal, 16)
+        ZStack {
+            ScrollView {
+                if vaccines.isEmpty && !isLoading {
+                    EmptyStateView()
+                        .padding(.top, 100) // Add padding to make empty state more visible
+                } else {
+                    VStack(spacing: 12) {
+                        // Use ForEach directly instead of VaccinesList
+                        ForEach(vaccines) { vaccine in
+                            VaccineCardView(
+                                vaccine: vaccine,
+                                babyBirthDate: babyBirthDate,
+                                onTap: { onVaccineTap(vaccine) }
+                            )
+                            .padding(.horizontal, 16)
+                        }
                     }
+                    .padding(.vertical, 8)
                 }
-                .padding(.vertical, 8)
+            }
+            .background(Color(.systemGroupedBackground).edgesIgnoringSafeArea(.all))
+            
+            // Apple-style loading indicator
+            if isLoading {
+                VStack {
+                    Spacer()
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle())
+                        .scaleEffect(1.3)
+                        .padding()
+                    Text("Loading...")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color(.systemBackground).opacity(0.7))
             }
         }
-        .background(Color(.systemGroupedBackground).edgesIgnoringSafeArea(.all))
     }
 }
 
@@ -144,48 +160,29 @@ struct EmptyStateView: View {
     }
 }
 
-// Pull-to-refresh control
-struct RefreshControl: View {
-    @Binding var isRefreshing: Bool
-    let onRefresh: () -> Void
-    
-    var body: some View {
-        GeometryReader { geometry in
-            if geometry.frame(in: .global).minY > 50 {
-                VStack {
-                    Spacer()
-                    HStack {
-                        Spacer()
-                        ProgressView()
-                            .onAppear {
-                                if !isRefreshing {
-                                    isRefreshing = true
-                                    DispatchQueue.main.async {
-                                        onRefresh()
-                                        // Automatically reset refreshing state after a short delay
-                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                                            isRefreshing = false
-                                        }
-                                    }
-                                }
-                            }
-                        Spacer()
-                    }
-                    Spacer()
+// Helper method to update loading state in the SwiftUI view
+extension VacciAlertViewController {
+    func updateLoadingState(_ isLoading: Bool) {
+        // Update the hosting controller with new loading state
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            
+            if let hostingController = self.vaccineListHostingController {
+                // Create a new view with the updated loading state
+                let updatedView = VaccineListView(
+                    vaccines: hostingController.rootView.vaccines,
+                    babyBirthDate: hostingController.rootView.babyBirthDate,
+                    onVaccineTap: hostingController.rootView.onVaccineTap,
+                    refreshAction: hostingController.rootView.refreshAction,
+                    isLoading: isLoading
+                )
+                
+                // Update the root view with animation
+                UIView.transition(with: hostingController.view, duration: 0.25, options: .transitionCrossDissolve) {
+                    hostingController.rootView = updatedView
                 }
-            } else if geometry.frame(in: .global).minY > 0 {
-                // Optional: Show a "pull to refresh" text here when user starts pulling
-                Color.clear.preference(key: RefreshPreferenceKey.self, value: geometry.frame(in: .global).minY)
             }
         }
-        .frame(height: isRefreshing ? 50 : 0)
-    }
-}
-
-struct RefreshPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
     }
 }
 
@@ -198,18 +195,8 @@ class VacciAlertViewController: UIViewController, TimePeriodCollectionViewDelega
     private var scheduledVaccines: [String] = []
     private var cancellables = Set<AnyCancellable>()
     private var currentLoadingTask: Task<Void, Never>?
-    
-    // Subtle Apple-style loading indicator
-    private lazy var loadingIndicator: UIActivityIndicatorView = {
-        let indicator = UIActivityIndicatorView(style: .medium)
-        indicator.hidesWhenStopped = true
-        indicator.color = .systemGray
-        indicator.translatesAutoresizingMaskIntoConstraints = false
-        indicator.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.7)
-        indicator.layer.cornerRadius = 10
-        indicator.layer.masksToBounds = true
-        return indicator
-    }()
+    private var isRefreshingData = false
+    private var isLoading = false
     
     // Cache for vaccines
     private var cachedAllVaccines: [Vaccine]?
@@ -347,8 +334,7 @@ class VacciAlertViewController: UIViewController, TimePeriodCollectionViewDelega
         emptyStateLabel.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(emptyStateLabel)
         
-        // Add loading indicator to view
-        view.addSubview(loadingIndicator)
+        // Loading indicator removed
         
         // Apply consistent spacing per HIG
         NSLayoutConstraint.activate([
@@ -363,9 +349,7 @@ class VacciAlertViewController: UIViewController, TimePeriodCollectionViewDelega
             emptyStateLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 32),
             emptyStateLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -32),
             
-            // Loading indicator constraints - centered in the content area
-            loadingIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            loadingIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            // Loading indicator constraints removed
         ])
         
         // Initialize the SwiftUI hosting controller with empty data
@@ -423,7 +407,8 @@ class VacciAlertViewController: UIViewController, TimePeriodCollectionViewDelega
                     },
                     refreshAction: { [weak self] in
                         self?.refreshVaccinationData()
-                    }
+                    },
+                    isLoading: self.isLoading
                 )
                 existingHostingController.rootView = updatedView
             }
@@ -440,7 +425,8 @@ class VacciAlertViewController: UIViewController, TimePeriodCollectionViewDelega
             },
             refreshAction: { [weak self] in
                 self?.refreshVaccinationData()
-            }
+            },
+            isLoading: isLoading
         )
         
         let hostingController = UIHostingController(rootView: vaccineListView)
@@ -532,20 +518,12 @@ class VacciAlertViewController: UIViewController, TimePeriodCollectionViewDelega
             currentLoadingTask?.cancel()
         }
         
-        // Show loading indicator on main thread
+        // Show loading state and hide empty state
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
-            
-            // Make sure the loading indicator is visible and in front
-            self.loadingIndicator.startAnimating()
-            self.view.bringSubviewToFront(self.loadingIndicator)
-            
-            // Add a semi-transparent background to the loading indicator
-            self.loadingIndicator.frame = CGRect(x: 0, y: 0, width: 50, height: 50)
-            self.loadingIndicator.center = self.view.center
-            
-            // Hide empty state while loading
+            self.isLoading = true
             self.emptyStateLabel.isHidden = true
+            self.updateLoadingState(true)
         }
         
         // Create new loading task
@@ -650,19 +628,22 @@ class VacciAlertViewController: UIViewController, TimePeriodCollectionViewDelega
                         self.emptyStateLabel.isHidden = true
                     }
                     
-                    // Stop the loading indicator after UI is updated
-                    // This ensures it's removed after the vaccine list is shown
+                    // Reset refresh and loading states
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        self.loadingIndicator.stopAnimating()
+                        self.isRefreshingData = false
+                        self.isLoading = false
+                        self.updateLoadingState(false)
                     }
                 }
             } catch {
                 print("❌ DEBUG: Error loading vaccines: \(error)")
                 if !Task.isCancelled {
                     await MainActor.run {
-                        // Stop the loading indicator on error
-                        self.loadingIndicator.stopAnimating()
+                        // Show error state and stop loading
                         self.updateEmptyState("Error loading vaccines: \(error.localizedDescription)")
+                        self.isRefreshingData = false
+                        self.isLoading = false
+                        self.updateLoadingState(false)
                     }
                 }
             }
@@ -726,9 +707,18 @@ class VacciAlertViewController: UIViewController, TimePeriodCollectionViewDelega
     
     @objc private func refreshVaccinationData() {
         print("🔄 DEBUG: refreshVaccinationData called")
+        
+        // Prevent multiple refreshes in quick succession
+        guard !isRefreshingData else {
+            print("⏭️ DEBUG: Skipping refresh - already in progress")
+            return
+        }
+        
         // Get currently selected period
         let selectedPeriod = timePeriods[timePeriodCollectionView.selectedIndex]
         print("🔄 DEBUG: Refreshing data for period: \(selectedPeriod)")
+        
+        isRefreshingData = true
         loadVaccinesByTimePeriod(selectedPeriod)
     }
     

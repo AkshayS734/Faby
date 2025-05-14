@@ -216,16 +216,29 @@ class SupabaseVaccineManager {
         
         // Create administered vaccine records for each vaccine
         for vaccine in vaccines {
-            // Get the administered date (default to current date if not specified)
-            let administeredDate = administeredDates[vaccine.name] ?? Date()
+            // Variables for the new record
+            let vaccineId = UUID().uuidString
+            let babyIdString = babyId.uuidString
+            let vaccineIdString = vaccine.id.uuidString
+            var administeredDateString: String? = nil
             
-            // Create a new administered vaccine record
+            // Check if user has selected a date for this vaccine
+            if let selectedDate = administeredDates[vaccine.name] {
+                // User selected a date - use it
+                print("DEBUG: Using user-selected date for \(vaccine.name): \(selectedDate)")
+                administeredDateString = ISO8601DateFormatter().string(from: selectedDate)
+            } else {
+                // User did not select a date - don't send a date to backend
+                print("DEBUG: No date selected for \(vaccine.name) - not sending a date")
+            }
+            
+            // Create the administered vaccine record
             let administeredVaccine = SupabaseVaccineAdministered(
-                id: UUID().uuidString,
-                baby_id: babyId.uuidString,
-                vaccineID: vaccine.id.uuidString,
+                id: vaccineId,
+                baby_id: babyIdString,
+                vaccineID: vaccineIdString,
                 scheduleId: nil, // No schedule for manually entered vaccines
-                administeredDate: ISO8601DateFormatter().string(from: administeredDate)
+                administeredDate: administeredDateString // This will be nil if no date was selected
             )
             
             try await client
@@ -234,6 +247,11 @@ class SupabaseVaccineManager {
                 .execute()
             
             print("DEBUG: SupabaseVaccineManager - Saved administered vaccine: \(vaccine.name)")
+            if let dateStr = administeredDateString {
+                print("DEBUG: With date: \(dateStr)")
+            } else {
+                print("DEBUG: Without date (date not selected by user)")
+            }
         }
         
         // Notify listeners about the update
@@ -307,7 +325,15 @@ class SupabaseVaccineManager {
         
         return rawAdministered.map { raw in
             let dateFormatter = ISO8601DateFormatter()
-            let date = dateFormatter.date(from: raw.administeredDate) ?? Date()
+            
+            // Handle the optional administeredDate
+            let date: Date
+            if let dateString = raw.administeredDate, !dateString.isEmpty {
+                date = dateFormatter.date(from: dateString) ?? Date()
+            } else {
+                // If no date was provided, use nil (this will be handled by the VaccineAdministered initializer)
+                date = Date() // Default to current date if parsing fails
+            }
             
             let scheduleUUID: UUID? = raw.scheduleId != nil ? UUID(uuidString: raw.scheduleId!) : nil
             
@@ -351,7 +377,15 @@ class SupabaseVaccineManager {
                 
                 let result = rawAdministered.map { raw in
                     let dateFormatter = ISO8601DateFormatter()
-                    let date = dateFormatter.date(from: raw.administeredDate) ?? Date()
+                    
+                    // Handle the optional administeredDate
+                    let date: Date
+                    if let dateString = raw.administeredDate, !dateString.isEmpty {
+                        date = dateFormatter.date(from: dateString) ?? Date()
+                    } else {
+                        // If no date was provided, use nil (this will be handled by the VaccineAdministered initializer)
+                        date = Date() // Default to current date if parsing fails
+                    }
                     
                     let scheduleUUID: UUID? = raw.scheduleId != nil ? UUID(uuidString: raw.scheduleId!) : nil
                     
@@ -435,7 +469,7 @@ struct SupabaseVaccineAdministered: Codable {
     let baby_id: String
     let vaccineID: String  // This matches the actual JSON field name "vaccineID"
     let scheduleId: String? // Optional - This matches the actual JSON field name "scheduleId"
-    let administeredDate: String
+    let administeredDate: String? // Modified to be optional to allow for no date selection
     
     // CodingKeys to map between Swift property names and database column names
     enum CodingKeys: String, CodingKey {
