@@ -153,21 +153,7 @@ class MilestoneModalViewController: UIViewController {
         imageView.isHidden = true
         cardView.addSubview(imageView)
         imageView.translatesAutoresizingMaskIntoConstraints = false
-        
-//        saveButton.setTitle("Save", for: .normal)
-//        saveButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: saveButton.titleLabel?.font.pointSize ?? 20)
-//        saveButton.addTarget(self, action: #selector(saveTapped), for: .touchUpInside)
-//        view.addSubview(saveButton)
-//        saveButton.translatesAutoresizingMaskIntoConstraints = false
-//        
-//        cancelButton.setTitle("Cancel", for: .normal)
-//        cancelButton.addTarget(self, action: #selector(cancelTapped), for: .touchUpInside)
-//        view.addSubview(cancelButton)
-//        cancelButton.translatesAutoresizingMaskIntoConstraints = false
-        
         NSLayoutConstraint.activate([
-//            modalTitle.topAnchor.constraint(equalTo: view.topAnchor, constant: 16),
-//            modalTitle.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             
             titleLabel.topAnchor.constraint(equalTo: navigationBar.bottomAnchor, constant: 30),
             titleLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
@@ -216,15 +202,7 @@ class MilestoneModalViewController: UIViewController {
             captionTextField.topAnchor.constraint(equalTo: secondSeperatorLine.bottomAnchor, constant: 5),
             captionTextField.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 16),
             captionTextField.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -16),
-            captionTextField.heightAnchor.constraint(equalToConstant: 40),
-            
-//            saveButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-//            saveButton.topAnchor.constraint(equalTo: view.topAnchor, constant: 16),
-//            saveButton.centerYAnchor.constraint(equalTo: modalTitle.centerYAnchor),
-//            
-//            cancelButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-//            cancelButton.topAnchor.constraint(equalTo: view.topAnchor, constant: 16),
-//            cancelButton.centerYAnchor.constraint(equalTo: saveButton.centerYAnchor)
+            captionTextField.heightAnchor.constraint(equalToConstant: 40)
         ])
     }
     @objc func handleTextFieldTap() {

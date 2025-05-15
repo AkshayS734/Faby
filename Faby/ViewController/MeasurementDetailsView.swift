@@ -1,18 +1,22 @@
 import SwiftUI
 import Charts
 
+import SwiftUI
+import Charts
+
 struct MeasurementDetailsView: View {
     var measurementType: String
     var dataPoints: [Double]
     var timeLabels: [String]
     
     @EnvironmentObject var unitSettings: UnitSettingsViewModel
+    @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
         VStack {
             if dataPoints.isEmpty {
                 Text("No data available")
-                    .foregroundColor(Color(UIColor.darkGray))
+                    .foregroundColor(.secondary)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 Chart {
@@ -21,27 +25,19 @@ struct MeasurementDetailsView: View {
                             x: .value("Time", timeLabels[index]),
                             y: .value("Measurement", dataPoints[index])
                         )
-                        .foregroundStyle(Color.blue)
+                        .foregroundStyle(.blue)
                         .symbol(Circle())
                     }
                 }
-                .frame(height: 300)
-                .padding(.top, 20)
-                .background(Color.white)
+                .frame(height: 360)
+                .padding()
+                .background(
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(Color(.systemBackground))
+                )
             }
-
-            Spacer()
         }
-        .background(Color(UIColor.systemGray6))
-        .navigationBarTitle("\(measurementType)", displayMode: .inline)
-    }
-}
-
-extension Date {
-    func formattedDate() -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .short
-        formatter.timeStyle = .none
-        return formatter.string(from: self)
+        .background(Color(.systemGroupedBackground))
+        .navigationBarTitle(measurementType, displayMode: .inline)
     }
 }
