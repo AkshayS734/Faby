@@ -10,13 +10,13 @@ class SpecialMomentsViewController: UIViewController {
     private lazy var collectionView: UICollectionView = {
         let layout = UICollectionViewFlowLayout()
         layout.scrollDirection = .horizontal
-        layout.itemSize = CGSize(width: 225, height: 225)
+        layout.itemSize = CGSize(width: 225, height: 200)
         layout.minimumLineSpacing = 15
 
         let collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
         collectionView.translatesAutoresizingMaskIntoConstraints = false
         collectionView.showsHorizontalScrollIndicator = false
-        collectionView.backgroundColor = .systemGray6
+        collectionView.backgroundColor = .clear
         collectionView.delegate = self
         collectionView.dataSource = self
         collectionView.register(UINib(nibName: "SpecialMomentsCollectionViewCell", bundle: nil), forCellWithReuseIdentifier: "SpecialMomentsCollectionViewCell")
@@ -24,7 +24,14 @@ class SpecialMomentsViewController: UIViewController {
         collectionView.addGestureRecognizer(longPressGesture)
         return collectionView
     }()
-
+    private let emptyImageView: UIImageView = {
+        let imageView = UIImageView()
+        imageView.image = UIImage(named: "undraw_play-time_c8vl")
+        imageView.contentMode = .scaleAspectFit
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        imageView.isHidden = true
+        return imageView
+    }()
     private let emptyLabel: UILabel = {
         let label = UILabel()
         label.text = "No Special Moments added yet"
@@ -46,14 +53,21 @@ class SpecialMomentsViewController: UIViewController {
     private func setupUI() {
         view.addSubview(collectionView)
         view.addSubview(emptyLabel)
+        view.addSubview(emptyImageView)
 
         NSLayoutConstraint.activate([
             collectionView.topAnchor.constraint(equalTo: view.topAnchor),
             collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            emptyLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor, constant: -16),
-            emptyLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+
+            emptyImageView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            emptyImageView.centerYAnchor.constraint(equalTo: view.centerYAnchor, constant: -60),
+            emptyImageView.widthAnchor.constraint(equalToConstant: 175),
+            emptyImageView.heightAnchor.constraint(equalToConstant: 175),
+
+            emptyLabel.topAnchor.constraint(equalTo: emptyImageView.bottomAnchor, constant: 16),
+            emptyLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor)
         ])
     }
 
@@ -122,7 +136,9 @@ class SpecialMomentsViewController: UIViewController {
             }
         }
 
-        emptyLabel.isHidden = !milestones.isEmpty
+        let isEmpty = milestones.isEmpty
+        emptyLabel.isHidden = !isEmpty
+        emptyImageView.isHidden = !isEmpty
         collectionView.reloadData()
     }
 }

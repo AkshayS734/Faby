@@ -545,7 +545,7 @@ func fetchBaby(with id: UUID) async throws -> Baby {
         dateOfBirth: babyDOB,
         gender: babyGender.lowercased() == "female" ? .female : .male
     )
-    
+    await DataController.shared.loadBabyData()
     return baby
 }
 

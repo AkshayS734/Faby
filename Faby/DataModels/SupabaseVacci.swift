@@ -4,32 +4,40 @@ import CoreLocation
 import Supabase
 
 class SupabaseVaccineManager {
-    static let shared = SupabaseVaccineManager()
-    
-    // Use your existing Supabase client setup
-    private var client: SupabaseClient? {
-        // Assuming you have the client configured in your AppDelegate or SceneDelegate
-        if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
-            return appDelegate.supabase
-        } else if let sceneDelegate = UIApplication.shared.connectedScenes.first?.delegate as? SceneDelegate {
-            return sceneDelegate.supabase
-        }
-        
-        // Fallback to direct client initialization if needed
-        return SupabaseClient(
-            supabaseURL: URL(string: "https://tmnltannywgqrrxavoge.supabase.co")!,
-            supabaseKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRtbmx0YW5ueXdncXJyeGF2b2dlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY5NjQ0MjQsImV4cCI6MjA2MjU0MDQyNH0.pkaPTx--vk4GPULyJ6o3ttI3vCsMUKGU0TWEMDpE1fY"
-        )
+    static var shared: SupabaseVaccineManager!
+
+    let client: SupabaseClient
+
+    private init(client: SupabaseClient) {
+        self.client = client
     }
+
+    static func initialize(client: SupabaseClient) {
+        self.shared = SupabaseVaccineManager(client: client)
+    }
+    // Use your existing Supabase client setup
+//    private var client: SupabaseClient? {
+//        // Assuming you have the client configured in your AppDelegate or SceneDelegate
+//        DispatchQueue.main.sync {
+//                if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
+//                    client = appDelegate.supabase
+//                } else if let sceneDelegate = UIApplication.shared.connectedScenes.first?.delegate as? SceneDelegate {
+//                    client = sceneDelegate.supabase
+//                }
+//            }
+//
+//        
+//        // Fallback to direct client initialization if needed
+//        return SupabaseClient(
+//            supabaseURL: URL(string: "https://tmnltannywgqrrxavoge.supabase.co")!,
+//            supabaseKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRtbmx0YW5ueXdncXJyeGF2b2dlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY5NjQ0MjQsImV4cCI6MjA2MjU0MDQyNH0.pkaPTx--vk4GPULyJ6o3ttI3vCsMUKGU0TWEMDpE1fY"
+//        )
+//    }
     
     // MARK: - Vaccine Management
     
     /// Fetch all vaccines from Supabase
     func fetchAllVaccines() async throws -> [Vaccine] {
-        guard let client = client else {
-            throw NSError(domain: "VacciAlertError", code: 1,
-                         userInfo: [NSLocalizedDescriptionKey: "Supabase client not available"])
-        }
         
         let response = try await client
             .from("vaccines")
@@ -43,13 +51,6 @@ class SupabaseVaccineManager {
     func fetchRecommendedVaccines(forBabyId babyId: String) async throws -> [Vaccine] {
         // First fetch all vaccines
         let allVaccines = try await fetchAllVaccines()
-        
-        // Then get baby's age (using a direct query instead of relying on Baby model)
-        guard let client = client else {
-            throw NSError(domain: "VacciAlertError", code: 1,
-                         userInfo: [NSLocalizedDescriptionKey: "Supabase client not available"])
-        }
-        
         let babyResponse = try await client
             .from("baby")
             .select("dob")
@@ -88,11 +89,6 @@ class SupabaseVaccineManager {
     
     /// Save a new vaccination schedule to Supabase
     func saveVaccineSchedule(babyId: String, vaccineId: String, hospital: String, date: Date, location: CLLocation) async throws {
-        guard let client = client else {
-            throw NSError(domain: "VacciAlertError", code: 1,
-                         userInfo: [NSLocalizedDescriptionKey: "Supabase client not available"])
-        }
-        
         let latitude = location.coordinate.latitude
         let longitude = location.coordinate.longitude
         let locationString = "\(latitude),\(longitude)"
@@ -123,11 +119,6 @@ class SupabaseVaccineManager {
     
     /// Fetch all scheduled vaccinations for a specific baby
     func fetchVaccineSchedules(forBabyId babyId: String) async throws -> [VaccineSchedule] {
-        guard let client = client else {
-            throw NSError(domain: "VacciAlertError", code: 1,
-                         userInfo: [NSLocalizedDescriptionKey: "Supabase client not available"])
-        }
-        
         let response = try await client
             .from("vaccination_schedules")
             .select()
@@ -155,12 +146,6 @@ class SupabaseVaccineManager {
     
     /// Update an existing vaccination schedule
     func updateVaccineSchedule(scheduleId: String, newDate: Date?, newHospital: String?, newLocation: CLLocation?) async throws {
-        guard let client = client else {
-            throw NSError(domain: "VacciAlertError", code: 1,
-                         userInfo: [NSLocalizedDescriptionKey: "Supabase client not available"])
-        }
-        
-        // First fetch the existing schedule
         let response = try await client
             .from("vaccination_schedules")
             .select()
@@ -207,10 +192,6 @@ class SupabaseVaccineManager {
     ///   - administeredDates: Dictionary mapping vaccine names to administered dates
     /// - Throws: An error if saving fails
     func saveAdministeredVaccines(vaccines: [Vaccine], babyId: UUID, administeredDates: [String: Date]) async throws {
-        guard let client = client else {
-            throw NSError(domain: "VacciAlertError", code: 1,
-                         userInfo: [NSLocalizedDescriptionKey: "Supabase client not available"])
-        }
         
         print("DEBUG: SupabaseVaccineManager - Saving \(vaccines.count) administered vaccines for baby ID: \(babyId)")
         
@@ -262,10 +243,6 @@ class SupabaseVaccineManager {
     
     /// Mark a vaccine as administered
     func markVaccineAsAdministered(scheduleId: String, administeredDate: Date) async throws {
-        guard let client = client else {
-            throw NSError(domain: "VacciAlertError", code: 1,
-                         userInfo: [NSLocalizedDescriptionKey: "Supabase client not available"])
-        }
         
         // First get the schedule details
         let scheduleResponse = try await client
@@ -309,10 +286,6 @@ class SupabaseVaccineManager {
     
     /// Fetch all administered vaccines for a specific baby
     func fetchAdministeredVaccines(forBabyId babyId: String) async throws -> [VaccineAdministered] {
-        guard let client = client else {
-            throw NSError(domain: "VacciAlertError", code: 1,
-                         userInfo: [NSLocalizedDescriptionKey: "Supabase client not available"])
-        }
         
         let response = try await client
             .from("administered_vaccines")
@@ -349,13 +322,6 @@ class SupabaseVaccineManager {
     
     /// Fetch all administered vaccines (not filtered by baby)
     func fetchAllAdministeredVaccines() async throws -> [VaccineAdministered] {
-        print("DEBUG: SupabaseVaccineManager - Starting fetchAllAdministeredVaccines")
-        guard let client = client else {
-            print("DEBUG: SupabaseVaccineManager - Client not available")
-            throw NSError(domain: "VacciAlertError", code: 1,
-                         userInfo: [NSLocalizedDescriptionKey: "Supabase client not available"])
-        }
-        
         print("DEBUG: SupabaseVaccineManager - About to query administered_vaccines table")
         do {
             let response = try await client
@@ -416,10 +382,6 @@ class SupabaseVaccineManager {
     ///   - newDate: The new administered date
     /// - Throws: An error if the update fails
     func updateAdministeredDate(scheduleId: String, newDate: Date) async throws {
-        guard let client = client else {
-            throw NSError(domain: "VacciAlertError", code: 1,
-                         userInfo: [NSLocalizedDescriptionKey: "Supabase client not available"])
-        }
         
         // Convert date to ISO8601 string format
         let dateFormatter = ISO8601DateFormatter()

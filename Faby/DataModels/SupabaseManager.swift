@@ -16,6 +16,7 @@ class SupabaseManager {
     func getCurrentUserID() async -> String? {
         do {
             let session = try await client.auth.session
+            print("User id Successfully Fetched: \(session.user.id.uuidString)")
             return session.user.id.uuidString
         } catch {
             print("Error fetching user ID: \(error.localizedDescription)")
@@ -24,6 +25,7 @@ class SupabaseManager {
     }
     
     func fetchBabyData(for userID: String?, completion: @escaping (Baby?) -> Void) {
+        print("Fetch baby data called ....")
         guard let userID = userID, !userID.isEmpty else {
             print("No valid user ID. User might not be signed in.")
             completion(nil)
