@@ -19,22 +19,9 @@
 		C45BB7B02D350B6200E23648 /* Faby.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Faby.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		323D7D382D3E24F5000DA98C /* Exceptions for "Faby" folder in "Faby" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = C45BB7AF2D350B6200E23648 /* Faby */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
-
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		C45BB7B22D350B6200E23648 /* Faby */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				323D7D382D3E24F5000DA98C /* Exceptions for "Faby" folder in "Faby" target */,
-			);
 			path = Faby;
 			sourceTree = "<group>";
 		};
@@ -169,10 +156,11 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = QTVJ65M7K6;
+				DEVELOPMENT_TEAM = VXG4SAHTWS;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Faby/Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Allow to click special moments";
+				INFOPLIST_KEY_NSLocationUsageDescription = "Allow to fetch location";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We need your location to suggest nearby hospitals for your baby care needs.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Allow to access microphone";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -185,7 +173,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.adarsh12.fabyapp;
+				PRODUCT_BUNDLE_IDENTIFIER = com.akshay.faby;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -200,10 +188,11 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = QTVJ65M7K6;
+				DEVELOPMENT_TEAM = VXG4SAHTWS;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Faby/Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Allow to click special moments";
+				INFOPLIST_KEY_NSLocationUsageDescription = "Allow to fetch location";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We need your location to suggest nearby hospitals for your baby care needs.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Allow to access microphone";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -216,7 +205,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.adarsh12.fabyapp;
+				PRODUCT_BUNDLE_IDENTIFIER = com.akshay.faby;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
