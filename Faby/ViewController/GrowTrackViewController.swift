@@ -114,7 +114,7 @@ class GrowTrackViewController: UIViewController, MilestonesOverviewDelegate{
         let layout = UICollectionViewFlowLayout()
         layout.scrollDirection = .vertical
         layout.minimumLineSpacing = 10
-        layout.itemSize = CGSize(width: view.frame.width - 32, height: 150)
+        layout.itemSize = CGSize(width: view.frame.width - 32, height: 175)
         bodyMeasurementCollectionView.collectionViewLayout = layout
         
         bodyMeasurementCollectionView.reloadData()

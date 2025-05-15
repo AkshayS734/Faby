@@ -13,6 +13,8 @@ class MeasurementDetailsViewController: UIViewController, UITableViewDelegate, U
     var currentTimeLabels: [String] = []
     var selectedTimeSpan: String = "Year"
     var unitSettings = UnitSettingsViewModel.shared
+    var onDataChanged: (() -> Void)?
+    var dataChanged: Bool = false
     private var cancellables: Set<AnyCancellable> = []
     var baby: Baby? {
         return dataController.baby
@@ -23,17 +25,27 @@ class MeasurementDetailsViewController: UIViewController, UITableViewDelegate, U
     private let latestMeasurementLabel: UILabel = {
         let label = UILabel()
         label.textAlignment = .left
-        label.font = UIFont.systemFont(ofSize: 28, weight: .regular)
+        label.font = UIFont.preferredFont(forTextStyle: .title1)
         label.textColor = .black
+        label.adjustsFontForContentSizeCategory = true
         return label
     }()
-    var onDataChanged: (() -> Void)?
-    var dataChanged: Bool = false
+
     private let latestMeasurementUnitLabel: UILabel = {
         let label = UILabel()
         label.textAlignment = .left
-        label.font = UIFont.systemFont(ofSize: 20, weight: .regular)
+        label.font = UIFont.preferredFont(forTextStyle: .title3)
         label.textColor = .gray
+        label.adjustsFontForContentSizeCategory = true
+        return label
+    }()
+
+    private let latestMeasurementDateLabel: UILabel = {
+        let label = UILabel()
+        label.textAlignment = .left
+        label.font = UIFont.preferredFont(forTextStyle: .body)
+        label.textColor = .darkGray
+        label.adjustsFontForContentSizeCategory = true
         return label
     }()
     
@@ -89,17 +101,22 @@ class MeasurementDetailsViewController: UIViewController, UITableViewDelegate, U
     }
     
     private func setupMeasurementLabels() {
-        let stackView = UIStackView(arrangedSubviews: [latestMeasurementLabel, latestMeasurementUnitLabel])
-        stackView.axis = .horizontal
-        stackView.alignment = .lastBaseline
-        stackView.spacing = 4
-        stackView.translatesAutoresizingMaskIntoConstraints = false
+        let topRowStack = UIStackView(arrangedSubviews: [latestMeasurementLabel, latestMeasurementUnitLabel])
+        topRowStack.axis = .horizontal
+        topRowStack.alignment = .lastBaseline
+        topRowStack.spacing = 4
 
-        view.addSubview(stackView)
+        let verticalStack = UIStackView(arrangedSubviews: [topRowStack, latestMeasurementDateLabel])
+        verticalStack.axis = .vertical
+        verticalStack.alignment = .leading
+        verticalStack.spacing = 4
+        verticalStack.translatesAutoresizingMaskIntoConstraints = false
+
+        view.addSubview(verticalStack)
 
         NSLayoutConstraint.activate([
-            stackView.topAnchor.constraint(equalTo: timeSpanSegmentedControl.bottomAnchor, constant: 20),
-            stackView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16)
+            verticalStack.topAnchor.constraint(equalTo: timeSpanSegmentedControl.bottomAnchor, constant: 20),
+            verticalStack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16)
         ])
     }
     
@@ -115,6 +132,7 @@ class MeasurementDetailsViewController: UIViewController, UITableViewDelegate, U
 
         let hostingVC = UIHostingController(rootView: swiftUIView)
 
+        // Remove old hosting controller if present
         if let oldHostingController = hostingController {
             oldHostingController.willMove(toParent: nil)
             oldHostingController.view.removeFromSuperview()
@@ -122,14 +140,25 @@ class MeasurementDetailsViewController: UIViewController, UITableViewDelegate, U
         }
 
         addChild(hostingVC)
-        hostingVC.view.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(hostingVC.view)
+        let hostedView = hostingVC.view!
+        hostedView.translatesAutoresizingMaskIntoConstraints = false
+//
+//        // Optional: Add styling
+//        hostedView.layer.cornerRadius = 16
+//        hostedView.layer.masksToBounds = false
+//        hostedView.layer.shadowColor = UIColor.label.withAlphaComponent(0.15).cgColor
+//        hostedView.layer.shadowOpacity = 1
+//        hostedView.layer.shadowOffset = CGSize(width: 0, height: 4)
+//        hostedView.layer.shadowRadius = 8
+//        hostedView.backgroundColor = .systemBackground
+
+        view.addSubview(hostedView)
 
         NSLayoutConstraint.activate([
-            hostingVC.view.topAnchor.constraint(equalTo: latestMeasurementUnitLabel.bottomAnchor, constant: 7),
-            hostingVC.view.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            hostingVC.view.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            hostingVC.view.heightAnchor.constraint(equalToConstant: 356),
+            hostedView.topAnchor.constraint(equalTo: latestMeasurementDateLabel.bottomAnchor, constant: 20),
+            hostedView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            hostedView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            hostedView.heightAnchor.constraint(equalToConstant: 380)
         ])
 
         hostingVC.didMove(toParent: self)
@@ -156,7 +185,7 @@ class MeasurementDetailsViewController: UIViewController, UITableViewDelegate, U
         tableViewHeightConstraint?.isActive = true
 
         NSLayoutConstraint.activate([
-            tableView.topAnchor.constraint(equalTo: hostingController?.view.bottomAnchor ?? latestMeasurementUnitLabel.bottomAnchor, constant: 10),
+            tableView.topAnchor.constraint(equalTo: hostingController?.view.bottomAnchor ?? latestMeasurementDateLabel.bottomAnchor, constant: 20),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             tableView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -115)
@@ -202,27 +231,27 @@ class MeasurementDetailsViewController: UIViewController, UITableViewDelegate, U
         case "Month":
             formatter.dateFormat = "MMM d"
             guard let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: now)),
-                  let range = calendar.range(of: .day, in: .month, for: startOfMonth) else { return }
+                  let endOfMonth = calendar.date(byAdding: DateComponents(month: 1, day: -1), to: startOfMonth) else { return }
 
-            let totalDays = range.count
-            let interval = totalDays / 4
+            var weekStart = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: startOfMonth))!
 
-            for i in 0..<4 {
-                guard let startInterval = calendar.date(byAdding: .day, value: i * interval, to: startOfMonth),
-                      let endInterval = calendar.date(byAdding: .day, value: ((i + 1) * interval) - 1, to: startOfMonth) else { continue }
+            while weekStart <= endOfMonth {
+                guard let weekEnd = calendar.date(byAdding: .day, value: 6, to: weekStart) else { break }
 
-                timeLabels.append(formatter.string(from: startInterval))
+                timeLabels.append(formatter.string(from: weekStart))
 
-                let dataInRange = measurements.filter {
-                    $0.date >= startInterval && $0.date <= endInterval
-                }
+                let dataInWeek = measurements
+                    .filter { $0.date >= weekStart && $0.date <= weekEnd }
+                    .sorted(by: { $0.date > $1.date })
 
-                // Use the last measurement in the range, if available
-                if let lastMeasurement = dataInRange.max(by: { $0.date < $1.date }) {
-                    values.append(lastMeasurement.value)
+                if let latest = dataInWeek.first {
+                    values.append(latest.value)
                 } else {
-                    values.append(nil)
+                    values.append(Double.nan)
                 }
+
+                guard let nextWeekStart = calendar.date(byAdding: .day, value: 7, to: weekStart) else { break }
+                weekStart = nextWeekStart
             }
 
         case "6 Months":
@@ -283,25 +312,42 @@ class MeasurementDetailsViewController: UIViewController, UITableViewDelegate, U
     }
     
     private func updateLatestMeasurementLabel() {
-        guard let lastValid = currentGrowthData.reversed().first(where: { !$0.isNaN }) else {
+        guard let lastIndex = currentGrowthData.lastIndex(where: { !$0.isNaN }) else {
             latestMeasurementLabel.text = "No data"
             latestMeasurementUnitLabel.text = ""
+            latestMeasurementDateLabel.text = ""
             return
         }
+
+        let lastValue = currentGrowthData[lastIndex]
         
         let unit: String
         let convertedValue: Double
         
         if measurementType == "Weight" {
             unit = unitSettings.weightUnit
-            convertedValue = convertMeasurement(value: lastValid, to: unit, isWeight: true)
+            convertedValue = convertMeasurement(value: lastValue, to: unit, isWeight: true)
         } else {
             unit = unitSettings.selectedUnit
-            convertedValue = convertMeasurement(value: lastValid, to: unit, isWeight: false)
+            convertedValue = convertMeasurement(value: lastValue, to: unit, isWeight: false)
         }
-        
+
         latestMeasurementLabel.text = String(format: "%.2f", convertedValue)
         latestMeasurementUnitLabel.text = unit
+
+        if let measurement = measurements.filter({ !$0.value.isNaN })
+            .sorted(by: { $0.date < $1.date })
+            .last(where: { $0.value == lastValue }) {
+            
+            let formattedTime: String
+            let calendar = Calendar.current
+            let formatter = DateFormatter()
+            formatter.dateFormat = "EEE, MMM d"
+            formattedTime = formatter.string(from: measurement.date)
+            latestMeasurementDateLabel.text = "\(formattedTime)"
+        } else {
+            latestMeasurementDateLabel.text = ""
+        }
     }
     
     @IBAction func addButtonTapped(_ sender: UIBarButtonItem) {
