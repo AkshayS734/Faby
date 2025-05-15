@@ -8,6 +8,37 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
     var passedTitle: String?
     private var posts: [Post] = []
     private var likedPostIds: Set<String> = []
+    
+    // Empty state view components
+    private let emptyStateView: UIView = {
+        let view = UIView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        view.isHidden = true
+        return view
+    }()
+    
+    private let emptyStateImageView: UIImageView = {
+        let imageView = UIImageView()
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        imageView.contentMode = .scaleAspectFit
+        imageView.tintColor = .systemGray3
+        imageView.image = UIImage(systemName: "doc.text.image")?.withConfiguration(
+            UIImage.SymbolConfiguration(pointSize: 60, weight: .light)
+        )
+        return imageView
+    }()
+    
+    private let emptyStateLabel: UILabel = {
+        let label = UILabel()
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.text = "No posts available\nBe the first to share your thoughts!"
+        label.numberOfLines = 0
+        label.textAlignment = .center
+        label.font = .systemFont(ofSize: 16)
+        label.textColor = .secondaryLabel
+        return label
+    }()
+    
     private var isLoading = false {
         didSet {
             updateLoadingState()
@@ -219,6 +250,7 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
         setupCommentsTableView()
         setupKeyboardObservers()
         setupTextFieldTapGesture()
+        setupEmptyState()
         fetchLikedPosts()
         fetchPosts()
         
@@ -256,7 +288,12 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
         // Add main content views
         view.addSubview(tableView)
         view.addSubview(loadingIndicator)
+        view.addSubview(emptyStateView)
         view.addSubview(commentsOverlayView)
+        
+        // Setup empty state views
+        emptyStateView.addSubview(emptyStateImageView)
+        emptyStateView.addSubview(emptyStateLabel)
         view.addSubview(keyboardSpacerView)
         
         // Add subviews to comments overlay
@@ -285,6 +322,22 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            
+            // Empty state view
+            emptyStateView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            emptyStateView.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            emptyStateView.widthAnchor.constraint(equalToConstant: 200),
+            emptyStateView.heightAnchor.constraint(equalToConstant: 200),
+            
+            emptyStateImageView.centerXAnchor.constraint(equalTo: emptyStateView.centerXAnchor),
+            emptyStateImageView.topAnchor.constraint(equalTo: emptyStateView.topAnchor),
+            emptyStateImageView.widthAnchor.constraint(equalToConstant: 100),
+            emptyStateImageView.heightAnchor.constraint(equalToConstant: 100),
+            
+            emptyStateLabel.topAnchor.constraint(equalTo: emptyStateImageView.bottomAnchor, constant: 16),
+            emptyStateLabel.leadingAnchor.constraint(equalTo: emptyStateView.leadingAnchor),
+            emptyStateLabel.trailingAnchor.constraint(equalTo: emptyStateView.trailingAnchor),
+            emptyStateLabel.bottomAnchor.constraint(equalTo: emptyStateView.bottomAnchor),
             
             // Loading indicator
             loadingIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
@@ -520,7 +573,7 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
     @objc private func handleSendComment() {
         guard let commentText = commentTextField.text, !commentText.isEmpty,
               let post = currentPost,
-              let userId = PostsSupabaseManager.shared.userID else {
+              let userId = AuthManager.shared.currentUserID else {
             return
         }
         
@@ -699,23 +752,43 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
                         return date1 > date2
                     }
 
-                    
                     self.posts = posts
-                    self.tableView.reloadData()
+                    
+                    // Update empty state visibility
+                    let hasPosts = !posts.isEmpty
+                    self.emptyStateView.isHidden = hasPosts
+                    self.tableView.isHidden = !hasPosts
+                    
+                    if hasPosts {
+                        self.emptyStateLabel.text = "No posts available\nBe the first to share your thoughts!"
+                        self.tableView.reloadData()
+                    }
                 } else {
-                    self.showError(message: "No posts found")
+                    self.posts = []
+                    self.emptyStateView.isHidden = false
+                    self.tableView.isHidden = true
+                    self.emptyStateLabel.text = "No posts found\nPlease try again later"
                 }
             }
         }
+    }
+    
+    private func setupEmptyState() {
+        emptyStateView.isHidden = true
     }
     
     private func updateLoadingState() {
         if isLoading {
             loadingIndicator.startAnimating()
             tableView.isHidden = true
+            emptyStateView.isHidden = true
         } else {
             loadingIndicator.stopAnimating()
-            tableView.isHidden = false
+            
+            // Show empty state if no posts available
+            let hasPosts = !posts.isEmpty
+            emptyStateView.isHidden = hasPosts
+            tableView.isHidden = !hasPosts
         }
     }
     
@@ -797,7 +870,7 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
                 cell.delegate = self
                 
                 // Check if the user has liked this comment
-                if let commentId = comment.commentId?.description, let userId = PostsSupabaseManager.shared.userID {
+                if let commentId = comment.commentId?.description, let userId = AuthManager.shared.currentUserID {
                     PostsSupabaseManager.shared.checkIfUserLikedComment(commentId: commentId, userId: userId) { isLiked, _ in
                         DispatchQueue.main.async {
                             cell.configure(with: comment, isLiked: isLiked)
@@ -930,8 +1003,8 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
             
             if isSaved {
                 // Post is already saved, ask if they want to unsave
-                let alert = UIAlertController(title: "Post Already Saved", 
-                                             message: "Do you want to remove this post from your saved collection?", 
+                let alert = UIAlertController(title: "Post Already Saved",
+                                             message: "Do you want to remove this post from your saved collection?",
                                              preferredStyle: .alert)
                 
                 alert.addAction(UIAlertAction(title: "Remove", style: .destructive) { _ in
@@ -1212,7 +1285,7 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
             return
         }
         
-        guard let userId = PostsSupabaseManager.shared.userID else {
+        guard let userId = AuthManager.shared.currentUserID else {
             print("❌ Error: User not logged in")
             let alert = UIAlertController(
                 title: "Login Required",

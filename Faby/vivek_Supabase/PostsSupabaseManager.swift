@@ -5,39 +5,63 @@ import UIKit
 class PostsSupabaseManager {
     static let shared = PostsSupabaseManager() // Singleton instance
     
-    let client: SupabaseClient
-    var userID: String? // Add userID property 
+    // Use the shared client from AuthManager to maintain a single authentication session
+    var client: SupabaseClient {
+        return AuthManager.shared.getClient()
+    }
+    
+    // Use AuthManager's currentUserID directly when needed instead of maintaining a separate property
     
     private init() {
-        let supabaseURL = URL(string: "https://tmnltannywgqrrxavoge.supabase.co")!
-        let supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRtbmx0YW5ueXdncXJyeGF2b2dlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY5NjQ0MjQsImV4cCI6MjA2MjU0MDQyNH0.pkaPTx--vk4GPULyJ6o3ttI3vCsMUKGU0TWEMDpE1fY"
-        
-        self.client = SupabaseClient(supabaseURL: supabaseURL, supabaseKey: supabaseKey)
+        // No need to initialize a client here as we're using AuthManager's client
     }
     
     // ✅ Login Function
     func login(email: String, password: String, completion: @escaping (Result<String, Error>) -> Void) {
+        // Validate email and password before attempting to sign in
+        guard !email.isEmpty else {
+            let error = NSError(domain: "LoginError", code: 400, userInfo: [NSLocalizedDescriptionKey: "Email cannot be empty"])
+           // print("❌ Login failed: Email cannot be empty")
+            completion(.failure(error))
+            return
+        }
+        
+        guard !password.isEmpty else {
+            let error = NSError(domain: "LoginError", code: 400, userInfo: [NSLocalizedDescriptionKey: "Password cannot be empty"])
+            print("❌ Login failed: Password cannot be empty")
+            completion(.failure(error))
+            return
+        }
+        
+        print("🔍 Attempting login with email: \(email) and password: [REDACTED]")
+        
         Task {
             do {
-                // Use the provided email and password instead of hardcoded values
-                let session = try await client.auth.signIn(email: "test@gmail.com", password: "123456")
-                let userID = session.user.id.uuidString // ✅ convert UUID to String
-                self.userID = userID // Set the userID property
-                print("✅ Successfully logged in as: \(userID)")
+                // Use AuthManager's signIn method to ensure session is shared across the app
+                try await AuthManager.shared.signIn(email: email, password: password)
+                
+                // Get the userID from AuthManager
+                guard let userID = AuthManager.shared.currentUserID else {
+                    let error = NSError(domain: "LoginError", code: 401, userInfo: [NSLocalizedDescriptionKey: "Failed to get user ID after login"])
+                    completion(.failure(error))
+                    return
+                }
+                
+                print("✅ Successfully logged in as user ID: \(userID) with email: \(email)")
                 
                 // Fetch parent data after successful login
                 ParentDataModel.shared.updateCurrentParent(userId: userID) { success in
                     if success {
-                        print("✅ Successfully fetched parent data")
+                        print("✅ Successfully fetched parent data for user: \(email)")
                         completion(.success(userID))
                     } else {
-                        print("⚠️ Failed to fetch parent data, but login was successful")
+                        print("⚠️ Failed to fetch parent data for user: \(email), but login was successful")
                         // Still return success since login worked
                         completion(.success(userID))
                     }
                 }
             } catch {
-                print("❌ Login failed: \(error.localizedDescription)")
+                print("❌ Login failed for email: \(email): \(error.localizedDescription)")
                 completion(.failure(error))
             }
         }
@@ -49,10 +73,9 @@ class PostsSupabaseManager {
         
         Task {
             do {
-                if let session = try? await client.auth.session {
-                    print("✅ Authenticated User: \(session.user.id)")
-                } else {
-                    completion(nil, NSError(domain: "AuthError", code: 401, userInfo: [NSLocalizedDescriptionKey: "User not authenticated"]))
+                if !AuthManager.shared.isUserLoggedIn {
+                    print("❌ User not logged in")
+                    completion(nil, NSError(domain: "AuthError", code: 401, userInfo: [NSLocalizedDescriptionKey: "User not logged in"]))
                     return
                 }
                 
@@ -221,8 +244,8 @@ class PostsSupabaseManager {
                     )
                 print("✅ File uploaded successfully")
                 
-                // Generate public URL
-                let publicUrl = "https://hlkmrimpxzsnxzrgofes.supabase.co/storage/v1/object/public/postimages/\(fileName)"
+                // Generate public URL based on the Supabase project URL
+                let publicUrl = "https://tmnltannywgqrrxavoge.supabase.co/storage/v1/object/public/postimages/\(fileName)"
                 print("✅ Generated public URL: \(publicUrl)")
                 
                 completion(.success(publicUrl))
@@ -475,8 +498,28 @@ class PostsSupabaseManager {
     func checkIfUserLiked(postId: String, userId: String, completion: @escaping (Bool, Error?) -> Void) {
         print("📢 checkIfUserLiked() called for post: \(postId) by user: \(userId)")
         
+        // Check if the postId and userId are valid UUIDs
+        guard UUID(uuidString: postId) != nil else {
+            print("❌ Invalid post UUID format: \(postId)")
+            DispatchQueue.main.async {
+                completion(false, NSError(domain: "PostError", code: 101, userInfo: [NSLocalizedDescriptionKey: "Invalid post ID format"]))
+            }
+            return
+        }
+        
+        guard UUID(uuidString: userId) != nil else {
+            print("❌ Invalid user UUID format: \(userId)")
+            DispatchQueue.main.async {
+                completion(false, NSError(domain: "PostError", code: 102, userInfo: [NSLocalizedDescriptionKey: "Invalid user ID format"]))
+            }
+            return
+        }
+        
         Task {
             do {
+                print("🔍 Using post_id: \(postId)")
+                print("🔍 Using user_id: \(userId)")
+                
                 let response = try await client.database
                     .from("Likes")
                     .select("Like_id")
@@ -488,7 +531,17 @@ class PostsSupabaseManager {
                     print("📦 Check response: \(rawString)")
                 }
                 
-                let isLiked = !response.data.isEmpty
+                // Check if the response is an empty array (no likes found)
+                guard let jsonArray = try? JSONSerialization.jsonObject(with: response.data, options: []) as? [[String: Any]] else {
+                    print("❌ Failed to parse response JSON")
+                    DispatchQueue.main.async {
+                        completion(false, NSError(domain: "ParseError", code: 103, userInfo: [NSLocalizedDescriptionKey: "Failed to parse like check response"]))
+                    }
+                    return
+                }
+                
+                let isLiked = !jsonArray.isEmpty
+                print("📌 Likes found: \(jsonArray.count)")
                 print(isLiked ? "✅ User has liked the post" : "⚠️ User has not liked the post")
                 
                 DispatchQueue.main.async {
@@ -496,6 +549,7 @@ class PostsSupabaseManager {
                 }
             } catch {
                 print("❌ Error checking like status: \(error.localizedDescription)")
+                print("❌ Error details: \(error)")
                 DispatchQueue.main.async {
                     completion(false, error)
                 }
@@ -506,7 +560,7 @@ class PostsSupabaseManager {
     func fetchLikedPostIds(completion: @escaping (Set<String>, Error?) -> Void) {
         print("📢 fetchLikedPostIds() called")
         
-        guard let userId = self.userID else {
+        guard let userId = AuthManager.shared.currentUserID else {
             print("❌ User not logged in")
             completion(Set<String>(), NSError(domain: "AuthError", code: 401, userInfo: [NSLocalizedDescriptionKey: "User not logged in"]))
             return
@@ -1120,7 +1174,7 @@ class PostsSupabaseManager {
     
     // MARK: - Saved Posts Management
     func savePost(postId: String, completion: @escaping (Bool, Error?) -> Void) {
-        guard let userId = self.userID else {
+        guard let userId = AuthManager.shared.currentUserID else {
             print("❌ User not logged in")
             completion(false, NSError(domain: "AuthError", code: 401, userInfo: [NSLocalizedDescriptionKey: "User not logged in"]))
             return
@@ -1210,7 +1264,7 @@ class PostsSupabaseManager {
     }
     
     func unsavePost(postId: String, completion: @escaping (Bool, Error?) -> Void) {
-        guard let userId = self.userID else {
+        guard let userId = AuthManager.shared.currentUserID else {
             print("❌ User not logged in")
             completion(false, NSError(domain: "AuthError", code: 401, userInfo: [NSLocalizedDescriptionKey: "User not logged in"]))
             return
@@ -1260,7 +1314,7 @@ class PostsSupabaseManager {
     
     // Enhanced version of isPostSaved for debugging
     func debugIsPostSaved(postId: String, completion: @escaping (Bool) -> Void) {
-        print("🔍 DEBUG: Checking if post \(postId) is saved for user \(self.userID ?? "nil")")
+        print("🔍 DEBUG: Checking if post \(postId) is saved for user \(AuthManager.shared.currentUserID ?? "nil")")
         
         Task {
             do {
@@ -1275,7 +1329,7 @@ class PostsSupabaseManager {
                         .from("SavedPosts")
                         .select("id, user_id, post_id")
                         .eq("post_id", value: postId)
-                        .eq("user_id", value: self.userID)
+                        .eq("user_id", value: AuthManager.shared.currentUserID)
                         .execute()
                     
                     print("📋 DEBUG: Raw response: \(String(data: response.data, encoding: .utf8) ?? "No data")")
@@ -1322,7 +1376,7 @@ class PostsSupabaseManager {
     }
     
     func fetchSavedPosts(completion: @escaping ([Post]?, Error?) -> Void) {
-        guard let userId = self.userID else {
+        guard let userId = AuthManager.shared.currentUserID else {
             print("❌ User not logged in")
             completion(nil, NSError(domain: "AuthError", code: 401, userInfo: [NSLocalizedDescriptionKey: "User not logged in"]))
             return
@@ -1360,10 +1414,10 @@ class PostsSupabaseManager {
                 }
                 
                 // The post_id might be a UUID or a string in the database
-                let postIds = jsonArray.compactMap { 
+                let postIds = jsonArray.compactMap {
                     if let postIdString = $0["post_id"] as? String {
                         return postIdString
-                    } 
+                    }
                     // Add other type conversions if necessary
                     return nil
                 }
@@ -1617,7 +1671,7 @@ class PostsSupabaseManager {
     }
     
     func isPostSaved(postId: String, completion: @escaping (Bool, Error?) -> Void) {
-        guard let userId = self.userID else {
+        guard let userId = AuthManager.shared.currentUserID else {
             print("❌ User not logged in")
             completion(false, NSError(domain: "AuthError", code: 401, userInfo: [NSLocalizedDescriptionKey: "User not logged in"]))
             return

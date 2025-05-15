@@ -296,7 +296,7 @@ class PostCardCell: UITableViewCell {
             return
         }
         
-        guard let userId = PostsSupabaseManager.shared.userID else {
+        guard let userId = AuthManager.shared.currentUserID else {
             print("❌ User not logged in")
             let alert = UIAlertController(
                 title: "Login Required",
