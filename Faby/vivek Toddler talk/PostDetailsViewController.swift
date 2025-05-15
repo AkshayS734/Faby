@@ -775,7 +775,7 @@ class PostDetailsViewController: UIViewController {
     }
     
     private func checkIfPostIsLiked() {
-        guard let userId = PostsSupabaseManager.shared.userID else { return }
+        guard let userId = AuthManager.shared.currentUserID else { return }
         
         PostsSupabaseManager.shared.checkIfUserLiked(postId: post.postId, userId: userId) { [weak self] isLiked, error in
             DispatchQueue.main.async {
@@ -811,7 +811,7 @@ class PostDetailsViewController: UIViewController {
     }
     
     @objc private func handleLikeButton() {
-        guard let userId = PostsSupabaseManager.shared.userID else {
+        guard let userId = AuthManager.shared.currentUserID else {
             print("❌ User not logged in")
             let alert = UIAlertController(
                 title: "Login Required",
@@ -912,7 +912,7 @@ class PostDetailsViewController: UIViewController {
     
     @objc private func handleSendComment() {
         guard let commentText = commentTextField.text, !commentText.isEmpty,
-              let userId = PostsSupabaseManager.shared.userID else {
+              let userId = AuthManager.shared.currentUserID else {
             return
         }
         
@@ -1229,7 +1229,7 @@ extension PostDetailsViewController: UITableViewDelegate, UITableViewDataSource 
         let comment = comments[indexPath.row]
         
         // Check if the user has liked this comment
-        if let commentId = comment.commentId?.description, let userId = PostsSupabaseManager.shared.userID {
+        if let commentId = comment.commentId?.description, let userId = AuthManager.shared.currentUserID {
             PostsSupabaseManager.shared.checkIfUserLikedComment(commentId: commentId, userId: userId) { isLiked, _ in
                 DispatchQueue.main.async {
                     cell.configure(with: comment, isLiked: isLiked)
@@ -1252,7 +1252,7 @@ extension PostDetailsViewController: UITableViewDelegate, UITableViewDataSource 
 // MARK: - CommentCellDelegate
 extension PostDetailsViewController: CommentCellDelegate {
     func didTapLikeButton(for comment: Comment) {
-        guard let userId = PostsSupabaseManager.shared.userID, let commentId = comment.commentId?.description else { return }
+        guard let userId = AuthManager.shared.currentUserID, let commentId = comment.commentId?.description else { return }
         
         // Check if already liked
         PostsSupabaseManager.shared.checkIfUserLikedComment(commentId: commentId, userId: userId) { [weak self] isLiked, _ in
@@ -1286,7 +1286,7 @@ extension PostDetailsViewController: CommentCellDelegate {
         let alert = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
         
         // Only allow reporting if not the user's own comment
-        if comment.userId != PostsSupabaseManager.shared.userID {
+        if comment.userId != AuthManager.shared.currentUserID {
             alert.addAction(UIAlertAction(title: "Report", style: .destructive) { [weak self] _ in
                 self?.didTapReport(for: comment)
             })

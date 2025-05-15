@@ -6,7 +6,7 @@ class SavedPostsDebugger {
         print("\n----- CHECKING SUPABASE PERMISSIONS -----")
         
         // Check if user is authenticated
-        guard let userId = PostsSupabaseManager.shared.userID else {
+        guard let userId = AuthManager.shared.currentUserID else {
             print("❌ ERROR: No user ID found - user not authenticated")
             completion(false)
             return

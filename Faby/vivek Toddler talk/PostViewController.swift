@@ -181,11 +181,7 @@ class PostViewController: UIViewController, UITextViewDelegate, UIImagePickerCon
     // Character limit
     private let characterLimit = 500
 
-    // Supabase client
-    let client = SupabaseClient(
-        supabaseURL: URL(string: "https://hlkmrimpxzsnxzrgofes.supabase.co")!,
-        supabaseKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhsa21yaW1weHpzbnh6cmdvZmVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDAwNzI1MjgsImV4cCI6MjA1NTY0ODUyOH0.6mvladJjLsy4Q7DTs7x6jnQrLaKrlsnwDUlN-x_ZcFY"
-    )
+//    let client = SupabaseClient(supabaseURL: URL(string: "https://tmnltannywgqrrxavoge.supabase.co")!, supabaseKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRtbmx0YW5ueXdncXJyeGF2b2dlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY5NjQ0MjQsImV4cCI6MjA2MjU0MDQyNH0.pkaPTx--vk4GPULyJ6o3ttI3vCsMUKGU0TWEMDpE1fY")
 
     private var selectedImage: UIImage?
     
@@ -330,7 +326,7 @@ class PostViewController: UIViewController, UITextViewDelegate, UIImagePickerCon
                     print("⚠️ PostViewController - Invalid URL format for parentimage_url")
                 }
             }
-        } else if let userId = PostsSupabaseManager.shared.userID {
+        } else if let userId = AuthManager.shared.currentUserID {
             // If parent data isn't loaded yet but we have a user ID, try to fetch it
             ParentDataModel.shared.updateCurrentParent(userId: userId) { [weak self] success in
                 if success, let currentParent = ParentDataModel.shared.currentParent {
@@ -450,7 +446,7 @@ class PostViewController: UIViewController, UITextViewDelegate, UIImagePickerCon
             }
 
         print("⚠️ Checking for user ID...")
-        guard let userId = PostsSupabaseManager.shared.userID else {
+        guard let userId = AuthManager.shared.currentUserID else {
             showAlert(message: "Error: You need to be logged in to create a post!")
             return
         }
