@@ -93,7 +93,7 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
         setupLoadingUI()
         showInitialLoadingState()
         loadCachedTopics()
-        loginAndFetchTopics()
+        fetchTopicsFromSupabase() // Fetch fresh data from 
     }
     
     private func showInitialLoadingState() {
@@ -132,6 +132,9 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
             self.allTopics = topics
             self.filteredCardData = topics
             self.collectionView.reloadData()
+            print("✅ Loaded \(topics.count) topics from cache")
+        } else {
+            print("⚠️ No cached topics found")
         }
     }
     
@@ -143,6 +146,7 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
     
     // MARK: - Refresh Data
     @objc private func refreshData() {
+        print("🔄 Refreshing data...")
         fetchTopicsFromSupabase()
     }
     // MARK: - Search Implementation with Debounce
@@ -415,30 +419,7 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
         }
     }
     
-    // MARK: - Login and Fetch Topics
-    func loginAndFetchTopics() {
-        isLoading = true
-        loadingLabel.text = "Logging in..."
-        
-        PostsSupabaseManager.shared.login(email: "", password: "") { result in
-            if case .success(let userID) = result {
-                print("🎉 Logged in as: \(userID)")
-                DispatchQueue.main.async {
-                    self.loadingLabel.text = "Fetching topics..."
-                }
-                self.fetchTopicsFromSupabase() // Fetch topics after login
-            }
-        }
 
-    }
-    
-//    private func showError(message: String) {
-//        DispatchQueue.main.async {
-//            let alert = UIAlertController(title: "Error", message: message, preferredStyle: .alert)
-//            alert.addAction(UIAlertAction(title: "OK", style: .default))
-//            self.present(alert, animated: true)
-//        }
-//    }
 
     // MARK: - UICollectionView DataSource Methods
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
@@ -461,11 +442,6 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
     func searchBarTextDidBeginEditing(_ searchBar: UISearchBar) {
         // Show cancel button with animation when user starts editing
         searchBar.setShowsCancelButton(true, animated: true)
-        
-//        // Make sure search bar is visible when editing
-//        if isSearchBarHidden {
-//            showSearchBar()
-//        }
     }
 
     func searchBarTextDidEndEditing(_ searchBar: UISearchBar) {
