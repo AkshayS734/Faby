@@ -53,10 +53,14 @@ class MeasurementDetailsViewController: UIViewController, UITableViewDelegate, U
         super.viewDidLoad()
         view.backgroundColor = .systemGray6
         title = measurementType
-        
+
         setupMeasurementLabels()
         embedSwiftUIView()
-        setupTableView()
+
+        DispatchQueue.main.async {
+            self.setupTableView()
+        }
+
         guard let baby = baby else { return }
 
         dataController.loadMeasurements(for: baby.babyID) {
@@ -72,11 +76,23 @@ class MeasurementDetailsViewController: UIViewController, UITableViewDelegate, U
         if dataChanged {
             guard let measurementType = measurementType else { return }
             let typeKey = measurementType == "Head Circumference" ? "head_circumference" : measurementType.lowercased()
-            
+
             measurements = dataController.measurements.filter { $0.measurement_type == typeKey }
             setupDataForTimeSpan()
             updateLatestMeasurementLabel()
-            embedSwiftUIView()
+            
+            // ✅ Update content, not view structure
+            if let existingHostingController = hostingController {
+                let newView = AnyView(
+                    MeasurementDetailsView(
+                        measurementType: measurementType ?? "",
+                        dataPoints: currentGrowthData,
+                        timeLabels: currentTimeLabels
+                    ).environmentObject(unitSettings)
+                )
+                existingHostingController.rootView = newView
+            }
+
             tableView.reloadData()
             dataChanged = false
         }
@@ -85,17 +101,23 @@ class MeasurementDetailsViewController: UIViewController, UITableViewDelegate, U
     private func observeUnitChanges() {
         unitSettings.$selectedUnit
             .sink { [weak self] _ in
-                self?.updateLatestMeasurementLabel()
-                self?.embedSwiftUIView()
-                self?.tableView.reloadData()
+                guard let self = self else { return }
+                self.updateLatestMeasurementLabel()
+                self.embedSwiftUIView()
+                if let tableView = self.tableView {
+                    tableView.reloadData()
+                }
             }
             .store(in: &cancellables)
             
         unitSettings.$weightUnit
             .sink { [weak self] _ in
-                self?.updateLatestMeasurementLabel()
-                self?.embedSwiftUIView()
-                self?.tableView.reloadData()
+                guard let self = self else { return }
+                self.updateLatestMeasurementLabel()
+                self.embedSwiftUIView()
+                if let tableView = self.tableView {
+                    tableView.reloadData()
+                }
             }
             .store(in: &cancellables)
     }
@@ -129,40 +151,28 @@ class MeasurementDetailsViewController: UIViewController, UITableViewDelegate, U
             )
             .environmentObject(unitSettings)
         )
-
-        let hostingVC = UIHostingController(rootView: swiftUIView)
-
-        // Remove old hosting controller if present
-        if let oldHostingController = hostingController {
-            oldHostingController.willMove(toParent: nil)
-            oldHostingController.view.removeFromSuperview()
-            oldHostingController.removeFromParent()
+        
+        if let hostingVC = hostingController {
+            // Update rootView instead of recreating the hosting controller
+            hostingVC.rootView = swiftUIView
+        } else {
+            // Create and add hosting controller first time
+            let hostingVC = UIHostingController(rootView: swiftUIView)
+            addChild(hostingVC)
+            let hostedView = hostingVC.view!
+            hostedView.translatesAutoresizingMaskIntoConstraints = false
+            view.addSubview(hostedView)
+            
+            NSLayoutConstraint.activate([
+                hostedView.topAnchor.constraint(equalTo: latestMeasurementDateLabel.bottomAnchor, constant: 20),
+                hostedView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+                hostedView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+                hostedView.heightAnchor.constraint(equalToConstant: 360)
+            ])
+            
+            hostingVC.didMove(toParent: self)
+            hostingController = hostingVC
         }
-
-        addChild(hostingVC)
-        let hostedView = hostingVC.view!
-        hostedView.translatesAutoresizingMaskIntoConstraints = false
-//
-//        // Optional: Add styling
-//        hostedView.layer.cornerRadius = 16
-//        hostedView.layer.masksToBounds = false
-//        hostedView.layer.shadowColor = UIColor.label.withAlphaComponent(0.15).cgColor
-//        hostedView.layer.shadowOpacity = 1
-//        hostedView.layer.shadowOffset = CGSize(width: 0, height: 4)
-//        hostedView.layer.shadowRadius = 8
-//        hostedView.backgroundColor = .systemBackground
-
-        view.addSubview(hostedView)
-
-        NSLayoutConstraint.activate([
-            hostedView.topAnchor.constraint(equalTo: latestMeasurementDateLabel.bottomAnchor, constant: 20),
-            hostedView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            hostedView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            hostedView.heightAnchor.constraint(equalToConstant: 380)
-        ])
-
-        hostingVC.didMove(toParent: self)
-        hostingController = hostingVC
     }
     
     private func setupTableView() {
@@ -185,10 +195,9 @@ class MeasurementDetailsViewController: UIViewController, UITableViewDelegate, U
         tableViewHeightConstraint?.isActive = true
 
         NSLayoutConstraint.activate([
-            tableView.topAnchor.constraint(equalTo: hostingController?.view.bottomAnchor ?? latestMeasurementDateLabel.bottomAnchor, constant: 20),
+            tableView.topAnchor.constraint(equalTo: hostingController?.view.bottomAnchor ?? latestMeasurementDateLabel.bottomAnchor, constant: 30),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            tableView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -115)
+            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16)
         ])
     }
     
