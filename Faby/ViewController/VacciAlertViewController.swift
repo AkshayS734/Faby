@@ -740,7 +740,19 @@ class VacciAlertViewController: UIViewController, TimePeriodCollectionViewDelega
         
         // Use a sheet presentation controller for better visual style
         if let sheet = hospitalVC.sheetPresentationController {
-            sheet.detents = [.medium(), .large()]
+            // Create a custom detent that's between medium and large for a comfortable size
+            if #available(iOS 16.0, *) {
+                // Custom height that feels good - about 65% of screen height
+                let customDetent = UISheetPresentationController.Detent.custom { context in
+                    return context.maximumDetentValue * 0.65
+                }
+                sheet.detents = [customDetent, .medium(), .large()]
+                sheet.selectedDetentIdentifier = customDetent.identifier
+            } else {
+                // Fallback for iOS 15 - use medium but make it a bit larger
+                sheet.detents = [.medium(), .large()]
+                sheet.selectedDetentIdentifier = .medium
+            }
             sheet.prefersGrabberVisible = true
             sheet.preferredCornerRadius = 24
         }

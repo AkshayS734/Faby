@@ -362,7 +362,7 @@ class HomeViewController: UIViewController {
             specialMomentsContainerView.heightAnchor.constraint(equalToConstant: 225),
             
             todaysBitesLabel.topAnchor.constraint(equalTo: specialMomentsContainerView.bottomAnchor, constant: 24),
-            todaysBitesLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            todaysBitesLabel.leadingAnchor.constraint(equalTo: dateLabel.leadingAnchor),
             
             todaysBitesCollectionView.topAnchor.constraint(equalTo: todaysBitesLabel.bottomAnchor, constant: 10),
             todaysBitesCollectionView.leadingAnchor.constraint(equalTo: dateLabel.leadingAnchor),
