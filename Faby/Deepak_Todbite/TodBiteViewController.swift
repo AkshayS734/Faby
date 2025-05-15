@@ -894,16 +894,38 @@ extension TodBiteViewController: UICollectionViewDataSource {
 // MARK: - UICollectionViewDelegate
 extension TodBiteViewController: UICollectionViewDelegate {
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        // Get the specific meal for the tapped card
         let category = BiteType.predefinedCases[indexPath.section]
-        let items = BiteSampleData.shared.getItems(for: category, in: selectedRegion, for: selectedAgeGroup)
+        
+        let items: [FeedingMeal]
+        if isSearching {
+            items = filteredMeals[category] ?? []
+        } else if !filteredMeals.isEmpty {
+            items = filteredMeals[category] ?? []
+        } else {
+            items = PreloadedDataManager.shared.getFilteredMeals(
+                for: category,
+                in: selectedContinent,
+                in: selectedCountry,
+                in: selectedRegion,
+                for: selectedAgeGroup
+            )
+        }
+        
+        // Make sure we have items before trying to access them
+        guard indexPath.row < items.count else {
+            print("⚠️ Warning: Invalid index path when selecting item")
+            return
+        }
+        
         let selectedItem = items[indexPath.row]
         
-        // Navigate to detail view with category name in the title
+        // Navigate to detail view showing ONLY this specific meal (not the whole category)
         let detailVC = MealDetailViewController()
-        detailVC.title = category.rawValue  // Use category name as title
+        detailVC.title = selectedItem.name  // Use meal name as title instead of category
         detailVC.selectedItem = selectedItem
-        detailVC.sectionItems = items
-
+        detailVC.sectionItems = [selectedItem]  // Only include this specific meal
+        
         navigationController?.pushViewController(detailVC, animated: true)
     }
 }
