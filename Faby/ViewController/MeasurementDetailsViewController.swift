@@ -19,6 +19,8 @@ class MeasurementDetailsViewController: UIViewController, UITableViewDelegate, U
     var baby: Baby? {
         return dataController.baby
     }
+    private let scrollView = UIScrollView()
+    private let contentView = UIView()
     private var hostingController: UIHostingController<AnyView>?
     private var tableViewHeightConstraint: NSLayoutConstraint?
     private var tableView : UITableView!
@@ -53,7 +55,7 @@ class MeasurementDetailsViewController: UIViewController, UITableViewDelegate, U
         super.viewDidLoad()
         view.backgroundColor = .systemGray6
         title = measurementType
-
+        setupScrollView()
         setupMeasurementLabels()
         embedSwiftUIView()
 
@@ -85,7 +87,7 @@ class MeasurementDetailsViewController: UIViewController, UITableViewDelegate, U
             if let existingHostingController = hostingController {
                 let newView = AnyView(
                     MeasurementDetailsView(
-                        measurementType: measurementType ?? "",
+                        measurementType: measurementType,
                         dataPoints: currentGrowthData,
                         timeLabels: currentTimeLabels
                     ).environmentObject(unitSettings)
@@ -98,6 +100,26 @@ class MeasurementDetailsViewController: UIViewController, UITableViewDelegate, U
         }
     }
     
+    private func setupScrollView() {
+        view.addSubview(scrollView)
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
+
+        scrollView.addSubview(contentView)
+        contentView.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            contentView.topAnchor.constraint(equalTo: scrollView.topAnchor),
+            contentView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
+            contentView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
+            contentView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
+            contentView.widthAnchor.constraint(equalTo: scrollView.widthAnchor)
+        ])
+    }
     private func observeUnitChanges() {
         unitSettings.$selectedUnit
             .sink { [weak self] _ in
@@ -122,23 +144,39 @@ class MeasurementDetailsViewController: UIViewController, UITableViewDelegate, U
             .store(in: &cancellables)
     }
     
+    private let verticalStack = UIStackView()
+
     private func setupMeasurementLabels() {
+        // Stack with measurement value and unit
         let topRowStack = UIStackView(arrangedSubviews: [latestMeasurementLabel, latestMeasurementUnitLabel])
         topRowStack.axis = .horizontal
         topRowStack.alignment = .lastBaseline
         topRowStack.spacing = 4
 
-        let verticalStack = UIStackView(arrangedSubviews: [topRowStack, latestMeasurementDateLabel])
+        // Full vertical stack for measurement info
         verticalStack.axis = .vertical
+        verticalStack.spacing = 8
         verticalStack.alignment = .leading
-        verticalStack.spacing = 4
         verticalStack.translatesAutoresizingMaskIntoConstraints = false
+        verticalStack.addArrangedSubview(topRowStack)
+        verticalStack.addArrangedSubview(latestMeasurementDateLabel)
 
-        view.addSubview(verticalStack)
+        // Add segmented control
+        contentView.addSubview(timeSpanSegmentedControl)
+        timeSpanSegmentedControl.translatesAutoresizingMaskIntoConstraints = false
+        timeSpanSegmentedControl.addTarget(self, action: #selector(timeSpanChanged(_:)), for: .valueChanged)
 
         NSLayoutConstraint.activate([
+            timeSpanSegmentedControl.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 20),
+            timeSpanSegmentedControl.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            timeSpanSegmentedControl.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16)
+        ])
+
+        contentView.addSubview(verticalStack)
+        NSLayoutConstraint.activate([
             verticalStack.topAnchor.constraint(equalTo: timeSpanSegmentedControl.bottomAnchor, constant: 20),
-            verticalStack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16)
+            verticalStack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            verticalStack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16)
         ])
     }
     
@@ -151,25 +189,23 @@ class MeasurementDetailsViewController: UIViewController, UITableViewDelegate, U
             )
             .environmentObject(unitSettings)
         )
-        
+
         if let hostingVC = hostingController {
-            // Update rootView instead of recreating the hosting controller
             hostingVC.rootView = swiftUIView
         } else {
-            // Create and add hosting controller first time
             let hostingVC = UIHostingController(rootView: swiftUIView)
             addChild(hostingVC)
             let hostedView = hostingVC.view!
             hostedView.translatesAutoresizingMaskIntoConstraints = false
-            view.addSubview(hostedView)
-            
+            contentView.addSubview(hostedView)
+
             NSLayoutConstraint.activate([
-                hostedView.topAnchor.constraint(equalTo: latestMeasurementDateLabel.bottomAnchor, constant: 20),
-                hostedView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-                hostedView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-                hostedView.heightAnchor.constraint(equalToConstant: 360)
+                hostedView.topAnchor.constraint(equalTo: verticalStack.bottomAnchor, constant: 20),
+                hostedView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+                hostedView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+                hostedView.heightAnchor.constraint(equalToConstant: 380)
             ])
-            
+
             hostingVC.didMove(toParent: self)
             hostingController = hostingVC
         }
@@ -187,17 +223,18 @@ class MeasurementDetailsViewController: UIViewController, UITableViewDelegate, U
         tableView.register(MeasurementDataTableViewCell.self, forCellReuseIdentifier: "DataCell")
         tableView.allowsSelectionDuringEditing = true
         tableView.sectionHeaderHeight = 0
-        tableView.isScrollEnabled = false
+        tableView.isScrollEnabled = false // important for scrollView use
 
-        view.addSubview(tableView)
+        contentView.addSubview(tableView)
 
         tableViewHeightConstraint = tableView.heightAnchor.constraint(equalToConstant: 87)
         tableViewHeightConstraint?.isActive = true
 
         NSLayoutConstraint.activate([
-            tableView.topAnchor.constraint(equalTo: hostingController?.view.bottomAnchor ?? latestMeasurementDateLabel.bottomAnchor, constant: 30),
-            tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16)
+            tableView.topAnchor.constraint(equalTo: hostingController?.view.bottomAnchor ?? verticalStack.bottomAnchor, constant: 20),
+            tableView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            tableView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+            tableView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -30)
         ])
     }
     

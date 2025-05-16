@@ -192,14 +192,16 @@ class HomeViewController: UIViewController {
         baby = dataController.baby
         print("🚀 HomeViewController viewDidLoad")
         view.backgroundColor = .systemGroupedBackground
-        
-        // Set up navigation bar with large title
+        tabBarItem.title = "Home"
+            
         navigationController?.navigationBar.prefersLargeTitles = true
-        navigationItem.title = "Home"
-        
+        navigationItem.largeTitleDisplayMode = .always
+        if let babyName = baby?.name {
+            navigationItem.title = "\(babyName)"
+        }
+
         // Setup the navigation bar with gradient and blur effects
 //        setupNavigationBar()
-        
         navigationItem.rightBarButtonItem = UIBarButtonItem(
             image: UIImage(systemName: "person.crop.circle"),
             style: .plain,
@@ -230,10 +232,6 @@ class HomeViewController: UIViewController {
                 // Now that we have the baby data, we can load vaccinations
                 await MainActor.run {
                     loadVaccinations()
-                    // Update UI with baby name
-                    if let babyName = baby?.name {
-                        title = "\(babyName)"
-                    }
                 }
             } catch {
                 print("❌ Error fetching baby data: \(error)")
@@ -253,15 +251,6 @@ class HomeViewController: UIViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         print("🚀 HomeViewController viewWillAppear")
-        
-        // Ensure large title is always displayed when coming from any tab
-        navigationController?.navigationBar.prefersLargeTitles = true
-        navigationItem.largeTitleDisplayMode = .always
-        
-        // If we have baby data, update the title
-        if let babyName = baby?.name {
-            title = "\(babyName)'s Home"
-        }
         
         loadVaccinations() // Reload vaccinations when view appears
         updateSpecialMoments()

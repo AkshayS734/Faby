@@ -5,11 +5,11 @@ class GrowTrackViewController: UIViewController, MilestonesOverviewDelegate{
 
     @IBOutlet weak var topSegmentedControl: UISegmentedControl!
     
-    @IBAction func showMilestoneOverviewTapped(_ sender: UIBarButtonItem) {
-        let milestonesVC = MilestonesOverviewViewController()
-        milestonesVC.delegate = self
-        navigationController?.pushViewController(milestonesVC, animated: true)
-    }
+//    @IBAction func showMilestoneOverviewTapped(_ sender: UIBarButtonItem) {
+//        let milestonesVC = MilestonesOverviewViewController()
+//        milestonesVC.delegate = self
+//        navigationController?.pushViewController(milestonesVC, animated: true)
+//    }
     
     var baby: Baby?
     var dataController: DataController {
@@ -50,7 +50,7 @@ class GrowTrackViewController: UIViewController, MilestonesOverviewDelegate{
         view.backgroundColor = .systemGray6
         
         setupMeasurementCallback()
-        setupNavigationBar()
+//        setupNavigationBar()
         setupMonthButtons()
         setupCategoryButtons()
         setupMilestonesCollectionView()
@@ -67,11 +67,11 @@ class GrowTrackViewController: UIViewController, MilestonesOverviewDelegate{
         }
     }
 
-    private func setupNavigationBar() {
-        let icon = UIImage(systemName: "clock.arrow.trianglehead.counterclockwise.rotate.90")?.withRenderingMode(.alwaysOriginal)
-        let button = UIBarButtonItem(image: icon, style: .plain, target: self, action: #selector(showMilestoneOverviewTapped))
-        navigationItem.rightBarButtonItem = button
-    }
+//    private func setupNavigationBar() {
+//        let icon = UIImage(systemName: "clock.arrow.trianglehead.counterclockwise.rotate.90")?.withRenderingMode(.alwaysOriginal)
+//        let button = UIBarButtonItem(image: icon, style: .plain, target: self, action: #selector(showMilestoneOverviewTapped))
+//        navigationItem.rightBarButtonItem = button
+//    }
 
     private func setupMonthButtons() {
         monthButtonCollectionView = ButtonsCollectionView(
@@ -153,7 +153,7 @@ class GrowTrackViewController: UIViewController, MilestonesOverviewDelegate{
         NSLayoutConstraint.activate([
             monthButtonCollectionView.topAnchor.constraint(equalTo: topSegmentedControl.bottomAnchor, constant: 20),
             monthButtonCollectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            monthButtonCollectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            monthButtonCollectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: 0),
             monthButtonCollectionView.heightAnchor.constraint(equalToConstant: 100)
         ])
     }
@@ -163,7 +163,7 @@ class GrowTrackViewController: UIViewController, MilestonesOverviewDelegate{
         NSLayoutConstraint.activate([
             categoryButtonCollectionView.topAnchor.constraint(equalTo: monthButtonCollectionView.bottomAnchor, constant: 10),
             categoryButtonCollectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            categoryButtonCollectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            categoryButtonCollectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: 0),
             categoryButtonCollectionView.heightAnchor.constraint(equalToConstant: 50)
         ])
     }

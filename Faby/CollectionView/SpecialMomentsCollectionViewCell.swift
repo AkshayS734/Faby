@@ -9,6 +9,7 @@ class SpecialMomentsCollectionViewCell: UICollectionViewCell {
     private var currentMilestone: GrowthMilestone?
     private var specialMomentsImage: UIImageView?
     private var playerViewController: AVPlayerViewController?
+    private var shimmerView: ShimmerView?
     
     override func awakeFromNib() {
         super.awakeFromNib()
@@ -59,12 +60,25 @@ class SpecialMomentsCollectionViewCell: UICollectionViewCell {
             specialMomentDate.text = "Date unknown"
         }
 
+        showShimmer()
+
+        var mediaLoaded = false
+
         if let videoURL = milestone.fetchedVideoURL {
+            mediaLoaded = true
+            removeShimmer()
             showVideoPlayer(with: videoURL)
         } else if let image = milestone.fetchedImage {
+            mediaLoaded = true
+            removeShimmer()
             showImageView(with: image)
-        } else {
-            fallbackToImage()
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
+            guard let self = self else { return }
+            if !mediaLoaded {
+                self.fallbackToImage()
+            }
         }
     }
     func fallbackToImage() {
@@ -73,11 +87,43 @@ class SpecialMomentsCollectionViewCell: UICollectionViewCell {
             return
         }
 
+        removeShimmer()
+
         if let defaultImage = UIImage(named: milestone.image) {
             showImageView(with: defaultImage)
         } else {
             print("❌ No fallback image available for milestone: \(milestone.id)")
         }
+    }
+    func showShimmer() {
+        removeShimmer()
+
+        let shimmer = ShimmerView(frame: mediaContainerView.bounds)
+        shimmer.translatesAutoresizingMaskIntoConstraints = false
+        mediaContainerView.addSubview(shimmer)
+
+        NSLayoutConstraint.activate([
+            shimmer.leadingAnchor.constraint(equalTo: mediaContainerView.leadingAnchor),
+            shimmer.trailingAnchor.constraint(equalTo: mediaContainerView.trailingAnchor),
+            shimmer.topAnchor.constraint(equalTo: mediaContainerView.topAnchor),
+            shimmer.bottomAnchor.constraint(equalTo: mediaContainerView.bottomAnchor)
+        ])
+
+        shimmerView = shimmer
+    }
+
+    func removeShimmer() {
+        shimmerView?.removeFromSuperview()
+        shimmerView = nil
+    }
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        specialMomentsImage?.removeFromSuperview()
+        playerViewController?.view.removeFromSuperview()
+        removeShimmer()
+        mediaContainerView.isHidden = true
+        specialMomentTitle.text = nil
+        specialMomentDate.text = nil
     }
     private func showImageView(with image: UIImage?) {
         specialMomentsImage?.removeFromSuperview()
