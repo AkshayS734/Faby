@@ -103,8 +103,11 @@ class PostDetailsViewController: UIViewController {
     private let postImageView: UIImageView = {
         let imageView = UIImageView()
         imageView.translatesAutoresizingMaskIntoConstraints = false
-        imageView.contentMode = .scaleAspectFit
+        imageView.contentMode = .scaleAspectFill
         imageView.clipsToBounds = true
+        imageView.layer.cornerRadius = 8
+        imageView.backgroundColor = .systemGray6
+        imageView.isUserInteractionEnabled = true // Enable user interaction for tap gesture
         return imageView
     }()
     
@@ -353,6 +356,10 @@ class PostDetailsViewController: UIViewController {
         // Add image view to image scroll view
         imageScrollView.addSubview(postImageView)
         
+        // Add tap gesture recognizer to the image view for full-screen viewing
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleImageTap))
+        postImageView.addGestureRecognizer(tapGesture)
+        
         // Add interaction components
         [likeButton, likeCountLabel, commentButton, commentCountLabel, shareButton].forEach {
             interactionView.addSubview($0)
@@ -448,7 +455,8 @@ class PostDetailsViewController: UIViewController {
             imageScrollView.topAnchor.constraint(equalTo: hashtagsLabel.bottomAnchor, constant: 16),
             imageScrollView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
             imageScrollView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-            imageScrollView.heightAnchor.constraint(equalTo: imageScrollView.widthAnchor),
+            // Set a reasonable aspect ratio (16:9) instead of a square
+            imageScrollView.heightAnchor.constraint(equalTo: imageScrollView.widthAnchor, multiplier: 0.75),
             
             postImageView.topAnchor.constraint(equalTo: imageScrollView.topAnchor),
             postImageView.leadingAnchor.constraint(equalTo: imageScrollView.leadingAnchor),
@@ -1495,6 +1503,131 @@ extension PostDetailsViewController: CommentCellDelegate {
 extension PostDetailsViewController: UIScrollViewDelegate {
     func viewForZooming(in scrollView: UIScrollView) -> UIView? {
         return postImageView
+    }
+    
+    func scrollViewDidZoom(_ scrollView: UIScrollView) {
+        // Center the image in the scroll view as it zooms
+        let offsetX = max((scrollView.bounds.width - scrollView.contentSize.width) * 0.5, 0)
+        let offsetY = max((scrollView.bounds.height - scrollView.contentSize.height) * 0.5, 0)
+        
+        scrollView.contentInset = UIEdgeInsets(top: offsetY, left: offsetX, bottom: 0, right: 0)
+    }
+}
+
+// MARK: - Full Screen Image Viewer
+extension PostDetailsViewController {
+    @objc private func handleImageTap() {
+        guard let image = postImageView.image else { return }
+        
+        // Create a full screen image viewer
+        let fullScreenVC = FullScreenImageViewController(image: image)
+        fullScreenVC.modalPresentationStyle = .fullScreen
+        fullScreenVC.modalTransitionStyle = .crossDissolve
+        present(fullScreenVC, animated: true)
+    }
+}
+
+// Full Screen Image View Controller
+class FullScreenImageViewController: UIViewController {
+    private let scrollView: UIScrollView = {
+        let scrollView = UIScrollView()
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.minimumZoomScale = 1.0
+        scrollView.maximumZoomScale = 4.0
+        scrollView.showsHorizontalScrollIndicator = false
+        scrollView.showsVerticalScrollIndicator = false
+        scrollView.backgroundColor = .black
+        return scrollView
+    }()
+    
+    private let imageView: UIImageView = {
+        let imageView = UIImageView()
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        imageView.contentMode = .scaleAspectFit
+        imageView.clipsToBounds = true
+        return imageView
+    }()
+    
+    private let closeButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.setImage(UIImage(systemName: "xmark.circle.fill"), for: .normal)
+        button.tintColor = .white
+        button.alpha = 0.8
+        return button
+    }()
+    
+    init(image: UIImage) {
+        super.init(nibName: nil, bundle: nil)
+        imageView.image = image
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        setupUI()
+    }
+    
+    private func setupUI() {
+        view.backgroundColor = .black
+        
+        // Add scroll view and image view
+        view.addSubview(scrollView)
+        scrollView.addSubview(imageView)
+        view.addSubview(closeButton)
+        
+        // Add tap gesture for dismissal
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleTap))
+        view.addGestureRecognizer(tapGesture)
+        
+        // Add close button action
+        closeButton.addTarget(self, action: #selector(dismissView), for: .touchUpInside)
+        
+        // Setup constraints
+        NSLayoutConstraint.activate([
+            scrollView.topAnchor.constraint(equalTo: view.topAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            
+            imageView.topAnchor.constraint(equalTo: scrollView.topAnchor),
+            imageView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
+            imageView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
+            imageView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
+            imageView.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
+            imageView.heightAnchor.constraint(equalTo: scrollView.heightAnchor),
+            
+            closeButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16),
+            closeButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            closeButton.widthAnchor.constraint(equalToConstant: 44),
+            closeButton.heightAnchor.constraint(equalToConstant: 44)
+        ])
+        
+        // Set scroll view delegate
+        scrollView.delegate = self
+    }
+    
+    @objc private func handleTap() {
+        // Toggle UI visibility
+        let newAlpha: CGFloat = closeButton.alpha > 0 ? 0 : 0.8
+        
+        UIView.animate(withDuration: 0.3) {
+            self.closeButton.alpha = newAlpha
+        }
+    }
+    
+    @objc private func dismissView() {
+        dismiss(animated: true)
+    }
+}
+
+// MARK: - UIScrollViewDelegate for Full Screen Image
+extension FullScreenImageViewController: UIScrollViewDelegate {
+    func viewForZooming(in scrollView: UIScrollView) -> UIView? {
+        return imageView
     }
     
     func scrollViewDidZoom(_ scrollView: UIScrollView) {
