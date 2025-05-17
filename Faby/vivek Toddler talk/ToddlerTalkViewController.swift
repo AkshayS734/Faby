@@ -5,31 +5,12 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
     @IBOutlet weak var searchBar: UISearchBar!
     @IBOutlet weak var collectionView: UICollectionView!
     
-    // Native loading indicator with system defaults
-    private let loadingIndicator: UIActivityIndicatorView = {
+    // Initial loading indicator for topics data only
+    private let topicsLoadingIndicator: UIActivityIndicatorView = {
         let indicator = UIActivityIndicatorView(style: .large)
         indicator.hidesWhenStopped = true
         indicator.translatesAutoresizingMaskIntoConstraints = false
         return indicator
-    }()
-
-    // Loading label with system default styling
-    private let loadingLabel: UILabel = {
-        let label = UILabel()
-        label.text = "Gathering info..."
-        label.font = .preferredFont(forTextStyle: .body)  // System default font
-        label.textColor = .label  // System default text color
-        label.textAlignment = .center
-        label.translatesAutoresizingMaskIntoConstraints = false
-        return label
-    }()
-
-    // Loading container with system background
-    private let loadingContainer: UIView = {
-        let view = UIView()
-       // view.backgroundColor = .systemBackground
-        view.translatesAutoresizingMaskIntoConstraints = false
-        return view
     }()
     
 //    // Search bar container to animate hiding/showing
@@ -48,19 +29,18 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
     // Add a property to hold the comment data
     var comments: [Post] = []
     
-    // Track loading state
-    private var isLoading = false {
+    // Track topics loading state only
+    private var isTopicsLoading = false {
         didSet {
-            updateLoadingState()
+            updateTopicsLoadingState()
         }
     }
     
     // Flag to indicate if topic data has been loaded
     private var isTopicDataLoaded = false
 
-    // Track image loading progress
-    private var loadedImagesCount = 0
-    private var totalImagesCount = 0
+    // Dictionary to track which images are still loading
+    private var loadingImages = [String: Bool]()
     
     // Image cache
     private let imageCache = NSCache<NSString, UIImage>()
@@ -90,17 +70,21 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
-        setupLoadingUI()
-        showInitialLoadingState()
+        setupTopicsLoadingIndicator()
+        isTopicsLoading = true
         loadCachedTopics()
-        fetchTopicsFromSupabase() // Fetch fresh data from 
+        fetchTopicsFromSupabase() // Fetch fresh data from Supabase
     }
     
-    private func showInitialLoadingState() {
-        isLoading = true
-        loadingLabel.text = "Loading topics..."
-        collectionView.isHidden = true
-        searchBar.isHidden = true
+    private func setupTopicsLoadingIndicator() {
+        // Add loading indicator to view
+        view.addSubview(topicsLoadingIndicator)
+        
+        // Setup constraints
+        NSLayoutConstraint.activate([
+            topicsLoadingIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            topicsLoadingIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+        ])
     }
     
     private func setupUI() {
@@ -169,30 +153,26 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
     }
     // MARK: - Image Loading
     private func loadImage(from urlString: String, for cell: cardDetailsCollectionViewCell) {
-        // Check memory cache first
-        if let cachedImage = imageCache.object(forKey: urlString as NSString) {
-            DispatchQueue.main.async { [weak self] in
-                cell.imageView.image = cachedImage
-                cell.imageView.contentMode = .scaleAspectFill
-                cell.imageView.clipsToBounds = true
-                self?.updateImageLoadingProgress()
-            }
+        guard let url = URL(string: urlString) else {
+            // Show placeholder for invalid URL
+            cell.imageView.image = UIImage(systemName: "photo")
+            cell.imageView.contentMode = .scaleAspectFit
+            cell.imageView.tintColor = .gray
+            cell.activityIndicator?.stopAnimating()
             return
         }
         
-        // Show placeholder
-        DispatchQueue.main.async {
-            cell.imageView.image = UIImage(named: "placeholder")
-            cell.imageView.contentMode = .scaleAspectFill
-            cell.imageView.clipsToBounds = true
-        }
+        // Show loading indicator
+        cell.activityIndicator?.startAnimating()
         
-        guard let url = URL(string: urlString) else {
-            DispatchQueue.main.async { [weak self] in
-                cell.imageView.image = UIImage(named: "error_placeholder")
+        // Check memory cache first
+        if let cachedImage = imageCache.object(forKey: urlString as NSString) {
+            DispatchQueue.main.async {
+                cell.imageView.image = cachedImage
                 cell.imageView.contentMode = .scaleAspectFill
                 cell.imageView.clipsToBounds = true
-                self?.updateImageLoadingProgress()
+                cell.activityIndicator?.stopAnimating()
+                self.loadingImages[urlString] = false
             }
             return
         }
@@ -201,11 +181,12 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
         if let cachedResponse = URLCache.shared.cachedResponse(for: URLRequest(url: url)),
            let image = UIImage(data: cachedResponse.data) {
             imageCache.setObject(image, forKey: urlString as NSString)
-            DispatchQueue.main.async { [weak self] in
+            DispatchQueue.main.async {
                 cell.imageView.image = image
                 cell.imageView.contentMode = .scaleAspectFill
                 cell.imageView.clipsToBounds = true
-                self?.updateImageLoadingProgress()
+                cell.activityIndicator?.stopAnimating()
+                self.loadingImages[urlString] = false
             }
             return
         }
@@ -216,17 +197,16 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
                   let data = data,
                   let image = UIImage(data: data),
                   error == nil else {
-                DispatchQueue.main.async { [weak self] in
-                    cell.imageView.image = UIImage(named: "error_placeholder")
-                    cell.imageView.contentMode = .scaleAspectFill
-                    cell.imageView.clipsToBounds = true
-                    self?.updateImageLoadingProgress()
+                // Handle error
+                DispatchQueue.main.async {
+                    cell.imageView.image = UIImage(systemName: "photo")
+                    cell.imageView.contentMode = .scaleAspectFit
+                    cell.imageView.tintColor = .gray
+                    cell.activityIndicator?.stopAnimating()
+                    self?.loadingImages[urlString] = false
                 }
                 return
             }
-            
-            // Cache the image
-            self.imageCache.setObject(image, forKey: urlString as NSString)
             
             // Cache the response
             if let response = response {
@@ -234,43 +214,50 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
                 URLCache.shared.storeCachedResponse(cachedResponse, for: URLRequest(url: url))
             }
             
-            DispatchQueue.main.async { [weak self] in
+            // Cache the image in memory
+            self.imageCache.setObject(image, forKey: urlString as NSString)
+            
+            DispatchQueue.main.async {
                 cell.imageView.image = image
                 cell.imageView.contentMode = .scaleAspectFill
                 cell.imageView.clipsToBounds = true
-                self?.updateImageLoadingProgress()
+                cell.activityIndicator?.stopAnimating()
+                self.loadingImages[urlString] = false
             }
         }
         task.resume()
-    }
-    
-    private func updateImageLoadingProgress() {
-        loadedImagesCount += 1
-        
-        // Safely calculate percentage
-        let percentage: Int
-        if totalImagesCount > 0 {
-            let floatPercentage = (Float(loadedImagesCount) / Float(totalImagesCount)) * 100
-            percentage = min(Int(floatPercentage.rounded()), 100) // Ensure we don't exceed 100%
-        } else {
-            percentage = 0
-        }
-        
-        loadingLabel.text = "Gathering info... \(percentage)%"
-        
-        if loadedImagesCount >= totalImagesCount {
-            isLoading = false
-            collectionView.isHidden = false
-            searchBar.isHidden = false
-        }
     }
     
     // MARK: - Collection View Data Source
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cardDetailsCollectionViewCell", for: indexPath) as! cardDetailsCollectionViewCell
         
-        let topic = filteredCardData[indexPath.item]
+        let topic = filteredCardData[indexPath.row]
+        
+        // Configure cell
         cell.title.text = topic.title
+        cell.imageView.image = nil // Clear previous image
+        
+        // Make sure cell has an activity indicator
+        if cell.activityIndicator == nil {
+            let indicator = UIActivityIndicatorView(style: .medium)
+            indicator.hidesWhenStopped = true
+            indicator.translatesAutoresizingMaskIntoConstraints = false
+            cell.contentView.addSubview(indicator)
+            
+            NSLayoutConstraint.activate([
+                indicator.centerXAnchor.constraint(equalTo: cell.imageView.centerXAnchor),
+                indicator.centerYAnchor.constraint(equalTo: cell.imageView.centerYAnchor)
+            ])
+            
+            cell.activityIndicator = indicator
+        }
+        
+        // Start the activity indicator
+        cell.activityIndicator?.startAnimating()
+        
+        // Load image using our custom method
+        loadImage(from: topic.imageView, for: cell)
         
         // Configure cell appearance
         cell.layer.cornerRadius = 12
@@ -297,10 +284,8 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
     func fetchTopicsFromSupabase() {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
-            self.isLoading = true
-            self.loadingLabel.text = "Gathering info..."
-            self.loadedImagesCount = 0
-            self.totalImagesCount = 0 // Reset total count
+            self.isTopicsLoading = true
+            self.loadingImages.removeAll() // Reset loading images tracking
         }
         
         PostsSupabaseManager.shared.fetchTopics { [weak self] topics, error in
@@ -312,16 +297,23 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
                     self.filteredCardData = topics
                     self.cacheTopics(topics)
                     self.isTopicDataLoaded = true
-                    self.totalImagesCount = max(topics.count, 0) // Ensure non-negative count
-                    self.loadingLabel.text = "Gathering info... 0%"
+                    
+                    // Mark all images as loading initially
+                    for topic in topics {
+                        self.loadingImages[topic.imageView] = true
+                    }
+                    
+                    // Show collection view and search bar immediately
+                    self.isTopicsLoading = false
+                    self.collectionView.isHidden = false
+                    self.searchBar.isHidden = false
                     self.collectionView.reloadData()
                     
-                    // Prefetch images in background
-                    self.prefetchImages(for: topics)
+                    // No need to prefetch all images, they'll load individually
                 } else {
                     print("❌ Error fetching topics: \(error?.localizedDescription ?? "Unknown error")")
-                  //  self.showError(message: "Failed to load topics. Please try again.")
-                    self.isLoading = false
+                    //  self.showError(message: "Failed to load topics. Please try again.")
+                    self.isTopicsLoading = false
                 }
                 
                 self.refreshControl.endRefreshing()
@@ -329,41 +321,7 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
         }
     }
     
-    // MARK: - Image Prefetching
-    private func prefetchImages(for topics: [Topics]) {
-        let urls = topics.compactMap { URL(string: $0.imageView) }
-        
-        // Create a dispatch group to track prefetching
-        let group = DispatchGroup()
-        
-        for url in urls {
-            group.enter()
-            
-            // Check if already cached
-            if URLCache.shared.cachedResponse(for: URLRequest(url: url)) != nil {
-                group.leave()
-                continue
-            }
-            
-            let task = imageSession.dataTask(with: url) { [weak self] data, response, error in
-                defer { group.leave() }
-                
-                guard let data = data,
-                      let response = response,
-                      error == nil else { return }
-                
-                // Cache the response
-                let cachedResponse = CachedURLResponse(response: response, data: data)
-                URLCache.shared.storeCachedResponse(cachedResponse, for: URLRequest(url: url))
-                
-                // Cache the image in memory if possible
-                if let image = UIImage(data: data) {
-                    self?.imageCache.setObject(image, forKey: url.absoluteString as NSString)
-                }
-            }
-            task.resume()
-        }
-    }
+    // We don't need prefetching anymore as images will load individually
     
     @objc private func historyButtonTapped() {
         let storyboard = UIStoryboard(name: "ToddlerTalk", bundle: nil)
@@ -380,41 +338,18 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
         }
     }
     
-    private func setupLoadingUI() {
-        // Add loading container to view
-        view.addSubview(loadingContainer)
-        loadingContainer.addSubview(loadingIndicator)
-        loadingContainer.addSubview(loadingLabel)
-        
-        // Setup constraints
-        NSLayoutConstraint.activate([
-            loadingContainer.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            loadingContainer.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-            loadingContainer.widthAnchor.constraint(equalToConstant: 200),
-            loadingContainer.heightAnchor.constraint(equalToConstant: 100),
-            
-            loadingIndicator.topAnchor.constraint(equalTo: loadingContainer.topAnchor),
-            loadingIndicator.centerXAnchor.constraint(equalTo: loadingContainer.centerXAnchor),
-            
-            loadingLabel.topAnchor.constraint(equalTo: loadingIndicator.bottomAnchor, constant: 16),
-            loadingLabel.leadingAnchor.constraint(equalTo: loadingContainer.leadingAnchor),
-            loadingLabel.trailingAnchor.constraint(equalTo: loadingContainer.trailingAnchor),
-            loadingLabel.bottomAnchor.constraint(equalTo: loadingContainer.bottomAnchor)
-        ])
-    }
+    // We don't need this method anymore as we're using a simpler loading indicator
     
-    private func updateLoadingState() {
+    private func updateTopicsLoadingState() {
         DispatchQueue.main.async {
-            if self.isLoading {
-                self.loadingIndicator.startAnimating()
-                self.loadingContainer.isHidden = false
+            if self.isTopicsLoading {
+                self.topicsLoadingIndicator.startAnimating()
                 self.collectionView.isHidden = true
-                //self.searchBarContainer.isHidden = true
+                self.searchBar.isHidden = true
             } else {
-                self.loadingIndicator.stopAnimating()
-                self.loadingContainer.isHidden = true
+                self.topicsLoadingIndicator.stopAnimating()
                 self.collectionView.isHidden = false
-               // self.searchBarContainer.isHidden = false
+                self.searchBar.isHidden = false
             }
         }
     }

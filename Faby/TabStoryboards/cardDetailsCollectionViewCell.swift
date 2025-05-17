@@ -10,6 +10,9 @@ class cardDetailsCollectionViewCell: UICollectionViewCell {
     @IBOutlet weak var imageView: UIImageView!
     
     @IBOutlet weak var stackView: UIStackView!
+    
+    // Activity indicator for image loading
+    var activityIndicator: UIActivityIndicatorView?
  //   @IBOutlet weak var subtitle: UILabel!
     @IBOutlet weak var title: UILabel!
     
