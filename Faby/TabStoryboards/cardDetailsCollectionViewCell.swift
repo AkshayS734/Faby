@@ -11,8 +11,11 @@ class cardDetailsCollectionViewCell: UICollectionViewCell {
     
     @IBOutlet weak var stackView: UIStackView!
     
-    // Activity indicator for image loading
-    var activityIndicator: UIActivityIndicatorView?
+    // Shimmer view for image loading
+    var shimmerView: ShimmerView?
+    
+    // Flag to track if shimmer is active
+    private var isShimmering = false
  //   @IBOutlet weak var subtitle: UILabel!
     @IBOutlet weak var title: UILabel!
     
@@ -40,6 +43,9 @@ class cardDetailsCollectionViewCell: UICollectionViewCell {
         // Initialization code
         stackView.layer.cornerRadius = 10
         stackView.layer.masksToBounds = true
+        
+        // Setup shimmer view with the same frame and corner radius as imageView
+        setupShimmerView()
     }
     
     func configure(with topic: Topics) {
@@ -79,5 +85,43 @@ class cardDetailsCollectionViewCell: UICollectionViewCell {
             stackView.bottomAnchor.constraint(equalTo: imageView.bottomAnchor) // Bottom aligned with image
         ])
         
+    }
+    
+    // Setup shimmer view for loading state
+    private func setupShimmerView() {
+        // Remove existing shimmer view if any
+        shimmerView?.removeFromSuperview()
+        
+        // Create new shimmer view with same frame as imageView
+        shimmerView = ShimmerView(frame: imageView.bounds)
+        if let shimmerView = shimmerView {
+            shimmerView.layer.cornerRadius = imageView.layer.cornerRadius
+            shimmerView.clipsToBounds = true
+            shimmerView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            shimmerView.isHidden = true
+            contentView.addSubview(shimmerView)
+        }
+    }
+    
+    // Start shimmer effect
+    func startShimmering() {
+        if !isShimmering {
+            isShimmering = true
+            shimmerView?.isHidden = false
+        }
+    }
+    
+    // Stop shimmer effect
+    func stopShimmering() {
+        if isShimmering {
+            isShimmering = false
+            shimmerView?.isHidden = true
+        }
+    }
+    
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        imageView.image = nil
+        stopShimmering()
     }
 }

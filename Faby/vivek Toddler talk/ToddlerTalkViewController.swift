@@ -158,12 +158,12 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
             cell.imageView.image = UIImage(systemName: "photo")
             cell.imageView.contentMode = .scaleAspectFit
             cell.imageView.tintColor = .gray
-            cell.activityIndicator?.stopAnimating()
+            cell.stopShimmering()
             return
         }
         
-        // Show loading indicator
-        cell.activityIndicator?.startAnimating()
+        // Show shimmer effect
+        cell.startShimmering()
         
         // Check memory cache first
         if let cachedImage = imageCache.object(forKey: urlString as NSString) {
@@ -171,7 +171,7 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
                 cell.imageView.image = cachedImage
                 cell.imageView.contentMode = .scaleAspectFill
                 cell.imageView.clipsToBounds = true
-                cell.activityIndicator?.stopAnimating()
+                cell.stopShimmering()
                 self.loadingImages[urlString] = false
             }
             return
@@ -185,7 +185,7 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
                 cell.imageView.image = image
                 cell.imageView.contentMode = .scaleAspectFill
                 cell.imageView.clipsToBounds = true
-                cell.activityIndicator?.stopAnimating()
+                cell.stopShimmering()
                 self.loadingImages[urlString] = false
             }
             return
@@ -199,10 +199,11 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
                   error == nil else {
                 // Handle error
                 DispatchQueue.main.async {
-                    cell.imageView.image = UIImage(systemName: "photo")
+                    // Show error placeholder
+                    cell.imageView.image = UIImage(systemName: "Placeholder")
                     cell.imageView.contentMode = .scaleAspectFit
-                    cell.imageView.tintColor = .gray
-                    cell.activityIndicator?.stopAnimating()
+                    cell.imageView.tintColor = .systemRed
+                    cell.stopShimmering()
                     self?.loadingImages[urlString] = false
                 }
                 return
@@ -221,7 +222,7 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
                 cell.imageView.image = image
                 cell.imageView.contentMode = .scaleAspectFill
                 cell.imageView.clipsToBounds = true
-                cell.activityIndicator?.stopAnimating()
+                cell.stopShimmering()
                 self.loadingImages[urlString] = false
             }
         }
@@ -237,24 +238,6 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
         // Configure cell
         cell.title.text = topic.title
         cell.imageView.image = nil // Clear previous image
-        
-        // Make sure cell has an activity indicator
-        if cell.activityIndicator == nil {
-            let indicator = UIActivityIndicatorView(style: .medium)
-            indicator.hidesWhenStopped = true
-            indicator.translatesAutoresizingMaskIntoConstraints = false
-            cell.contentView.addSubview(indicator)
-            
-            NSLayoutConstraint.activate([
-                indicator.centerXAnchor.constraint(equalTo: cell.imageView.centerXAnchor),
-                indicator.centerYAnchor.constraint(equalTo: cell.imageView.centerYAnchor)
-            ])
-            
-            cell.activityIndicator = indicator
-        }
-        
-        // Start the activity indicator
-        cell.activityIndicator?.startAnimating()
         
         // Load image using our custom method
         loadImage(from: topic.imageView, for: cell)
