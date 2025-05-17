@@ -1323,34 +1323,170 @@ extension PostDetailsViewController: CommentCellDelegate {
     }
     
     func didTapViewReplies(for comment: Comment) {
-        guard let commentId = comment.commentId else { return }
+        print("🔍 View replies tapped for comment: \(comment.content)")
+        print("🔍 Comment ID: \(comment.commentId ?? -1)")
         
-        // Fetch replies for this comment
-        PostsSupabaseManager.shared.fetchRepliesForComment(commentId: commentId) { [weak self] replies, error in
-            if let error = error {
-                print("❌ Error fetching replies: \(error.localizedDescription)")
-                return
-            }
+        guard let commentId = comment.commentId else {
+            print("❌ ERROR: Comment has no ID, cannot show replies")
+            let alert = UIAlertController(
+                title: "Error",
+                message: "Cannot load replies for this comment",
+                preferredStyle: .alert
+            )
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            self.present(alert, animated: true)
+            return
+        }
+        
+        let postId = post.postId
+        print("🔄 Using post ID: \(postId)")
+        
+        // Check if postId is empty
+        if postId.isEmpty {
+            print("❌ ERROR: Post ID is empty")
+            return
+        }
+        
+        // DEBUGGING - Print all comments currently displayed to help understand the state
+        print("📊 Current comments in tableView: \(comments.count)")
+        for (index, comment) in comments.enumerated() {
+            print("  \(index): ID=\(comment.commentId ?? -1), Content=\(comment.content.prefix(20))...")
+        }
+        
+        // Find the index of the comment in the array
+        if let commentIndex = comments.firstIndex(where: { $0.commentId == commentId }) {
+            print("✅ Found comment at index \(commentIndex)")
             
-            guard let replies = replies else { return }
+            // Check if comment already has expanded replies
+            let isExpanded = comments[commentIndex].isRepliesExpanded ?? false
+            print("📊 Comment expanded state: \(isExpanded ? "EXPANDED" : "COLLAPSED")")
             
-            DispatchQueue.main.async {
-                // Create and present a view controller to show replies
-                let alert = UIAlertController(title: "Replies", message: nil, preferredStyle: .actionSheet)
+            if isExpanded {
+                // Collapse the replies
+                print("📱 Collapsing replies for comment at index \(commentIndex)")
                 
-                if replies.isEmpty {
-                    alert.message = "No replies yet"
-                } else {
-                    // Add each reply as a message
-                    for reply in replies {
-                        let replyText = "\(reply.parentName ?? "Unknown"): \(reply.replyContent)"
-                        alert.addAction(UIAlertAction(title: replyText, style: .default, handler: nil))
-                    }
+                // Remove all replies from the comment array
+                comments = comments.filter { comment in
+                    // Keep the comment itself and all non-replies
+                    if comment.commentId == commentId { return true }
+                    if comment.isReply != true { return true }
+                    if comment.replyToCommentId != commentId { return true }
+                    return false // Remove replies to this comment
                 }
                 
-                alert.addAction(UIAlertAction(title: "Close", style: .cancel))
-                self?.present(alert, animated: true)
+                // Mark comment as collapsed
+                comments[commentIndex].isRepliesExpanded = false
+                
+                // Reload the table
+                commentsTableView.reloadData()
+            } else {
+                // Expand to show replies
+                print("📱 Expanding replies for comment at index \(commentIndex)")
+                
+                // Mark comment as expanded
+                comments[commentIndex].isRepliesExpanded = true
+                
+                // Show loading indicator underneath comment
+                let loadingComment = Comment(
+                    commentId: nil,
+                    content: "Loading replies...",
+                    parentId: nil,
+                    parentName: nil,
+                    postId: postId,
+                    createdAt: nil,
+                    isLoadingIndicator: true,
+                    replyToCommentId: commentId
+                )
+                
+                // Insert loading indicator right after the comment
+                if commentIndex + 1 <= comments.count {
+                    comments.insert(loadingComment, at: commentIndex + 1)
+                    commentsTableView.reloadData()
+                }
+                
+                print("🔄 Sending API request to fetch replies for comment ID: \(commentId)")
+                
+                // Fetch replies
+                PostsSupabaseManager.shared.fetchRepliesForComment(commentId: commentId) { [weak self] replies, error in
+                    guard let self = self else { return }
+                    
+                    print("🔄 Reply fetch callback received")
+                    
+                    DispatchQueue.main.async {
+                        // Remove loading indicator
+                        print("🔄 Removing loading indicators...")
+                        self.comments = self.comments.filter { !($0.isLoadingIndicator == true) }
+                        
+                        if let error = error {
+                            print("❌ ERROR: Failed to load replies: \(error.localizedDescription)")
+                            self.commentsTableView.reloadData()
+                            return
+                        }
+                        
+                        if let replies = replies {
+                            print("✅ Loaded \(replies.count) replies")
+                            
+                            if !replies.isEmpty {
+                                // Convert replies to Comment objects and insert them after the comment
+                                var index = commentIndex + 1
+                                for reply in replies {
+                                    print("🔄 Processing reply: ID=\(reply.replyId ?? -1), Content=\(reply.replyContent.prefix(20))...")
+                                    
+                                    let replyComment = Comment(
+                                        commentId: reply.replyId,
+                                        content: reply.replyContent,
+                                        parentId: reply.userId,
+                                        parentName: reply.parentName,
+                                        postId: postId,
+                                        createdAt: reply.createdAt,
+                                        isReply: true,
+                                        replyToCommentId: commentId
+                                    )
+                                    
+                                    if index <= self.comments.count {
+                                        self.comments.insert(replyComment, at: index)
+                                        index += 1
+                                    } else {
+                                        self.comments.append(replyComment)
+                                    }
+                                }
+                            } else {
+                                print("ℹ️ No replies found for this comment")
+                                
+                                // Show an empty state
+                                let emptyReply = Comment(
+                                    commentId: nil,
+                                    content: "No replies yet",
+                                    parentId: nil,
+                                    parentName: nil,
+                                    postId: postId,
+                                    createdAt: nil,
+                                    isEmptyState: true,
+                                    replyToCommentId: commentId
+                                )
+                                
+                                if commentIndex + 1 <= self.comments.count {
+                                    self.comments.insert(emptyReply, at: commentIndex + 1)
+                                }
+                            }
+                            
+                            print("🔄 Reloading table with \(self.comments.count) comments (including replies)")
+                            // Reload the table
+                            self.commentsTableView.reloadData()
+                            
+                            // Scroll to show the replies
+                            if let originalCommentCell = self.commentsTableView.cellForRow(at: IndexPath(row: commentIndex, section: 0)) {
+                                self.commentsTableView.scrollRectToVisible(originalCommentCell.frame, animated: true)
+                            }
+                        } else {
+                            print("❌ ERROR: Replies data is nil")
+                            self.commentsTableView.reloadData()
+                        }
+                    }
+                }
             }
+        } else {
+            print("❌ ERROR: Could not find comment with ID \(commentId) in the comments array")
         }
     }
 }
