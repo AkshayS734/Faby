@@ -6,11 +6,12 @@ class TodayBiteCollectionViewCell: UICollectionViewCell {
     private let cardView: UIView = {
         let view = UIView()
         view.backgroundColor = .white
-        view.layer.cornerRadius = 16
+        view.layer.cornerRadius = 24
+        view.clipsToBounds = false
         view.layer.shadowColor = UIColor.black.cgColor
         view.layer.shadowOffset = CGSize(width: 0, height: 2)
-        view.layer.shadowRadius = 4
-        view.layer.shadowOpacity = 0.1
+        view.layer.shadowRadius = 10
+        view.layer.shadowOpacity = 0.15
         view.translatesAutoresizingMaskIntoConstraints = false
         return view
     }()
@@ -19,17 +20,24 @@ class TodayBiteCollectionViewCell: UICollectionViewCell {
         let imageView = UIImageView()
         imageView.contentMode = .scaleAspectFill
         imageView.clipsToBounds = true
-        imageView.layer.cornerRadius = 12
-        imageView.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
-        imageView.layer.masksToBounds = true
+        imageView.layer.cornerRadius = 24
         imageView.translatesAutoresizingMaskIntoConstraints = false
         return imageView
     }()
+    
+    private let overlayView: UIView = {
+        let view = UIView()
+        view.backgroundColor = UIColor.black.withAlphaComponent(0.25)
+        view.layer.cornerRadius = 24
+        view.translatesAutoresizingMaskIntoConstraints = false
+        return view
+    }()
+    
     private let titleLabel: UILabel = {
         let label = UILabel()
-        label.font = UIFont.systemFont(ofSize: 18, weight: .semibold)
-        label.textColor = .black
-        label.textAlignment = .left
+        label.font = UIFont.systemFont(ofSize: 32, weight: .bold)
+        label.textColor = .white
+        label.textAlignment = .center
         label.numberOfLines = 1
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
@@ -38,20 +46,18 @@ class TodayBiteCollectionViewCell: UICollectionViewCell {
     private let mealTypeLabel: UILabel = {
         let label = UILabel()
         label.font = UIFont.systemFont(ofSize: 14, weight: .semibold)
-        label.textColor = .systemBlue
-        label.textAlignment = .left
+        label.textColor = .white
+        label.textAlignment = .center
         label.numberOfLines = 1
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
     }()
 
-    
-
     private let timeLabel: UILabel = {
         let label = UILabel()
         label.font = UIFont.systemFont(ofSize: 14, weight: .regular)
-        label.textColor = UIColor.systemGray
-        label.textAlignment = .left
+        label.textColor = .white
+        label.textAlignment = .center
         label.numberOfLines = 1
         label.adjustsFontSizeToFitWidth = true
         label.minimumScaleFactor = 0.8
@@ -59,10 +65,18 @@ class TodayBiteCollectionViewCell: UICollectionViewCell {
         return label
     }()
 
-
     override init(frame: CGRect) {
         super.init(frame: frame)
         setupUI()
+        
+        // Add shadow to text labels for better visibility
+        [titleLabel, mealTypeLabel, timeLabel].forEach { label in
+            label.layer.shadowColor = UIColor.black.cgColor
+            label.layer.shadowOffset = CGSize(width: 0, height: 2)
+            label.layer.shadowRadius = 4
+            label.layer.shadowOpacity = 0.7
+            label.layer.masksToBounds = false
+        }
     }
 
     required init?(coder: NSCoder) {
@@ -75,8 +89,9 @@ class TodayBiteCollectionViewCell: UICollectionViewCell {
         
         // Add components to card view
         cardView.addSubview(imageView)
-        cardView.addSubview(mealTypeLabel)
+        cardView.addSubview(overlayView)
         cardView.addSubview(titleLabel)
+        cardView.addSubview(mealTypeLabel)
         cardView.addSubview(timeLabel)
 
         NSLayoutConstraint.activate([
@@ -86,27 +101,35 @@ class TodayBiteCollectionViewCell: UICollectionViewCell {
             cardView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -4),
             cardView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -4),
             
-            // Image view constraints - top part of card
+            // Image view fills the entire card
             imageView.topAnchor.constraint(equalTo: cardView.topAnchor),
             imageView.leadingAnchor.constraint(equalTo: cardView.leadingAnchor),
             imageView.trailingAnchor.constraint(equalTo: cardView.trailingAnchor),
-            imageView.heightAnchor.constraint(equalToConstant: 120),
-
-            // Title label (name of the meal) - now first
-            titleLabel.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 12),
-            titleLabel.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 12),
-            titleLabel.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -12),
+            imageView.bottomAnchor.constraint(equalTo: cardView.bottomAnchor),
             
-            // Meal type label (NourishBite, MidDayBite, etc) - now second
-            mealTypeLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 4),
-            mealTypeLabel.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 12),
-            mealTypeLabel.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -12),
+            // Overlay view covers the image
+            overlayView.topAnchor.constraint(equalTo: imageView.topAnchor),
+            overlayView.leadingAnchor.constraint(equalTo: imageView.leadingAnchor),
+            overlayView.trailingAnchor.constraint(equalTo: imageView.trailingAnchor),
+            overlayView.bottomAnchor.constraint(equalTo: imageView.bottomAnchor),
 
-            // Time label (10:00 AM - 10:30 AM) - now third
+            // Title label centered on the image
+            titleLabel.centerXAnchor.constraint(equalTo: cardView.centerXAnchor),
+            titleLabel.centerYAnchor.constraint(equalTo: cardView.centerYAnchor),
+            titleLabel.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 16),
+            titleLabel.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -16),
+            
+            // Meal type label below title
+            mealTypeLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 8),
+            mealTypeLabel.centerXAnchor.constraint(equalTo: cardView.centerXAnchor),
+            mealTypeLabel.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 16),
+            mealTypeLabel.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -16),
+
+            // Time label below meal type
             timeLabel.topAnchor.constraint(equalTo: mealTypeLabel.bottomAnchor, constant: 4),
-            timeLabel.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 12),
-            timeLabel.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -12),
-            timeLabel.bottomAnchor.constraint(lessThanOrEqualTo: cardView.bottomAnchor, constant: -12)
+            timeLabel.centerXAnchor.constraint(equalTo: cardView.centerXAnchor),
+            timeLabel.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 16),
+            timeLabel.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -16)
         ])
     }
 
@@ -118,21 +141,8 @@ class TodayBiteCollectionViewCell: UICollectionViewCell {
         if let category = bite.category {
             mealTypeLabel.text = category
             
-            // Set appropriate color based on meal type
-            switch category {
-            case "NourishBite":
-                mealTypeLabel.textColor = .black
-            case "EarlyBite":
-                mealTypeLabel.textColor = .black
-            case "MidDayBite":
-                mealTypeLabel.textColor = .black
-            case "SnackBite":
-                mealTypeLabel.textColor = .black
-            case "NightBite":
-                mealTypeLabel.textColor = .black
-            default:
-                mealTypeLabel.textColor = .black
-            }
+            // All text is white when overlaid on image
+            mealTypeLabel.textColor = .white
         } else {
             mealTypeLabel.text = ""
         }

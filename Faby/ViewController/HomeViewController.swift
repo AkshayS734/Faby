@@ -85,17 +85,36 @@ class HomeViewController: UIViewController {
     private var todaysBitesCollectionView: UICollectionView = {
         let layout = UICollectionViewFlowLayout()
         layout.scrollDirection = .horizontal
-        layout.itemSize = CGSize(width: 280, height: 220) // Wider card to match design
-        layout.minimumLineSpacing = 16
-        layout.sectionInset = UIEdgeInsets(top: 8, left: 16, bottom: 8, right: 16)
+        layout.itemSize = CGSize(width: UIScreen.main.bounds.width - 32, height: 220)
+        layout.minimumLineSpacing = 32
+        layout.minimumInteritemSpacing = 0
+        layout.sectionInset = UIEdgeInsets(top: 0, left: 16, bottom: 0, right: 16)
         
         let collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
         collectionView.translatesAutoresizingMaskIntoConstraints = false
         collectionView.backgroundColor = .clear
         collectionView.showsHorizontalScrollIndicator = false
+        collectionView.isPagingEnabled = false
+        collectionView.decelerationRate = .fast
         collectionView.contentInsetAdjustmentBehavior = .always
         return collectionView
     }()
+    
+    // Add page control for Today's Bites
+    private let pageControl: UIPageControl = {
+        let pageControl = UIPageControl()
+        pageControl.currentPage = 0
+        pageControl.pageIndicatorTintColor = UIColor.systemGray5
+        pageControl.currentPageIndicatorTintColor = UIColor.systemPurple
+        if #available(iOS 14.0, *) {
+            pageControl.preferredIndicatorImage = UIImage(systemName: "circle.fill")?.withRenderingMode(.alwaysTemplate)
+            pageControl.preferredCurrentPageIndicatorImage = UIImage(systemName: "circle.fill")?.withRenderingMode(.alwaysTemplate)
+        }
+        pageControl.transform = CGAffineTransform(scaleX: 1.5, y: 1.5)
+        pageControl.translatesAutoresizingMaskIntoConstraints = false
+        return pageControl
+    }()
+    
     private let upcomingVaccinationLabel: UILabel = {
         let label = UILabel()
         label.text = "Upcoming Vaccination"
@@ -187,6 +206,10 @@ class HomeViewController: UIViewController {
         return button
     }()
     
+    // Add timer property
+    private var autoScrollTimer: Timer?
+    private let autoScrollInterval: TimeInterval = 3.0 // Scroll every 3 seconds
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         baby = dataController.baby
@@ -206,16 +229,19 @@ class HomeViewController: UIViewController {
             target: self,
             action: #selector(goToSettings)
         )
+        
         let layout = UICollectionViewFlowLayout()
         layout.scrollDirection = .horizontal
-        layout.itemSize = CGSize(width: 220, height: 160)
-        layout.minimumLineSpacing = 15
+        layout.itemSize = CGSize(width: view.frame.width - 32, height: 220)
+        layout.minimumLineSpacing = 32
         layout.sectionInset = UIEdgeInsets(top: 0, left: 16, bottom: 0, right: 16)
         
         todaysBitesCollectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
         todaysBitesCollectionView.translatesAutoresizingMaskIntoConstraints = false
         todaysBitesCollectionView.backgroundColor = .clear
         todaysBitesCollectionView.showsHorizontalScrollIndicator = false
+        todaysBitesCollectionView.isPagingEnabled = false
+        todaysBitesCollectionView.decelerationRate = .fast
         todaysBitesCollectionView.delegate = self
         todaysBitesCollectionView.dataSource = self
         todaysBitesCollectionView.register(TodayBiteCollectionViewCell.self, forCellWithReuseIdentifier: "BitesCell")
@@ -267,11 +293,17 @@ class HomeViewController: UIViewController {
         updateSpecialMoments()
         // Always update Today's Bites when returning to this view
         updateTodaysBites()
+        
+        // Start auto-scrolling timer
+        startAutoScrollTimer()
     }
     
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         NotificationCenter.default.removeObserver(self)
+        
+        // Stop auto-scrolling timer when leaving the view
+        stopAutoScrollTimer()
     }
     
     override func viewDidLayoutSubviews() {
@@ -317,6 +349,7 @@ class HomeViewController: UIViewController {
         contentView.addSubview(specialMomentsContainerView)
         contentView.addSubview(todaysBitesLabel)
         contentView.addSubview(todaysBitesCollectionView)
+        contentView.addSubview(pageControl)
         
         // Add the vaccination container view
         contentView.addSubview(upcomingVaccinationLabel)
@@ -365,12 +398,17 @@ class HomeViewController: UIViewController {
             todaysBitesLabel.leadingAnchor.constraint(equalTo: dateLabel.leadingAnchor),
             
             todaysBitesCollectionView.topAnchor.constraint(equalTo: todaysBitesLabel.bottomAnchor, constant: 10),
-            todaysBitesCollectionView.leadingAnchor.constraint(equalTo: dateLabel.leadingAnchor),
+            todaysBitesCollectionView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
             todaysBitesCollectionView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
-            todaysBitesCollectionView.heightAnchor.constraint(equalToConstant: 225),
+            todaysBitesCollectionView.heightAnchor.constraint(equalToConstant: 220),
+            
+            // Page control constraints
+            pageControl.topAnchor.constraint(equalTo: todaysBitesCollectionView.bottomAnchor, constant: 12),
+            pageControl.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
+            pageControl.heightAnchor.constraint(equalToConstant: 30),
             
             // Add constraints for the vaccination container
-            upcomingVaccinationLabel.topAnchor.constraint(equalTo: todaysBitesCollectionView.bottomAnchor, constant: 24),
+            upcomingVaccinationLabel.topAnchor.constraint(equalTo: pageControl.bottomAnchor, constant: 24),
             upcomingVaccinationLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
             
             vaccineContainerView.topAnchor.constraint(equalTo: upcomingVaccinationLabel.bottomAnchor, constant: 10),
@@ -734,6 +772,11 @@ class HomeViewController: UIViewController {
             // Process and display meals
             processMealsForDisplay(todaysMeals)
         }
+        
+        // After todaysBitesData is updated, restart the timer if needed
+        if let _ = autoScrollTimer, todaysBitesData.count > 1 {
+            startAutoScrollTimer()
+        }
     }
     
     // New helper method to load meals from Supabase
@@ -962,6 +1005,61 @@ class HomeViewController: UIViewController {
             todaysBitesEmptyStateView.isHidden = true
         }
     }
+    
+    // Function to start auto-scrolling timer
+    private func startAutoScrollTimer() {
+        // Cancel any existing timer
+        stopAutoScrollTimer()
+        
+        // Only start timer if we have more than one item
+        if todaysBitesData.count > 1 {
+            autoScrollTimer = Timer.scheduledTimer(timeInterval: autoScrollInterval, 
+                                                  target: self, 
+                                                  selector: #selector(scrollToNextCard), 
+                                                  userInfo: nil, 
+                                                  repeats: true)
+        }
+    }
+
+    // Function to stop auto-scrolling timer
+    private func stopAutoScrollTimer() {
+        autoScrollTimer?.invalidate()
+        autoScrollTimer = nil
+    }
+
+    // Function to scroll to the next card
+    @objc private func scrollToNextCard() {
+        guard todaysBitesData.count > 1, 
+              let visibleItems = todaysBitesCollectionView.indexPathsForVisibleItems.first else {
+            return
+        }
+        
+        // Calculate the next index
+        let nextIndex = (visibleItems.item + 1) % todaysBitesData.count
+        let nextIndexPath = IndexPath(item: nextIndex, section: 0)
+        
+        // Scroll to the next item with animation
+        todaysBitesCollectionView.scrollToItem(at: nextIndexPath, 
+                                              at: .centeredHorizontally, 
+                                              animated: true)
+        
+        // Update page control
+        pageControl.currentPage = nextIndex
+    }
+
+    // Pause scrolling when user touches the collection view
+    func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+        if scrollView == todaysBitesCollectionView {
+            stopAutoScrollTimer()
+        }
+    }
+
+    // Resume scrolling when user stops interacting with the collection view
+    func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+        if scrollView == todaysBitesCollectionView {
+            startAutoScrollTimer()
+        }
+    }
 }
 
 
@@ -970,6 +1068,9 @@ class HomeViewController: UIViewController {
 
 extension HomeViewController: UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+        // Update page control
+        pageControl.numberOfPages = todaysBitesData.count
+        pageControl.isHidden = todaysBitesData.count <= 1
         return todaysBitesData.count
     }
     
@@ -982,7 +1083,42 @@ extension HomeViewController: UICollectionViewDelegate, UICollectionViewDataSour
         cell.configure(with: bite)
         return cell
     }
+    
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
-        return CGSize(width: 225, height: 220)
+        return CGSize(width: collectionView.frame.width - 32, height: 220)
+    }
+    
+    func scrollViewWillEndDragging(_ scrollView: UIScrollView, withVelocity velocity: CGPoint, targetContentOffset: UnsafeMutablePointer<CGPoint>) {
+        if scrollView == todaysBitesCollectionView {
+            // Calculate cell width and spacing
+            let cellWidth = self.view.frame.width - 32
+            let spacing = CGFloat(32) // Match the minimumLineSpacing
+            
+            // Calculate the total width of a cell including spacing
+            let cardWidthWithSpacing = cellWidth + spacing
+            
+            // Determine the target offset by dividing the current offset by the cell+spacing width
+            let targetIndex = round(targetContentOffset.pointee.x / cardWidthWithSpacing)
+            
+            // Calculate the new x offset that will center the target cell
+            let newTargetX = targetIndex * cardWidthWithSpacing
+            
+            // Set the new target offset to snap to
+            targetContentOffset.pointee.x = newTargetX
+            
+            // Update page control
+            pageControl.currentPage = Int(targetIndex)
+        }
+    }
+    
+    func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
+        if scrollView == todaysBitesCollectionView {
+            // Use the same calculation as in scrollViewWillEndDragging
+            let cellWidth = self.view.frame.width - 32
+            let spacing = CGFloat(32)
+            let cardWidthWithSpacing = cellWidth + spacing
+            let page = Int(round(scrollView.contentOffset.x / cardWidthWithSpacing))
+            pageControl.currentPage = page
+        }
     }
 }
