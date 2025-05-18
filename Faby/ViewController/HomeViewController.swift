@@ -212,7 +212,7 @@ class HomeViewController: UIViewController {
         layout.scrollDirection = .horizontal
         layout.itemSize = CGSize(width: 220, height: 160)
         layout.minimumLineSpacing = 15
-        layout.sectionInset = UIEdgeInsets(top: 0, left: 16, bottom: 0, right: 16)
+        layout.sectionInset = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 16)
         
         todaysBitesCollectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
         todaysBitesCollectionView.translatesAutoresizingMaskIntoConstraints = false

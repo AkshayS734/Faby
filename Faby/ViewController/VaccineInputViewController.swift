@@ -135,7 +135,13 @@ class VaccineInputViewController: UIViewController, UISearchBarDelegate {
     
     // Update the save button state based on selections
     private func updateSaveButtonState() {
-        // Enable the save button only if at least one vaccine is selected
+        // Make sure the save button exists
+        if navigationItem.rightBarButtonItem == nil {
+            let saveButton = UIBarButtonItem(title: "Save", style: .done, target: self, action: #selector(saveButtonTapped))
+            navigationItem.rightBarButtonItem = saveButton
+        }
+        
+        // Enable the save button if at least one vaccine is selected
         navigationItem.rightBarButtonItem?.isEnabled = !selectedVaccines.isEmpty
     }
 
@@ -227,18 +233,23 @@ class VaccineInputViewController: UIViewController, UISearchBarDelegate {
         label.isHidden = true
         return label
     }()
-
+    
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
-        configureNavigationBar()
         setupUI()
         setupConstraints()
         setupCategoryButtons()
+        configureNavigationBar()
+        
+        // Set up table view
         setupTableView()
         
-        // Set search bar delegate
+        // Set up search bar
         searchBar.delegate = self
+        
+        // Ensure save button state is properly initialized
+        updateSaveButtonState()
         
         // Set background colors
         view.backgroundColor = UIColor.systemGroupedBackground
@@ -251,8 +262,16 @@ class VaccineInputViewController: UIViewController, UISearchBarDelegate {
     private func configureNavigationBar() {
         navigationController?.navigationBar.prefersLargeTitles = true
         navigationItem.title = "VacciTime"
+        
+        // Create and configure save button
         let saveButton = UIBarButtonItem(title: "Save", style: .done, target: self, action: #selector(saveButtonTapped))
+        saveButton.isEnabled = !selectedVaccines.isEmpty // Initially disabled if no vaccines selected
         navigationItem.rightBarButtonItem = saveButton
+        
+        // Print debug info
+        print("🔧 Navigation bar configured with save button")
+        print("💾 Save button initial state: \(saveButton.isEnabled ? "enabled" : "disabled")")
+        
         if #available(iOS 13.0, *) {
             let appearance = UINavigationBarAppearance()
             appearance.configureWithTransparentBackground()
@@ -337,13 +356,18 @@ class VaccineInputViewController: UIViewController, UISearchBarDelegate {
     }
     
     private func setupTableView() {
+        // Register cell
+        tableView.register(VaccineCell.self, forCellReuseIdentifier: "VaccineCell")
+        
+        // Configure table view
         tableView.delegate = self
         tableView.dataSource = self
-        tableView.register(VaccineCell.self, forCellReuseIdentifier: "VaccineCell")
         tableView.showsVerticalScrollIndicator = false
         tableView.contentInset = UIEdgeInsets(top: 0, left: 0, bottom: 20, right: 0)
         tableView.backgroundColor = .clear
         tableView.separatorStyle = .none
+        tableView.estimatedRowHeight = 100
+        tableView.rowHeight = UITableView.automaticDimension
     }
     
     // MARK: - Actions
@@ -373,44 +397,53 @@ class VaccineInputViewController: UIViewController, UISearchBarDelegate {
         let period = timePeriods[sender.tag]
         currentPeriod = period
     }
-
-    @objc private func saveButtonTapped() {
-        // Create an array to store all selected vaccine objects from all time periods
-        var allSelectedVaccineObjects: [Vaccine] = []
-        
-        // Collect all vaccine objects for selected vaccines across all time periods
-        Task {
-            do {
-                // Fetch all vaccines from the database
-                let allVaccines = try await FetchingVaccines.shared.fetchAllVaccines()
+    
+@objc private func saveButtonTapped() {
+    print("💾 Save button tapped with \(selectedVaccines.count) vaccines selected")
+    print("📅 Selected dates: \(selectedDates.count) dates selected")
+    
+    // Disable save button to prevent multiple taps
+    navigationItem.rightBarButtonItem?.isEnabled = false
+    
+    Task {
+        do {
+            // Fetch all vaccines to get full details for selected ones
+            let allVaccines = try await FetchingVaccines.shared.fetchAllVaccines()
+            
+            // Filter to get only the selected vaccines with full details
+            let selectedVaccineObjects = allVaccines.filter { vaccine in
+                selectedVaccines.contains(vaccine.name)
+            }
+            
+            // Navigate to the selected vaccines view controller with selected dates
+            await MainActor.run {
+                let selectedVaccinesVC = SelectedVaccinesViewController(
+                    selectedVaccines: selectedVaccineObjects,
+                    selectedDates: self.selectedDates // Pass the selected dates dictionary
+                )
+                navigationController?.pushViewController(selectedVaccinesVC, animated: true)
                 
-                // Filter only the ones that are selected
-                let selectedVaccineObjects = allVaccines.filter { selectedVaccines.contains($0.name) }
-                allSelectedVaccineObjects = selectedVaccineObjects
+                // Re-enable save button
+                self.navigationItem.rightBarButtonItem?.isEnabled = true
+            }
+        } catch {
+            print("❌ Error fetching vaccines: \(error)")
+            
+            // Fallback to just using current period vaccines if fetching all fails
+            await MainActor.run {
+                let fallbackSelection = self.vaccineData.filter { self.selectedVaccines.contains($0.name) }
+                let selectedVaccinesVC = SelectedVaccinesViewController(
+                    selectedVaccines: fallbackSelection,
+                    selectedDates: self.selectedDates // Make sure dates are passed in fallback case too
+                )
+                self.navigationController?.pushViewController(selectedVaccinesVC, animated: true)
                 
-                // Navigate to selected vaccines review screen with selected dates
-                await MainActor.run {
-                    let selectedVaccinesVC = SelectedVaccinesViewController(
-                        selectedVaccines: allSelectedVaccineObjects,
-                        selectedDates: self.selectedDates // Pass the dictionary of selected dates
-                    )
-                    self.navigationController?.pushViewController(selectedVaccinesVC, animated: true)
-                }
-            } catch {
-                print("❌ Error fetching all vaccines: \(error)")
-                
-                // Fallback to just using current period vaccines if fetching all fails
-                await MainActor.run {
-                    let fallbackSelection = self.vaccineData.filter { self.selectedVaccines.contains($0.name) }
-                    let selectedVaccinesVC = SelectedVaccinesViewController(
-                        selectedVaccines: fallbackSelection,
-                        selectedDates: self.selectedDates
-                    )
-                    self.navigationController?.pushViewController(selectedVaccinesVC, animated: true)
-                }
+                // Re-enable save button
+                self.navigationItem.rightBarButtonItem?.isEnabled = true
             }
         }
     }
+}
 
     // MARK: - UISearchBarDelegate
     func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
@@ -571,7 +604,11 @@ extension VaccineInputViewController: VaccineCellDelegate {
         // Reload the table to show the selected date and checked status
         tableView.reloadData()
         
-        // No success alert popup anymore
+        // Make sure save button is visible and enabled
+        updateSaveButtonState()
+        
+        print("✅ Date selected for \(vaccine.name): \(date)")
+        print("💾 Save button updated - enabled: \(navigationItem.rightBarButtonItem?.isEnabled == true)")
     }
 }
 

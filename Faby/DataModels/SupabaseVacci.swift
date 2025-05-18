@@ -198,7 +198,7 @@ class SupabaseVaccineManager {
         // Create administered vaccine records for each vaccine
         for vaccine in vaccines {
             // Variables for the new record
-            let vaccineId = UUID().uuidString
+            let recordId = UUID().uuidString
             let babyIdString = babyId.uuidString
             let vaccineIdString = vaccine.id.uuidString
             var administeredDateString: String? = nil
@@ -207,19 +207,22 @@ class SupabaseVaccineManager {
             if let selectedDate = administeredDates[vaccine.name] {
                 // User selected a date - use it
                 print("DEBUG: Using user-selected date for \(vaccine.name): \(selectedDate)")
-                administeredDateString = ISO8601DateFormatter().string(from: selectedDate)
+                let formatter = ISO8601DateFormatter()
+                formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+                administeredDateString = formatter.string(from: selectedDate)
             } else {
-                // User did not select a date - don't send a date to backend
+                // User did not select a date - don't send any date to backend
                 print("DEBUG: No date selected for \(vaccine.name) - not sending a date")
+                administeredDateString = nil
             }
             
             // Create the administered vaccine record
             let administeredVaccine = SupabaseVaccineAdministered(
-                id: vaccineId,
+                id: recordId,
                 baby_id: babyIdString,
                 vaccineID: vaccineIdString,
                 scheduleId: nil, // No schedule for manually entered vaccines
-                administeredDate: administeredDateString // This will be nil if no date was selected
+                administeredDate: administeredDateString
             )
             
             try await client
