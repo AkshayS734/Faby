@@ -510,16 +510,14 @@ class PostViewController: UIViewController, UITextViewDelegate, UIImagePickerCon
                 }
                 
                 // Create post with image if available
-                guard let userUUID = UUID(uuidString: parentId),
-                      let categoryUUID = UUID(uuidString: category) else {
+                guard let categoryUUID = UUID(uuidString: category) else {
                     throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid UUID format"])
                 }
                 
-                PostsSupabaseManager.shared.addPost(
+                ToddlerTalkDataController.shared.addPost(
                     title: title,
                     content: text,
                     topicID: categoryUUID,
-                    userID: userUUID,
                     imageData: imageData
                 ) { success, error in
                     DispatchQueue.main.async {

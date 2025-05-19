@@ -111,20 +111,13 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
     }
     // MARK: - Caching Methods
     private func loadCachedTopics() {
-        if let cachedData = UserDefaults.standard.data(forKey: topicsCacheKey),
-           let topics = try? JSONDecoder().decode([Topics].self, from: cachedData) {
+        if let topics = ToddlerTalkDataController.shared.loadCachedTopics() {
             self.allTopics = topics
             self.filteredCardData = topics
             self.collectionView.reloadData()
             print("✅ Loaded \(topics.count) topics from cache")
         } else {
             print("⚠️ No cached topics found")
-        }
-    }
-    
-    private func cacheTopics(_ topics: [Topics]) {
-        if let encodedData = try? JSONEncoder().encode(topics) {
-            UserDefaults.standard.set(encodedData, forKey: topicsCacheKey)
         }
     }
     
@@ -153,8 +146,8 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
     }
     // MARK: - Image Loading
     private func loadImage(from urlString: String, for cell: cardDetailsCollectionViewCell) {
-        guard let url = URL(string: urlString) else {
-            // Show placeholder for invalid URL
+        guard !urlString.isEmpty else {
+            // Show placeholder for empty URL
             cell.imageView.image = UIImage(systemName: "photo")
             cell.imageView.contentMode = .scaleAspectFit
             cell.imageView.tintColor = .gray
@@ -165,68 +158,26 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
         // Show shimmer effect
         cell.startShimmering()
         
-        // Check memory cache first
-        if let cachedImage = imageCache.object(forKey: urlString as NSString) {
+        // Use ToddlerTalkDataController to load the image
+        ToddlerTalkDataController.shared.loadImage(from: urlString) { [weak self] image in
+            guard let self = self else { return }
+            
             DispatchQueue.main.async {
-                cell.imageView.image = cachedImage
-                cell.imageView.contentMode = .scaleAspectFill
-                cell.imageView.clipsToBounds = true
-                cell.stopShimmering()
-                self.loadingImages[urlString] = false
-            }
-            return
-        }
-
-        // Check disk cache
-        if let cachedResponse = URLCache.shared.cachedResponse(for: URLRequest(url: url)),
-           let image = UIImage(data: cachedResponse.data) {
-            imageCache.setObject(image, forKey: urlString as NSString)
-            DispatchQueue.main.async {
-                cell.imageView.image = image
-                cell.imageView.contentMode = .scaleAspectFill
-                cell.imageView.clipsToBounds = true
-                cell.stopShimmering()
-                self.loadingImages[urlString] = false
-            }
-            return
-        }
-        
-        // Load from network
-        let task = imageSession.dataTask(with: url) { [weak self] data, response, error in
-            guard let self = self,
-                  let data = data,
-                  let image = UIImage(data: data),
-                  error == nil else {
-                // Handle error
-                DispatchQueue.main.async {
+                if let image = image {
+                    cell.imageView.image = image
+                    cell.imageView.contentMode = .scaleAspectFill
+                    cell.imageView.clipsToBounds = true
+                } else {
                     // Show error placeholder
-                    cell.imageView.image = UIImage(systemName: "Placeholder")
+                    cell.imageView.image = UIImage(systemName: "photo")
                     cell.imageView.contentMode = .scaleAspectFit
                     cell.imageView.tintColor = .systemRed
-                    cell.stopShimmering()
-                    self?.loadingImages[urlString] = false
                 }
-                return
-            }
-            
-            // Cache the response
-            if let response = response {
-                let cachedResponse = CachedURLResponse(response: response, data: data)
-                URLCache.shared.storeCachedResponse(cachedResponse, for: URLRequest(url: url))
-            }
-            
-            // Cache the image in memory
-            self.imageCache.setObject(image, forKey: urlString as NSString)
-            
-            DispatchQueue.main.async {
-                cell.imageView.image = image
-                cell.imageView.contentMode = .scaleAspectFill
-                cell.imageView.clipsToBounds = true
+                
                 cell.stopShimmering()
                 self.loadingImages[urlString] = false
             }
         }
-        task.resume()
     }
     
     // MARK: - Collection View Data Source
@@ -271,14 +222,14 @@ class ToddlerTalkViewController: UIViewController, UICollectionViewDelegate, UIC
             self.loadingImages.removeAll() // Reset loading images tracking
         }
         
-        PostsSupabaseManager.shared.fetchTopics { [weak self] topics, error in
+        // Use ToddlerTalkDataController instead of PostsSupabaseManager
+        ToddlerTalkDataController.shared.fetchTopics { [weak self] topics, error in
             guard let self = self else { return }
             
             DispatchQueue.main.async {
                 if let topics = topics {
                     self.allTopics = topics
                     self.filteredCardData = topics
-                    self.cacheTopics(topics)
                     self.isTopicDataLoaded = true
                     
                     // Mark all images as loading initially

@@ -167,7 +167,7 @@ class UserPostListViewController: UIViewController {
     
     // MARK: - Data Fetching
     private func fetchTopics() {
-        PostsSupabaseManager.shared.fetchTopics { [weak self] topics, error in
+        ToddlerTalkDataController.shared.fetchTopics { [weak self] topics, error in
             guard let self = self else { return }
             
             DispatchQueue.main.async {
@@ -199,7 +199,7 @@ class UserPostListViewController: UIViewController {
                 
                 refreshControl.beginRefreshing()
                 
-                PostsSupabaseManager.shared.fetchUserPosts(for: userId) { [weak self] posts, error in
+                ToddlerTalkDataController.shared.fetchUserPosts { [weak self] posts, error in
                     DispatchQueue.main.async {
                         self?.refreshControl.endRefreshing()
                         
@@ -274,8 +274,8 @@ class UserPostListViewController: UIViewController {
             )
             self.present(loadingAlert, animated: true)
             
-            // Call Supabase manager to delete post
-            PostsSupabaseManager.shared.deletePost(postId: post.postId) { success, error in
+            // Call data controller to delete post
+            ToddlerTalkDataController.shared.deletePost(postId: post.postId) { success, error in
                 DispatchQueue.main.async {
                     // Dismiss loading indicator
                     loadingAlert.dismiss(animated: true) {
@@ -477,9 +477,9 @@ extension UserPostListViewController: PostCardCellDelegate {
         items.append(postText)
         
         // Add deep link or web link for sharing
-        if let deepLink = PostsSupabaseManager.shared.generatePostDeepLink(for: post) {
+        if let deepLink = ToddlerTalkDataController.shared.generatePostDeepLink(for: post) {
             items.append(deepLink)
-        } else if let webLink = PostsSupabaseManager.shared.generatePostWebLink(for: post) {
+        } else if let webLink = ToddlerTalkDataController.shared.generatePostWebLink(for: post) {
             items.append(webLink)
         }
         
