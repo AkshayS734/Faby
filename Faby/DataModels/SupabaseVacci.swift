@@ -4,40 +4,27 @@ import CoreLocation
 import Supabase
 
 class SupabaseVaccineManager {
-    static var shared: SupabaseVaccineManager!
-
-    let client: SupabaseClient
-
-    private init(client: SupabaseClient) {
-        self.client = client
-    }
-
-    static func initialize(client: SupabaseClient) {
-        self.shared = SupabaseVaccineManager(client: client)
-    }
+    static let shared = SupabaseVaccineManager()
+    
     // Use your existing Supabase client setup
-//    private var client: SupabaseClient? {
-//        // Assuming you have the client configured in your AppDelegate or SceneDelegate
-//        DispatchQueue.main.sync {
-//                if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
-//                    client = appDelegate.supabase
-//                } else if let sceneDelegate = UIApplication.shared.connectedScenes.first?.delegate as? SceneDelegate {
-//                    client = sceneDelegate.supabase
-//                }
-//            }
-//
-//        
-//        // Fallback to direct client initialization if needed
-//        return SupabaseClient(
-//            supabaseURL: URL(string: "https://tmnltannywgqrrxavoge.supabase.co")!,
-//            supabaseKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRtbmx0YW5ueXdncXJyeGF2b2dlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY5NjQ0MjQsImV4cCI6MjA2MjU0MDQyNH0.pkaPTx--vk4GPULyJ6o3ttI3vCsMUKGU0TWEMDpE1fY"
-//        )
-//    }
+    private var client: SupabaseClient? {
+        // Get the client from AppDelegate
+        if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
+            return appDelegate.supabase
+        }
+        return nil
+    }
+    
+    private init() {} // Private initializer for singleton pattern
     
     // MARK: - Vaccine Management
     
     /// Fetch all vaccines from Supabase
     func fetchAllVaccines() async throws -> [Vaccine] {
+        guard let client = client else {
+            throw NSError(domain: "VacciAlertError", code: 1,
+                         userInfo: [NSLocalizedDescriptionKey: "Supabase client not available"])
+        }
         
         let response = try await client
             .from("vaccines")
@@ -51,6 +38,13 @@ class SupabaseVaccineManager {
     func fetchRecommendedVaccines(forBabyId babyId: String) async throws -> [Vaccine] {
         // First fetch all vaccines
         let allVaccines = try await fetchAllVaccines()
+        
+        // Then get baby's age (using a direct query instead of relying on Baby model)
+        guard let client = client else {
+            throw NSError(domain: "VacciAlertError", code: 1,
+                         userInfo: [NSLocalizedDescriptionKey: "Supabase client not available"])
+        }
+        
         let babyResponse = try await client
             .from("baby")
             .select("dob")
@@ -89,6 +83,11 @@ class SupabaseVaccineManager {
     
     /// Save a new vaccination schedule to Supabase
     func saveVaccineSchedule(babyId: String, vaccineId: String, hospital: String, date: Date, location: CLLocation) async throws {
+        guard let client = client else {
+            throw NSError(domain: "VacciAlertError", code: 1,
+                         userInfo: [NSLocalizedDescriptionKey: "Supabase client not available"])
+        }
+        
         let latitude = location.coordinate.latitude
         let longitude = location.coordinate.longitude
         let locationString = "\(latitude),\(longitude)"
@@ -119,6 +118,11 @@ class SupabaseVaccineManager {
     
     /// Fetch all scheduled vaccinations for a specific baby
     func fetchVaccineSchedules(forBabyId babyId: String) async throws -> [VaccineSchedule] {
+        guard let client = client else {
+            throw NSError(domain: "VacciAlertError", code: 1,
+                         userInfo: [NSLocalizedDescriptionKey: "Supabase client not available"])
+        }
+        
         let response = try await client
             .from("vaccination_schedules")
             .select()
@@ -146,6 +150,12 @@ class SupabaseVaccineManager {
     
     /// Update an existing vaccination schedule
     func updateVaccineSchedule(scheduleId: String, newDate: Date?, newHospital: String?, newLocation: CLLocation?) async throws {
+        guard let client = client else {
+            throw NSError(domain: "VacciAlertError", code: 1,
+                         userInfo: [NSLocalizedDescriptionKey: "Supabase client not available"])
+        }
+        
+        // First fetch the existing schedule
         let response = try await client
             .from("vaccination_schedules")
             .select()
@@ -192,13 +202,17 @@ class SupabaseVaccineManager {
     ///   - administeredDates: Dictionary mapping vaccine names to administered dates
     /// - Throws: An error if saving fails
     func saveAdministeredVaccines(vaccines: [Vaccine], babyId: UUID, administeredDates: [String: Date]) async throws {
+        guard let client = client else {
+            throw NSError(domain: "VacciAlertError", code: 1,
+                         userInfo: [NSLocalizedDescriptionKey: "Supabase client not available"])
+        }
         
         print("DEBUG: SupabaseVaccineManager - Saving \(vaccines.count) administered vaccines for baby ID: \(babyId)")
         
         // Create administered vaccine records for each vaccine
         for vaccine in vaccines {
             // Variables for the new record
-            let recordId = UUID().uuidString
+            let vaccineId = UUID().uuidString
             let babyIdString = babyId.uuidString
             let vaccineIdString = vaccine.id.uuidString
             var administeredDateString: String? = nil
@@ -207,22 +221,19 @@ class SupabaseVaccineManager {
             if let selectedDate = administeredDates[vaccine.name] {
                 // User selected a date - use it
                 print("DEBUG: Using user-selected date for \(vaccine.name): \(selectedDate)")
-                let formatter = ISO8601DateFormatter()
-                formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-                administeredDateString = formatter.string(from: selectedDate)
+                administeredDateString = ISO8601DateFormatter().string(from: selectedDate)
             } else {
-                // User did not select a date - don't send any date to backend
+                // User did not select a date - don't send a date to backend
                 print("DEBUG: No date selected for \(vaccine.name) - not sending a date")
-                administeredDateString = nil
             }
             
             // Create the administered vaccine record
             let administeredVaccine = SupabaseVaccineAdministered(
-                id: recordId,
+                id: vaccineId,
                 baby_id: babyIdString,
                 vaccineID: vaccineIdString,
                 scheduleId: nil, // No schedule for manually entered vaccines
-                administeredDate: administeredDateString
+                administeredDate: administeredDateString // This will be nil if no date was selected
             )
             
             try await client
@@ -246,6 +257,10 @@ class SupabaseVaccineManager {
     
     /// Mark a vaccine as administered
     func markVaccineAsAdministered(scheduleId: String, administeredDate: Date) async throws {
+        guard let client = client else {
+            throw NSError(domain: "VacciAlertError", code: 1,
+                         userInfo: [NSLocalizedDescriptionKey: "Supabase client not available"])
+        }
         
         // First get the schedule details
         let scheduleResponse = try await client
@@ -289,6 +304,12 @@ class SupabaseVaccineManager {
     
     /// Fetch all administered vaccines for a specific baby
     func fetchAdministeredVaccines(forBabyId babyId: String) async throws -> [VaccineAdministered] {
+        guard let client = client else {
+            throw NSError(domain: "VacciAlertError", code: 1,
+                         userInfo: [NSLocalizedDescriptionKey: "Supabase client not available"])
+        }
+        
+        print("DEBUG: Fetching administered vaccines for baby ID: \(babyId)")
         
         let response = try await client
             .from("administered_vaccines")
@@ -296,36 +317,123 @@ class SupabaseVaccineManager {
             .eq("baby_id", value: babyId)
             .execute()
         
+        print("DEBUG: Retrieved \(response.data.count) bytes of administered vaccines data")
+        
         // Process the raw data to convert to VaccineAdministered objects
         let rawAdministered = try JSONDecoder().decode([SupabaseVaccineAdministered].self, from: response.data)
         
+        print("DEBUG: Decoded \(rawAdministered.count) administered vaccines")
+        
         return rawAdministered.map { raw in
-            let dateFormatter = ISO8601DateFormatter()
+            // Print the raw date string for debugging
+            print("DEBUG: Raw administered date string: \(raw.administeredDate ?? "nil")")
             
-            // Handle the optional administeredDate
-            let date: Date
-            if let dateString = raw.administeredDate, !dateString.isEmpty {
-                date = dateFormatter.date(from: dateString) ?? Date()
+            // Determine if this vaccine has a date based on the string's existence and content
+            let hasActualDate = raw.administeredDate != nil && !raw.administeredDate!.isEmpty
+            
+            // Check if we have a date string
+            if hasActualDate, let dateString = raw.administeredDate {
+                print("DEBUG: Attempting to parse date: \(dateString)")
+                
+                // Create multiple date formatters to try different formats
+                let iso8601Formatter = ISO8601DateFormatter()
+                iso8601Formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+                
+                let altFormatter1 = DateFormatter()
+                altFormatter1.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
+                
+                let altFormatter2 = DateFormatter()
+                altFormatter2.dateFormat = "yyyy-MM-dd'T'HH:mm:ssZ"
+                
+                let altFormatter3 = DateFormatter()
+                altFormatter3.dateFormat = "yyyy-MM-dd"
+                
+                // Add new formatter for the specific format we're seeing
+                let altFormatter4 = DateFormatter()
+                altFormatter4.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+                
+                // Try multiple date formats
+                let date: Date
+                if let parsedDate = iso8601Formatter.date(from: dateString) {
+                    print("DEBUG: Successfully parsed with ISO8601Formatter")
+                    date = parsedDate
+                } else if let parsedDate = altFormatter1.date(from: dateString) {
+                    print("DEBUG: Successfully parsed with altFormatter1")
+                    date = parsedDate
+                } else if let parsedDate = altFormatter2.date(from: dateString) {
+                    print("DEBUG: Successfully parsed with altFormatter2")
+                    date = parsedDate
+                } else if let parsedDate = altFormatter3.date(from: dateString) {
+                    print("DEBUG: Successfully parsed with altFormatter3")
+                    date = parsedDate
+                } else if let parsedDate = altFormatter4.date(from: dateString) {
+                    print("DEBUG: Successfully parsed with altFormatter4")
+                    date = parsedDate
+                } else {
+                    print("DEBUG: Failed to parse date string: \(dateString), using fallback date")
+                    // Try one more approach - manually parse the string
+                    let components = dateString.components(separatedBy: ["T", ":", "-"])
+                    if components.count >= 6 {
+                        let year = Int(components[0]) ?? 0
+                        let month = Int(components[1]) ?? 0
+                        let day = Int(components[2]) ?? 0
+                        let hour = Int(components[3]) ?? 0
+                        let minute = Int(components[4]) ?? 0
+                        let second = Int(components[5]) ?? 0
+                        
+                        var dateComponents = DateComponents()
+                        dateComponents.year = year
+                        dateComponents.month = month
+                        dateComponents.day = day
+                        dateComponents.hour = hour
+                        dateComponents.minute = minute
+                        dateComponents.second = second
+                        
+                        if let manualDate = Calendar.current.date(from: dateComponents) {
+                            print("DEBUG: Successfully parsed with manual components")
+                            date = manualDate
+                        } else {
+                            date = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
+                        }
+                    } else {
+                        date = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
+                    }
+                }
+                
+                let scheduleUUID: UUID? = raw.scheduleId != nil ? UUID(uuidString: raw.scheduleId!) : nil
+                
+                return VaccineAdministered(
+                    id: UUID(uuidString: raw.id) ?? UUID(),
+                    babyId: UUID(uuidString: raw.baby_id) ?? UUID(),
+                    vaccineId: UUID(uuidString: raw.vaccineID) ?? UUID(),
+                    scheduleId: scheduleUUID,
+                    administeredDate: date,
+                    hasDate: true  // We successfully parsed a date
+                )
             } else {
-                // If no date was provided, use nil (this will be handled by the VaccineAdministered initializer)
-                date = Date() // Default to current date if parsing fails
+                print("DEBUG: No date string available, creating a vaccine without date")
+                let scheduleUUID: UUID? = raw.scheduleId != nil ? UUID(uuidString: raw.scheduleId!) : nil
+                
+                return VaccineAdministered(
+                    id: UUID(uuidString: raw.id) ?? UUID(),
+                    babyId: UUID(uuidString: raw.baby_id) ?? UUID(),
+                    vaccineId: UUID(uuidString: raw.vaccineID) ?? UUID(),
+                    scheduleId: scheduleUUID,
+                    administeredDate: Date(), // Placeholder date
+                    hasDate: false // No date was selected
+                )
             }
-            
-            let scheduleUUID: UUID? = raw.scheduleId != nil ? UUID(uuidString: raw.scheduleId!) : nil
-            
-            return VaccineAdministered(
-                id: UUID(uuidString: raw.id) ?? UUID(),
-                babyId: UUID(uuidString: raw.baby_id) ?? UUID(),
-                vaccineId: UUID(uuidString: raw.vaccineID) ?? UUID(),
-                scheduleId: scheduleUUID,
-                administeredDate: date
-            )
         }
     }
     
     /// Fetch all administered vaccines (not filtered by baby)
     func fetchAllAdministeredVaccines() async throws -> [VaccineAdministered] {
         print("DEBUG: SupabaseVaccineManager - About to query administered_vaccines table")
+        guard let client = client else {
+            throw NSError(domain: "VacciAlertError", code: 1,
+                         userInfo: [NSLocalizedDescriptionKey: "Supabase client not available"])
+        }
+        
         do {
             let response = try await client
                 .from("administered_vaccines")
@@ -334,37 +442,110 @@ class SupabaseVaccineManager {
             
             print("DEBUG: SupabaseVaccineManager - Query successful, data size: \(response.data.count) bytes")
             
-            // Print raw data for debugging
-            if let jsonString = String(data: response.data, encoding: .utf8) {
-                print("DEBUG: SupabaseVaccineManager - Raw JSON: \(jsonString)")
-            }
-            
             // Process the raw data to convert to VaccineAdministered objects
             do {
                 let rawAdministered = try JSONDecoder().decode([SupabaseVaccineAdministered].self, from: response.data)
                 print("DEBUG: SupabaseVaccineManager - Decoded \(rawAdministered.count) administered vaccines")
                 
                 let result = rawAdministered.map { raw in
-                    let dateFormatter = ISO8601DateFormatter()
+                    // Print the raw date string for debugging
+                    print("DEBUG: Raw administered date string: \(raw.administeredDate ?? "nil")")
                     
-                    // Handle the optional administeredDate
-                    let date: Date
-                    if let dateString = raw.administeredDate, !dateString.isEmpty {
-                        date = dateFormatter.date(from: dateString) ?? Date()
+                    // Determine if this vaccine has a date based on the string's existence and content
+                    let hasActualDate = raw.administeredDate != nil && !raw.administeredDate!.isEmpty
+                    
+                    // Check if we have a date string
+                    if hasActualDate, let dateString = raw.administeredDate {
+                        print("DEBUG: Attempting to parse date: \(dateString)")
+                        
+                        // Create multiple date formatters to try different formats
+                        let iso8601Formatter = ISO8601DateFormatter()
+                        iso8601Formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+                        
+                        let altFormatter1 = DateFormatter()
+                        altFormatter1.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
+                        
+                        let altFormatter2 = DateFormatter()
+                        altFormatter2.dateFormat = "yyyy-MM-dd'T'HH:mm:ssZ"
+                        
+                        let altFormatter3 = DateFormatter()
+                        altFormatter3.dateFormat = "yyyy-MM-dd"
+                        
+                        // Add new formatter for the specific format we're seeing
+                        let altFormatter4 = DateFormatter()
+                        altFormatter4.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+                        
+                        // Try multiple date formats
+                        let date: Date
+                        if let parsedDate = iso8601Formatter.date(from: dateString) {
+                            print("DEBUG: Successfully parsed with ISO8601Formatter")
+                            date = parsedDate
+                        } else if let parsedDate = altFormatter1.date(from: dateString) {
+                            print("DEBUG: Successfully parsed with altFormatter1")
+                            date = parsedDate
+                        } else if let parsedDate = altFormatter2.date(from: dateString) {
+                            print("DEBUG: Successfully parsed with altFormatter2")
+                            date = parsedDate
+                        } else if let parsedDate = altFormatter3.date(from: dateString) {
+                            print("DEBUG: Successfully parsed with altFormatter3")
+                            date = parsedDate
+                        } else if let parsedDate = altFormatter4.date(from: dateString) {
+                            print("DEBUG: Successfully parsed with altFormatter4")
+                            date = parsedDate
+                        } else {
+                            print("DEBUG: Failed to parse date string: \(dateString), using fallback date")
+                            // Try one more approach - manually parse the string
+                            let components = dateString.components(separatedBy: ["T", ":", "-"])
+                            if components.count >= 6 {
+                                let year = Int(components[0]) ?? 0
+                                let month = Int(components[1]) ?? 0
+                                let day = Int(components[2]) ?? 0
+                                let hour = Int(components[3]) ?? 0
+                                let minute = Int(components[4]) ?? 0
+                                let second = Int(components[5]) ?? 0
+                                
+                                var dateComponents = DateComponents()
+                                dateComponents.year = year
+                                dateComponents.month = month
+                                dateComponents.day = day
+                                dateComponents.hour = hour
+                                dateComponents.minute = minute
+                                dateComponents.second = second
+                                
+                                if let manualDate = Calendar.current.date(from: dateComponents) {
+                                    print("DEBUG: Successfully parsed with manual components")
+                                    date = manualDate
+                                } else {
+                                    date = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
+                                }
+                            } else {
+                                date = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
+                            }
+                        }
+                        
+                        let scheduleUUID: UUID? = raw.scheduleId != nil ? UUID(uuidString: raw.scheduleId!) : nil
+                        
+                        return VaccineAdministered(
+                            id: UUID(uuidString: raw.id) ?? UUID(),
+                            babyId: UUID(uuidString: raw.baby_id) ?? UUID(),
+                            vaccineId: UUID(uuidString: raw.vaccineID) ?? UUID(),
+                            scheduleId: scheduleUUID,
+                            administeredDate: date,
+                            hasDate: true
+                        )
                     } else {
-                        // If no date was provided, use nil (this will be handled by the VaccineAdministered initializer)
-                        date = Date() // Default to current date if parsing fails
+                        print("DEBUG: No date string available, creating a vaccine without date")
+                        let scheduleUUID: UUID? = raw.scheduleId != nil ? UUID(uuidString: raw.scheduleId!) : nil
+                        
+                        return VaccineAdministered(
+                            id: UUID(uuidString: raw.id) ?? UUID(),
+                            babyId: UUID(uuidString: raw.baby_id) ?? UUID(),
+                            vaccineId: UUID(uuidString: raw.vaccineID) ?? UUID(),
+                            scheduleId: scheduleUUID,
+                            administeredDate: Date(), // Placeholder date
+                            hasDate: false // No date was selected
+                        )
                     }
-                    
-                    let scheduleUUID: UUID? = raw.scheduleId != nil ? UUID(uuidString: raw.scheduleId!) : nil
-                    
-                    return VaccineAdministered(
-                        id: UUID(uuidString: raw.id) ?? UUID(),
-                        babyId: UUID(uuidString: raw.baby_id) ?? UUID(),
-                        vaccineId: UUID(uuidString: raw.vaccineID) ?? UUID(),
-                        scheduleId: scheduleUUID,
-                        administeredDate: date
-                    )
                 }
                 
                 print("DEBUG: SupabaseVaccineManager - Returned \(result.count) VaccineAdministered objects")
@@ -385,6 +566,10 @@ class SupabaseVaccineManager {
     ///   - newDate: The new administered date
     /// - Throws: An error if the update fails
     func updateAdministeredDate(scheduleId: String, newDate: Date) async throws {
+        guard let client = client else {
+            throw NSError(domain: "VacciAlertError", code: 1,
+                         userInfo: [NSLocalizedDescriptionKey: "Supabase client not available"])
+        }
         
         // Convert date to ISO8601 string format
         let dateFormatter = ISO8601DateFormatter()
@@ -409,6 +594,58 @@ class SupabaseVaccineManager {
             // Notify listeners about the update
             NotificationCenter.default.post(name: Notification.Name("VaccinesUpdated"), object: nil)
             
+        } catch {
+            print("ERROR: Failed to update administered date - \(error.localizedDescription)")
+            throw error
+        }
+    }
+    
+    /// Update or remove the administered date for a vaccine
+    /// - Parameters:
+    ///   - vaccineId: The ID of the administered vaccine to update
+    ///   - newDate: The new date to set (or nil to remove the date)
+    /// - Throws: An error if the update fails
+    func updateAdministeredVaccineDate(vaccineId: String, newDate: Date?) async throws {
+        guard let client = client else {
+            throw NSError(domain: "VacciAlertError", code: 1,
+                         userInfo: [NSLocalizedDescriptionKey: "Supabase client not available"])
+        }
+        
+        // Update the record in Supabase
+        do {
+            if let date = newDate {
+                // Convert date to ISO8601 string format
+                let dateFormatter = ISO8601DateFormatter()
+                let dateString = dateFormatter.string(from: date)
+                
+                // Create a properly encodable struct without has_date
+                let updatePayload = VaccineDateUpdate(administeredDate: dateString)
+                
+                print("DEBUG: Updating vaccine \(vaccineId) with date: \(dateString)")
+                
+                let _ = try await client
+                    .from("administered_vaccines")
+                    .update(updatePayload)
+                    .eq("id", value: vaccineId)
+                    .execute()
+            } else {
+                // Use a dedicated struct for date removal (without has_date)
+                let removalPayload = VaccineDateRemoval()
+                
+                print("DEBUG: Removing date for vaccine \(vaccineId)")
+                
+                let _ = try await client
+                    .from("administered_vaccines")
+                    .update(removalPayload)
+                    .eq("id", value: vaccineId)
+                    .execute()
+            }
+            
+            // Notify listeners about the update
+            await MainActor.run {
+                NotificationCenter.default.post(name: .vaccinesUpdated, object: nil)
+            }
+            print("DEBUG: Successfully updated administered vaccine date")
         } catch {
             print("ERROR: Failed to update administered date - \(error.localizedDescription)")
             throw error
@@ -443,6 +680,23 @@ struct SupabaseVaccineAdministered: Codable {
         case vaccineID // Exact match with field name in JSON
         case scheduleId // Exact match with field name in JSON
         case administeredDate // Exact match with field name in JSON
+        // Removed has_date as it doesn't exist in the database
+    }
+}
+
+// Update the VaccineDateUpdate and VaccineDateRemoval structs
+struct VaccineDateUpdate: Encodable {
+    let administeredDate: String
+    // Removed has_date field since it doesn't exist in the database
+}
+
+struct VaccineDateRemoval: Encodable {
+    // Using null for the date in Supabase
+    // We're using a special encoding strategy to make this null in JSON
+    let administeredDate: String?
+    
+    init() {
+        self.administeredDate = nil
     }
 }
 

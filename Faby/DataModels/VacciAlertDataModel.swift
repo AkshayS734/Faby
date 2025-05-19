@@ -51,6 +51,7 @@ struct VaccineAdministered: Identifiable, Codable {
     let vaccineId: UUID
     let scheduleId: UUID?
     var administeredDate: Date
+    var hasDate: Bool = true // Default to true for backward compatibility, not stored in database
     
     // Add CodingKeys to map between Swift property names and database column names
     enum CodingKeys: String, CodingKey {
@@ -59,7 +60,7 @@ struct VaccineAdministered: Identifiable, Codable {
         case vaccineId = "vaccine_id"
         case scheduleId = "schedule_id"
         case administeredDate = "administereddate"  // Without underscore
-    
+        // hasDate is not included here because it's not a database column
     }
 }
 

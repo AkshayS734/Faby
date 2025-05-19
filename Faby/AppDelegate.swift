@@ -20,7 +20,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
         supabaseManager = SupabaseManager()
-        SupabaseVaccineManager.initialize(client: supabase)
+        supabaseVaccineManager = SupabaseVaccineManager.shared
 
         DataController.initialize(supabaseManager: supabaseManager)
         return true
