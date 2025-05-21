@@ -1443,25 +1443,41 @@ class PostsSupabaseManager {
                     parents(name, parentimage_url)
                 """)
                 
-                // Use in() filter with the list of post IDs
-                if let postIdsJson = try? JSONEncoder().encode(postIds),
-                   let postIdsJsonString = String(data: postIdsJson, encoding: .utf8) {
-                    postsQuery = postsQuery.filter("postId", operator: "in", value: postIdsJsonString)
-                    let postsResponse = try await postsQuery.execute()
-                    
-                    print("📄 Posts response: \(String(data: postsResponse.data, encoding: .utf8) ?? "None")")
-                    
-                    let decodedPosts = try JSONDecoder().decode([Post].self, from: postsResponse.data)
-                    print("✅ Fetched \(decodedPosts.count) saved posts")
-                    
-                    DispatchQueue.main.async {
-                        completion(decodedPosts, nil)
+                // Fetch posts one by one since the 'in' operator is causing issues
+                var allPosts: [Post] = []
+                
+                // Since the 'in' operator isn't working correctly, we'll fetch posts individually
+                for postId in postIds {
+                    do {
+                        let singlePostResponse = try await client.database.from("posts")
+                            .select("""
+                                postId, 
+                                postTitle, 
+                                postContent, 
+                                topicId, 
+                                userId, 
+                                createdAt, 
+                                image_url,
+                                parents(name, parentimage_url)
+                            """)
+                            .eq("postId", value: postId)
+                            .execute()
+                        
+                        if let post = try? JSONDecoder().decode([Post].self, from: singlePostResponse.data).first {
+                            allPosts.append(post)
+                            print("✅ Successfully fetched post with ID: \(postId)")
+                        }
+                    } catch {
+                        print("⚠️ Error fetching individual post \(postId): \(error.localizedDescription)")
+                        // Continue with other posts even if one fails
+                        continue
                     }
-                } else {
-                    print("❌ Failed to encode post IDs to JSON")
-                    DispatchQueue.main.async {
-                        completion([], nil)
-                    }
+                }
+                
+                print("✅ Fetched \(allPosts.count) saved posts")
+                
+                DispatchQueue.main.async {
+                    completion(allPosts, nil)
                 }
             } catch {
                 print("❌ Error fetching saved posts: \(error.localizedDescription)")

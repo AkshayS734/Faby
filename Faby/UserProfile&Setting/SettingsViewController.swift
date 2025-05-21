@@ -7,11 +7,12 @@ class SettingsViewController: UIViewController, UICollectionViewDelegate, UIColl
     var tableView: UITableView!
     var searchBar: UISearchBar!
     
-    let tableSections = ["PARENT PROFILE", "VACCITIME", "GROWTRACK", "TODBITE", "HELP & SUPPORT"]
+    let tableSections = ["PARENT PROFILE", "VACCITIME", "GROWTRACK", "TODDLER TALK", "TODBITE", "HELP & SUPPORT"]
     var filteredTableItems: [[String]] = [
         ["Parents Info"],
         ["Administered Vaccines"],
         ["Milestone track"],
+        ["Saved Posts"],
         ["Today's meal", "Your plan"],
         ["Contact support", "FAQs", "Submit feedback"]
     ]
@@ -19,6 +20,7 @@ class SettingsViewController: UIViewController, UICollectionViewDelegate, UIColl
         ["Parents Info"],
         ["Administered Vaccines"],
         ["Milestone track"],
+        ["Saved Posts"],
         ["Today's meal", "Your plan"],
         ["Contact support", "FAQs", "Submit feedback"]
     ]
@@ -255,6 +257,10 @@ class SettingsViewController: UIViewController, UICollectionViewDelegate, UIColl
         case ("GROWTRACK", "Milestone track"):
             let milestoneOverviewVC = MilestonesOverviewViewController()
             navigationController?.pushViewController(milestoneOverviewVC, animated: true)
+            
+        case ("TODDLER TALK", "Saved Posts"):
+            let savedPostsVC = SavedPostsViewController()
+            navigationController?.pushViewController(savedPostsVC, animated: true)
             
         case ("TODBITE", "Today's meal"):
             // Navigate to Today's meal

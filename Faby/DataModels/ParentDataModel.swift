@@ -41,19 +41,31 @@ class ParentDataModel {
                     let email = firstParent["email"] as? String ?? ""
                     let phoneNumber = firstParent["phone_number"] as? String
                     let genderString = firstParent["gender"] as? String ?? "male"
-                    let relationString = firstParent["relation"] as? String ?? "guardian"
+                    let relationString = firstParent["relation"] as? String ?? "father" 
                     let parentImageUrl = firstParent["parentimage_url"] as? String
                     
                     // Convert gender and relation strings to enums
                     let gender: Gender = genderString == "female" ? .female : .male
                     let relation: Relation
-                    switch relationString {
+                    switch relationString.lowercased() { // Use lowercase to handle case variations
                     case "father":
                         relation = .father
+                        print("✅ Set relation to father")
                     case "mother":
                         relation = .mother
+                        print("✅ Set relation to mother")
                     default:
-                        relation = .guardian
+                        // If the relation is not recognized, check gender to make a better guess
+                        if gender == .male {
+                            relation = .father
+                            print("⚠️ Unrecognized relation, defaulting to father based on gender")
+                        } else if gender == .female {
+                            relation = .mother
+                            print("⚠️ Unrecognized relation, defaulting to mother based on gender")
+                        } else {
+                            relation = .guardian
+                            print("⚠️ Unrecognized relation, defaulting to guardian")
+                        }
                     }
                     
                     // Create parent object
