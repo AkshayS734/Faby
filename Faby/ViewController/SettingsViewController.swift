@@ -12,14 +12,14 @@ class SettingsViewController: UIViewController, UICollectionViewDelegate, UIColl
         ["Parents Info"],
         ["Administered Vaccines"],
         ["Milestone track"],
-        ["Today's meal", "Your plan"],
+        ["Your Plan History"],
         ["Contact support", "FAQs", "Submit feedback"]
     ]
     let tableItems = [
         ["Parents Info"],
         ["Administered Vaccines"],
         ["Milestone track"],
-        ["Today's meal", "Your plan"],
+        ["Your Plan Hisory"],
         ["Contact support", "FAQs", "Submit feedback"]
     ]
     
@@ -176,14 +176,7 @@ class SettingsViewController: UIViewController, UICollectionViewDelegate, UIColl
             let milestoneOverviewVC = MilestonesOverviewViewController()
             navigationController?.pushViewController(milestoneOverviewVC, animated: true)
             
-        case ("TODBITE", "Today's meal"):
-            // Navigate to Today's meal
-            if let tabBarController = self.tabBarController {
-                tabBarController.selectedIndex = 4 // TodBite tab
-                navigationController?.popToRootViewController(animated: true)
-            }
-            
-        case ("TODBITE", "Your plan"):
+        case ("TODBITE", "Your Plan History"):
             // Navigate to Feeding Plan History
             let feedingPlanHistoryVC = FeedingPlanHistoryViewController()
             navigationController?.pushViewController(feedingPlanHistoryVC, animated: true)

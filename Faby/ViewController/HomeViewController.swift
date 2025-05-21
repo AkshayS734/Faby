@@ -50,36 +50,44 @@ class HomeViewController: UIViewController {
         view.translatesAutoresizingMaskIntoConstraints = false
         return view
     }()
-    private let todaysBitesLabel: UIStackView = {
+    private let todaysBitesLabel: UIView = {
+        // Create a container view for better touch handling
+        let containerView = UIView()
+        containerView.translatesAutoresizingMaskIntoConstraints = false
+        containerView.isUserInteractionEnabled = true
+        
+        // Create title label
         let label = UILabel()
         label.text = "Today's Bites"
         label.font = UIFont.boldSystemFont(ofSize: 20)
+        label.translatesAutoresizingMaskIntoConstraints = false
         
+        // Create chevron with larger tappable area
         let chevronIcon = UIImageView(image: UIImage(systemName: "chevron.right"))
         chevronIcon.tintColor = .black
         chevronIcon.contentMode = .scaleAspectFit
         chevronIcon.translatesAutoresizingMaskIntoConstraints = false
-        chevronIcon.widthAnchor.constraint(equalToConstant: 16).isActive = true
         
-        // Make sure chevron can receive touches
-        chevronIcon.isUserInteractionEnabled = true
+        // Add subviews to container
+        containerView.addSubview(label)
+        containerView.addSubview(chevronIcon)
         
-        // Add specific tap gesture to the chevron icon
-        let chevronTapGesture = UITapGestureRecognizer(target: self, action: #selector(openTodBiteViewController))
-        chevronIcon.addGestureRecognizer(chevronTapGesture)
+        // Layout constraints
+        NSLayoutConstraint.activate([
+            label.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+            label.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
+            
+            chevronIcon.leadingAnchor.constraint(equalTo: label.trailingAnchor, constant: 8),
+            chevronIcon.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
+            chevronIcon.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
+            chevronIcon.widthAnchor.constraint(equalToConstant: 20),
+            chevronIcon.heightAnchor.constraint(equalToConstant: 20)
+        ])
         
-        let stackView = UIStackView(arrangedSubviews: [label, chevronIcon])
-        stackView.axis = .horizontal
-        stackView.spacing = 1
-        stackView.alignment = .center
-        stackView.translatesAutoresizingMaskIntoConstraints = false
+        // Add padding to increase the touch area
+        containerView.heightAnchor.constraint(equalToConstant: 44).isActive = true
         
-        // Keep the general tap gesture on the whole stack view too for better UX
-        stackView.isUserInteractionEnabled = true
-        let stackTapGesture = UITapGestureRecognizer(target: self, action: #selector(openTodBiteViewController))
-        stackView.addGestureRecognizer(stackTapGesture)
-        
-        return stackView
+        return containerView
     }()
     
     private var todaysBitesCollectionView: UICollectionView = {
@@ -105,12 +113,16 @@ class HomeViewController: UIViewController {
         let pageControl = UIPageControl()
         pageControl.currentPage = 0
         pageControl.pageIndicatorTintColor = UIColor.systemGray5
-        pageControl.currentPageIndicatorTintColor = UIColor.systemPurple
+        pageControl.currentPageIndicatorTintColor = UIColor.systemBlue
+        
         if #available(iOS 14.0, *) {
+            // Make the dots smaller
             pageControl.preferredIndicatorImage = UIImage(systemName: "circle.fill")?.withRenderingMode(.alwaysTemplate)
             pageControl.preferredCurrentPageIndicatorImage = UIImage(systemName: "circle.fill")?.withRenderingMode(.alwaysTemplate)
         }
-        pageControl.transform = CGAffineTransform(scaleX: 1.5, y: 1.5)
+        
+        // Scale down the dots (make them smaller)
+        pageControl.transform = CGAffineTransform(scaleX: 1, y: 0.8)
         pageControl.translatesAutoresizingMaskIntoConstraints = false
         return pageControl
     }()
@@ -274,6 +286,13 @@ class HomeViewController: UIViewController {
         updateDateLabel()
         updateTodaysBites()
         embedSpecialMomentsViewController()
+        
+        // Add the tap gesture to the todaysBitesLabel container
+        let todaysBitesTapGesture = UITapGestureRecognizer(target: self, action: #selector(openTodBiteViewController))
+        todaysBitesLabel.addGestureRecognizer(todaysBitesTapGesture)
+        
+        // Add visual feedback for tapping
+        todaysBitesLabel.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(handleTodaysBitesTouch(_:))))
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -698,38 +717,52 @@ class HomeViewController: UIViewController {
     }
     
     @objc private func openTodBiteViewController() {
-        // Switch to the TodBite tab when chevron is clicked
-        // First try using the tab bar controller
-        if let tabBarController = self.tabBarController {
-            // Look for the TodBite tab by its identifier
-            for (index, controller) in (tabBarController.viewControllers ?? []).enumerated() {
-                // Check if it's the TodBite tab
-                if controller is UINavigationController,
-                   let navController = controller as? UINavigationController,
-                   navController.viewControllers.first is TodBiteViewController {
-                    // Found the TodBite tab, select it
-                    tabBarController.selectedIndex = index
-                    return
-                }
+        print("🚀 Chevron tapped - attempting to navigate to TodBite tab (tab index 4)")
+        
+        // Based on your screenshot, the TodBite tab is the 5th tab (index 4)
+        guard let tabBarController = self.tabBarController else {
+            print("❌ Tab bar controller not found!")
+            return
+        }
+        
+        // Log all tabs for debugging
+        for (i, controller) in (tabBarController.viewControllers ?? []).enumerated() {
+            print("Tab \(i): \(controller.tabBarItem.title ?? "Unknown")")
+        }
+        
+        // Direct selection of the TodBite tab (index 4 based on screenshot)
+        if (tabBarController.viewControllers?.count ?? 0) > 4 {
+            // Show a flash animation on the tab bar item as visual feedback
+            if let tabItems = tabBarController.tabBar.items, tabItems.count > 4 {
+                let tabItem = tabItems[4]
+                let originalImage = tabItem.image
+                tabItem.image = UIImage(systemName: "checkmark.circle.fill")
                 
-                // Some apps might use the tab's title to identify it
-                if controller.tabBarItem.title == "TodBite" {
-                    tabBarController.selectedIndex = index
-                    return
+                // Reset after a brief delay
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                    tabItem.image = originalImage
+                    tabBarController.selectedIndex = 4
                 }
+            } else {
+                tabBarController.selectedIndex = 4
             }
-            
-            // If we couldn't find it by class or title, try the standard position (usually last tab)
-            if let lastIndex = tabBarController.viewControllers?.count, lastIndex > 0 {
-                tabBarController.selectedIndex = lastIndex - 1 // Try the last tab
+        }
+    }
+    
+    @objc private func handleTodaysBitesTouch(_ gesture: UITapGestureRecognizer) {
+        // Provide visual feedback when tapped
+        UIView.animate(withDuration: 0.1, animations: {
+            self.todaysBitesLabel.alpha = 0.5
+        }) { _ in
+            UIView.animate(withDuration: 0.1) {
+                self.todaysBitesLabel.alpha = 1.0
             }
         }
         
-        // As a fallback, post a notification for tab switching
-        NotificationCenter.default.post(name: NSNotification.Name("SwitchToTodBiteTab"), object: nil)
-        
-        print("✅ Attempting to navigate to TodBite tab")
+        // Also call the navigation method
+        openTodBiteViewController()
     }
+    
     @objc private func updateTodaysBites() {
         print("✅ Fetching Today's Bites...")
         
