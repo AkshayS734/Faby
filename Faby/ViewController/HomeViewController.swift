@@ -133,6 +133,15 @@ class HomeViewController: UIViewController {
         return indicator
     }()
     
+    // Activity indicator for general loading operations
+    private let activityIndicator: UIActivityIndicatorView = {
+        let indicator = UIActivityIndicatorView(style: .large)
+        indicator.hidesWhenStopped = true
+        indicator.color = .systemBlue
+        indicator.translatesAutoresizingMaskIntoConstraints = false
+        return indicator
+    }()
+    
     var todaysBitesData: [TodayBite] = []
     
     private let todaysBitesEmptyStateView: UIView = {
@@ -300,6 +309,7 @@ class HomeViewController: UIViewController {
         }
     }
     private func setupUI() {
+        view.backgroundColor = .systemBackground 
         view.addSubview(scrollView)
         scrollView.addSubview(contentView)
         
@@ -316,6 +326,9 @@ class HomeViewController: UIViewController {
         
         // Add loading indicator to the vaccine container view
         vaccineContainerView.addSubview(vaccinationLoadingIndicator)
+        
+        // Add activity indicator for general loading operations
+        view.addSubview(activityIndicator)
         
         // Add empty state views with proper hierarchy
         contentView.addSubview(todaysBitesEmptyStateView)
@@ -374,6 +387,10 @@ class HomeViewController: UIViewController {
             // Add constraints for the vaccination loading indicator
             vaccinationLoadingIndicator.centerXAnchor.constraint(equalTo: vaccineContainerView.centerXAnchor),
             vaccinationLoadingIndicator.centerYAnchor.constraint(equalTo: vaccineContainerView.centerYAnchor),
+            
+            // Add constraints for the general activity indicator
+            activityIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            activityIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor),
             
             // Card constraints
             todaysBitesEmptyStateView.topAnchor.constraint(equalTo: todaysBitesLabel.bottomAnchor, constant: 12),
@@ -1001,19 +1018,125 @@ class HomeViewController: UIViewController {
             self?.markVaccineAsAdministered(vaccineSchedule)
         }
         
-        // Add "No" action to dismiss
-        let noAction = UIAlertAction(title: "No", style: .cancel)
+        // Add "Reschedule" action instead of "No"
+        let rescheduleAction = UIAlertAction(title: "Reschedule", style: .default) { [weak self] _ in
+            self?.showDatePicker(for: vaccineSchedule, vaccineName: vaccineName)
+        }
         
         // Add "Remind Me Later" option
-        let remindLaterAction = UIAlertAction(title: "Remind Me Later", style: .default)
+        let remindLaterAction = UIAlertAction(title: "Remind Me Later", style: .cancel)
         
         // Add actions to the alert controller
         alert.addAction(yesAction)
+        alert.addAction(rescheduleAction)
         alert.addAction(remindLaterAction)
-        alert.addAction(noAction)
         
         // Present the alert
         present(alert, animated: true)
+    }
+    
+    /// Shows a date picker alert for rescheduling a vaccine
+    private func showDatePicker(for vaccineSchedule: VaccineSchedule, vaccineName: String) {
+        // Create alert controller with action sheet style
+        let alertController = UIAlertController(title: "Reschedule \(vaccineName)", message: "Select a new date", preferredStyle: .actionSheet)
+        
+        // Create custom view for date picker with sufficient height
+        let customView = UIView(frame: CGRect(x: 0, y: 0, width: alertController.view.bounds.width - 16, height: 380))
+        
+        // Create and configure date picker using iOS-native inline style
+        let datePicker = UIDatePicker()
+        datePicker.datePickerMode = .date
+        datePicker.preferredDatePickerStyle = .inline  // Modern iOS inline calendar style
+        
+        // Set minimum date to today (can't schedule in the past)
+        datePicker.minimumDate = Date()
+        
+        // Set the date to a week from now as default
+        datePicker.date = Calendar.current.date(byAdding: .day, value: 7, to: Date()) ?? Date()
+        
+        // Configure datePicker to properly fit in the view
+        datePicker.translatesAutoresizingMaskIntoConstraints = false
+        customView.addSubview(datePicker)
+        
+        // Add constraints to ensure datePicker is properly sized and positioned
+        NSLayoutConstraint.activate([
+            datePicker.topAnchor.constraint(equalTo: customView.topAnchor),
+            datePicker.leadingAnchor.constraint(equalTo: customView.leadingAnchor),
+            datePicker.trailingAnchor.constraint(equalTo: customView.trailingAnchor),
+            datePicker.bottomAnchor.constraint(equalTo: customView.bottomAnchor)
+        ])
+        
+        // Add custom view to alert
+        alertController.view.addSubview(customView)
+        
+        // Adjust alert height to accommodate date picker and prevent cut-off dates
+        let heightConstraint = NSLayoutConstraint(
+            item: alertController.view!,
+            attribute: .height,
+            relatedBy: .equal,
+            toItem: nil,
+            attribute: .notAnAttribute,
+            multiplier: 1,
+            constant: 580 // Increased height to ensure all dates are visible
+        )
+        alertController.view.addConstraint(heightConstraint)
+        
+        // Add actions
+        let updateAction = UIAlertAction(title: "Update", style: .default) { [weak self] _ in
+            guard let self = self else { return }
+            
+            // Start loading state
+            self.activityIndicator.startAnimating()
+            
+            // Get the selected date
+            let newDate = datePicker.date
+            
+            // Update the schedule in the database
+            Task {
+                do {
+                    try await self.updateVaccineScheduleDate(vaccineSchedule, newDate: newDate)
+                    
+                    // Once updated, reload vaccinations
+                    await MainActor.run {
+                        self.activityIndicator.stopAnimating()
+                        self.showToast(message: "Vaccine rescheduled successfully")
+                        self.loadVaccinations()
+                    }
+                } catch {
+                    print("❌ Error rescheduling vaccine: \(error)")
+                    
+                    await MainActor.run {
+                        self.activityIndicator.stopAnimating()
+                        self.showToast(message: "Failed to reschedule. Please try again.")
+                    }
+                }
+            }
+        }
+        
+        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
+        
+        alertController.addAction(updateAction)
+        alertController.addAction(cancelAction)
+        
+        // For iPad support
+        if let popoverController = alertController.popoverPresentationController {
+            popoverController.sourceView = view
+            popoverController.sourceRect = CGRect(x: view.bounds.midX, y: view.bounds.midY, width: 0, height: 0)
+            popoverController.permittedArrowDirections = []
+        }
+        
+        present(alertController, animated: true)
+    }
+    
+    /// Update the scheduled date for a vaccine
+    private func updateVaccineScheduleDate(_ vaccineSchedule: VaccineSchedule, newDate: Date) async throws {
+        // Use VaccineScheduleManager to update the schedule
+        try await VaccineScheduleManager.shared.updateSchedule(
+            recordId: vaccineSchedule.id,
+            newDate: newDate
+        )
+        
+        print("✅ Vaccine rescheduled successfully for date: \(newDate)")
     }
     
     /// Mark a vaccine as administered in the database
@@ -1058,6 +1181,52 @@ class HomeViewController: UIViewController {
                 }
             }
         }
+    }
+    
+    /// Shows a toast message with feedback
+    private func showToast(message: String) {
+        let toastContainer = UIView()
+        toastContainer.backgroundColor = UIColor.black.withAlphaComponent(0.7)
+        toastContainer.layer.cornerRadius = 16
+        toastContainer.clipsToBounds = true
+        toastContainer.translatesAutoresizingMaskIntoConstraints = false
+        
+        let toastLabel = UILabel()
+        toastLabel.textColor = .white
+        toastLabel.font = UIFont.systemFont(ofSize: 14, weight: .medium)
+        toastLabel.textAlignment = .center
+        toastLabel.text = message
+        toastLabel.numberOfLines = 0
+        toastLabel.translatesAutoresizingMaskIntoConstraints = false
+        
+        toastContainer.addSubview(toastLabel)
+        view.addSubview(toastContainer)
+        
+        // Set constraints
+        NSLayoutConstraint.activate([
+            toastLabel.topAnchor.constraint(equalTo: toastContainer.topAnchor, constant: 12),
+            toastLabel.leadingAnchor.constraint(equalTo: toastContainer.leadingAnchor, constant: 16),
+            toastLabel.trailingAnchor.constraint(equalTo: toastContainer.trailingAnchor, constant: -16),
+            toastLabel.bottomAnchor.constraint(equalTo: toastContainer.bottomAnchor, constant: -12),
+            
+            toastContainer.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            toastContainer.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -100),
+            toastContainer.leadingAnchor.constraint(greaterThanOrEqualTo: view.leadingAnchor, constant: 16),
+            toastContainer.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -16)
+        ])
+        
+        // Animate in
+        toastContainer.alpha = 0
+        UIView.animate(withDuration: 0.2, animations: {
+            toastContainer.alpha = 1
+        }, completion: { _ in
+            // Animate out after delay
+            UIView.animate(withDuration: 0.2, delay: 2.0, options: .curveEaseOut, animations: {
+                toastContainer.alpha = 0
+            }, completion: { _ in
+                toastContainer.removeFromSuperview()
+            })
+        })
     }
 }
 

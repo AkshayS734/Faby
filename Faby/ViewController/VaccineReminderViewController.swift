@@ -1464,7 +1464,7 @@ struct VaccinationCard: View {
                 
                 Spacer()
                 
-                Text(vaccination.isAdministered ? "Administered" : "Scheduled")
+                Text(vaccination.isAdministered ? "Administered" : "Rescheduled")
                     .font(.subheadline)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
