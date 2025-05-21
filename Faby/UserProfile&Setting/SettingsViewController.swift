@@ -123,8 +123,8 @@ class SettingsViewController: UIViewController, UICollectionViewDelegate, UIColl
     }
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        // Navigate to baby details view controller for editing
-        let babyDetailsVC = BabyEditViewController()
+        // Navigate to baby details view controller
+        let babyDetailsVC = BabyDetailViewController()
         navigationController?.pushViewController(babyDetailsVC, animated: true)
     }
     
@@ -284,11 +284,11 @@ class SettingsViewController: UIViewController, UICollectionViewDelegate, UIColl
     // MARK: - Data Methods
     
     func loadParentData() {
-        ParentDataController.shared.loadParentData { [weak self] success in
+        ProfileSettingDataController.shared.loadParentData { [weak self] success in
             guard let self = self, success else { return }
             
             // Update UI with parent data
-            ParentDataController.shared.updateParentProfileInSettings(viewController: self)
+            ProfileSettingDataController.shared.updateParentProfileInSettings(viewController: self)
         }
     }
     
@@ -314,6 +314,46 @@ class SettingsViewController: UIViewController, UICollectionViewDelegate, UIColl
     }
     
     func loadBabyImage(from urlString: String, completion: @escaping (UIImage?) -> Void) {
+        // Check if this is a public URL that needs to be converted to a signed URL
+        if urlString.contains("/object/public/babyimage/") {
+            // Extract the filename from the URL
+            if let range = urlString.range(of: "babyimage/") {
+                let startIndex = range.upperBound
+                let fileName = String(urlString[startIndex...])
+                print("🔍 Extracted file name from public URL: \(fileName)")
+                
+                // Create a signed URL using the Supabase client
+                Task {
+                    do {
+                        let client = AuthManager.shared.client
+                        print("🔍 Creating signed URL for baby image: \(fileName)")
+                        
+                        let signedURL = try await client.storage
+                            .from("babyimage")
+                            .createSignedURL(path: fileName, expiresIn: 3600 * 24) // 24 hour expiration
+                        
+                        let signedURLString = signedURL.absoluteString
+                        print("✅ Generated signed URL: \(signedURLString)")
+                        
+                        // Load the image using the signed URL
+                        self.loadImageFromURL(signedURLString, completion: completion)
+                    } catch {
+                        print("❌ Error creating signed URL: \(error.localizedDescription)")
+                        // Fall back to trying the public URL directly
+                        self.loadImageFromURL(urlString, completion: completion)
+                    }
+                }
+            } else {
+                // Couldn't extract filename, try with the URL as is
+                loadImageFromURL(urlString, completion: completion)
+            }
+        } else {
+            // Not a public URL or already a signed URL, use it directly
+            loadImageFromURL(urlString, completion: completion)
+        }
+    }
+    
+    private func loadImageFromURL(_ urlString: String, completion: @escaping (UIImage?) -> Void) {
         guard let url = URL(string: urlString) else {
             print("❌ Invalid baby image URL: \(urlString)")
             completion(nil)
@@ -356,12 +396,12 @@ class SettingsViewController: UIViewController, UICollectionViewDelegate, UIColl
     }
     
     func updateParentInfo(name: String, email: String) {
-        // This method will be called by ParentDataController to update parent info
+        // This method will be called by ProfileSettingDataController to update parent info
         // The table view doesn't need to be updated as it only shows navigation items
     }
     
     func updateParentProfileImage(image: UIImage?) {
-        // This method will be called by ParentDataController to update parent profile image
+        // This method will be called by ProfileSettingDataController to update parent profile image
         // The profile image is displayed in the baby profile cell, not for parent
     }
 }

@@ -7,6 +7,7 @@ class ParentInfoViewController: UIViewController, UIImagePickerControllerDelegat
     private let contentView = UIView()
     
     private let profileImageView = UIImageView()
+    private let changePhotoButton = UIButton(type: .system)
     private let nameLabel = UILabel()
     private let emailLabel = UILabel()
     private let phoneLabel = UILabel()
@@ -29,10 +30,12 @@ class ParentInfoViewController: UIViewController, UIImagePickerControllerDelegat
         title = "Parent Information"
         view.backgroundColor = .systemBackground
         
-        // Add tap gesture to profile image for editing
-        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(profileImageTapped))
-        profileImageView.isUserInteractionEnabled = true
-        profileImageView.addGestureRecognizer(tapGesture)
+        // Setup change photo button instead of tap gesture
+        changePhotoButton.translatesAutoresizingMaskIntoConstraints = false
+        changePhotoButton.setTitle("Change Photo", for: .normal)
+        changePhotoButton.setTitleColor(.systemBlue, for: .normal)
+        changePhotoButton.addTarget(self, action: #selector(changePhotoTapped), for: .touchUpInside)
+        contentView.addSubview(changePhotoButton)
         
         // Setup scroll view
         scrollView.translatesAutoresizingMaskIntoConstraints = false
@@ -97,14 +100,18 @@ class ParentInfoViewController: UIViewController, UIImagePickerControllerDelegat
             contentView.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
             
             // Profile image view constraints
-            profileImageView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 40),
             profileImageView.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
+            profileImageView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 20),
             profileImageView.widthAnchor.constraint(equalToConstant: 120),
             profileImageView.heightAnchor.constraint(equalToConstant: 120),
             
+            // Change photo button constraints
+            changePhotoButton.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
+            changePhotoButton.topAnchor.constraint(equalTo: profileImageView.bottomAnchor, constant: 10),
+            
             // Name label constraints
-            nameLabel.topAnchor.constraint(equalTo: profileImageView.bottomAnchor, constant: 20),
-            nameLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
+            nameLabel.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
+            nameLabel.topAnchor.constraint(equalTo: changePhotoButton.bottomAnchor, constant: 20),
             nameLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
             
             // Email label constraints
@@ -362,12 +369,12 @@ class ParentInfoViewController: UIViewController, UIImagePickerControllerDelegat
         present(alert, animated: true)
     }
     
-    @objc private func profileImageTapped() {
+    @objc private func changePhotoTapped() {
         let imagePicker = UIImagePickerController()
         imagePicker.delegate = self
         imagePicker.allowsEditing = true
         
-        let actionSheet = UIAlertController(title: "Change Profile Picture", message: nil, preferredStyle: .actionSheet)
+        let actionSheet = UIAlertController(title: "Select Photo Source", message: nil, preferredStyle: .actionSheet)
         
         if UIImagePickerController.isSourceTypeAvailable(.camera) {
             actionSheet.addAction(UIAlertAction(title: "Camera", style: .default, handler: { _ in
@@ -541,17 +548,25 @@ class ParentInfoViewController: UIViewController, UIImagePickerControllerDelegat
                 }
                 
                 let client = AuthManager.shared.getClient()
-                let fileName = "parent_image_\(userId).jpeg"
+                let fileName = "parent_\(userId)_\(Int(Date().timeIntervalSince1970)).jpg"
                 
-                // Upload image to Supabase storage
+                print("🔍 Attempting to upload parent profile image")
+                print("📊 Original image size: \(Double(imageData.count) / 1024.0)KB")
+                
+                // Use the postimages bucket which is known to work
+                print("📊 Uploading to postimages bucket...")
                 _ = try await client.storage
-                    .from("profile-images")
-                    .upload(fileName, data: imageData)
+                    .from("postimages")
+                    .upload(
+                        path: fileName,
+                        file: imageData
+                    )
                 
-                // Create a signed URL for the uploaded image
-                let signedURL = try await client.storage
-                    .from("profile-images")
-                    .createSignedURL(path: fileName, expiresIn: 31536000) // 1 year expiration
+                print("✅ Successfully uploaded parent profile image to storage")
+                
+                // Use the same public URL approach that works for baby images
+                let publicURL = "https://tmnltannywgqrrxavoge.supabase.co/storage/v1/object/public/postimages/\(fileName)"
+                print("📊 Generated public URL for parent image: \(publicURL)")
                 
                 // Create a struct that conforms to Encodable for the update operation
                 struct ImageUpdate: Encodable {
@@ -559,14 +574,22 @@ class ParentInfoViewController: UIViewController, UIImagePickerControllerDelegat
                 }
                 
                 // Update parent record with new image URL
-                _ = try await client.database
+                let response = try await client.database
                     .from("parents")
-                    .update(ImageUpdate(parentimage_url: signedURL.absoluteString))
+                    .update(ImageUpdate(parentimage_url: publicURL))
                     .eq("uid", value: userId)
                     .execute()
                 
+                print("📊 Database update status: \(response.status)")
+                
+                if response.status >= 200 && response.status < 300 {
+                    print("✅ Successfully updated parent record with new image URL")
+                } else {
+                    print("⚠️ Database update returned non-success status code: \(response.status)")
+                }
+                
                 // Update local parent data
-                self.parentData?.parentimage_url = signedURL.absoluteString
+                self.parentData?.parentimage_url = publicURL
                 
                 DispatchQueue.main.async { [weak self] in
                     guard let self = self else { return }

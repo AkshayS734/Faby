@@ -68,7 +68,7 @@ class SavedPostsViewController: UIViewController, UITableViewDelegate, UITableVi
         tableView.isHidden = true
         noPostsLabel.isHidden = true
         
-        SavedPostsDataController.shared.loadSavedPosts { [weak self] success in
+        ProfileSettingDataController.shared.loadSavedPosts { [weak self] success in
             guard let self = self else { return }
             
             self.loadingIndicator.stopAnimating()
@@ -80,7 +80,7 @@ class SavedPostsViewController: UIViewController, UITableViewDelegate, UITableVi
             }
             
             // Get posts from data controller
-            let posts = SavedPostsDataController.shared.getAllSavedPosts()
+            let posts = ProfileSettingDataController.shared.getAllSavedPosts()
             self.savedPosts = posts
             
             DispatchQueue.main.async {

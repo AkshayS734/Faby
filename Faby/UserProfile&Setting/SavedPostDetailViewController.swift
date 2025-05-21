@@ -243,7 +243,7 @@ class SavedPostDetailViewController: UIViewController {
             self.present(loadingAlert, animated: true)
             
             // Remove post from saved posts using the data controller
-            SavedPostsDataController.shared.removeFromSavedPosts(postId: self.post.postId) { success in
+            ProfileSettingDataController.shared.removeFromSavedPosts(postId: self.post.postId) { success in
                 DispatchQueue.main.async {
                     loadingAlert.dismiss(animated: true) {
                         if success {
