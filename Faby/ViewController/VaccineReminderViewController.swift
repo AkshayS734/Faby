@@ -1392,7 +1392,7 @@ struct VaccinationCard: View {
                             Text("Navigate")
                                 .font(.footnote)
                                 .fontWeight(.medium)
-                            Image(systemName: "map.fill")
+                            Image(systemName: "location.fill")
                                 .font(.footnote)
                         }
                         .padding(.horizontal, 8)

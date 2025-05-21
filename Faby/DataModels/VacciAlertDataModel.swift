@@ -12,13 +12,15 @@ struct Vaccine: Identifiable, Codable, Equatable {
     let startWeek: Int
     let endWeek: Int
     let description: String
+    let recommendedAgeText: String?
     
     // Implement Equatable to properly compare vaccine instances
     static func == (lhs: Vaccine, rhs: Vaccine) -> Bool {
         return lhs.id == rhs.id &&
                lhs.name == rhs.name &&
                lhs.startWeek == rhs.startWeek &&
-               lhs.endWeek == rhs.endWeek
+               lhs.endWeek == rhs.endWeek &&
+               lhs.recommendedAgeText == rhs.recommendedAgeText
     }
 }
 
