@@ -22,6 +22,16 @@ struct Vaccine: Identifiable, Codable, Equatable {
                lhs.endWeek == rhs.endWeek &&
                lhs.recommendedAgeText == rhs.recommendedAgeText
     }
+    
+    // Check if this vaccine is overdue based on a schedule
+    func isOverdue(scheduledDate: Date) -> Bool {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let scheduledDay = calendar.startOfDay(for: scheduledDate)
+        
+        // A vaccine is considered overdue if it was scheduled for yesterday or earlier
+        return scheduledDay < today
+    }
 }
 
 /// Record representing a vaccine schedule
@@ -43,6 +53,19 @@ struct VaccineSchedule: Codable, Identifiable, Equatable {
         case date
         case location
         case isAdministered = "is_administered"
+    }
+    
+    // Check if this schedule is overdue (was scheduled for yesterday or earlier and not administered)
+    var isOverdue: Bool {
+        if isAdministered {
+            return false // Already administered, not overdue
+        }
+        
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let scheduledDay = calendar.startOfDay(for: date)
+        
+        return scheduledDay < today
     }
 }
 

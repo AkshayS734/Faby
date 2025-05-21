@@ -183,6 +183,62 @@ class VaccineScheduleManager {
         }
     }
     
+    /// Fetch overdue vaccines (scheduled for yesterday or earlier and not yet administered)
+    func fetchOverdueVaccines() async throws -> [(VaccineSchedule, String)] {
+        guard let supabase = getSupabaseClient() else {
+            throw NSError(domain: "VacciAlertError", code: 1,
+                         userInfo: [NSLocalizedDescriptionKey: "Supabase client not available"])
+        }
+        
+        print("🔄 Fetching overdue vaccines...")
+        
+        // Fetch all non-administered vaccine schedules
+        let response = try await supabase.from("vaccination_schedules")
+            .select()
+            .eq("is_administered", value: false)
+            .execute()
+        
+        let data = response.data
+        let rawSchedules = try JSONDecoder().decode([SupabaseVaccineSchedule].self, from: data)
+        
+        // Filter to find overdue vaccines (scheduled for yesterday or earlier)
+        let today = Calendar.current.startOfDay(for: Date())
+        var overdueVaccines: [(VaccineSchedule, String)] = []
+        
+        // Create a FetchingVaccines instance to get vaccine names
+        let vaccinesFetcher = FetchingVaccines.shared
+        let allVaccines = try await vaccinesFetcher.fetchAllVaccines()
+        
+        for rawSchedule in rawSchedules {
+            let dateFormatter = ISO8601DateFormatter()
+            if let scheduledDate = dateFormatter.date(from: rawSchedule.date) {
+                // Check if the date is in the past (before today)
+                if Calendar.current.startOfDay(for: scheduledDate) < today {
+                    let schedule = VaccineSchedule(
+                        id: UUID(uuidString: rawSchedule.id) ?? UUID(),
+                        babyID: UUID(uuidString: rawSchedule.baby_id) ?? UUID(),
+                        vaccineId: UUID(uuidString: rawSchedule.vaccine_id) ?? UUID(),
+                        hospital: rawSchedule.hospital,
+                        date: scheduledDate,
+                        location: rawSchedule.location,
+                        isAdministered: rawSchedule.is_administered
+                    )
+                    
+                    // Find vaccine name
+                    var vaccineName = "Unknown Vaccine"
+                    if let vaccine = allVaccines.first(where: { $0.id == schedule.vaccineId }) {
+                        vaccineName = vaccine.name
+                    }
+                    
+                    overdueVaccines.append((schedule, vaccineName))
+                }
+            }
+        }
+        
+        print("🔍 Found \(overdueVaccines.count) overdue vaccines")
+        return overdueVaccines
+    }
+    
     /// Update an existing vaccination schedule
     func updateSchedule(recordId: UUID, newDate: Date, newHospital: Hospital? = nil) async throws {
         guard let supabase = getSupabaseClient() else {

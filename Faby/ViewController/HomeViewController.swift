@@ -256,6 +256,9 @@ class HomeViewController: UIViewController {
         updateSpecialMoments()
         // Always update Today's Bites when returning to this view
         updateTodaysBites()
+        
+        // Check for overdue vaccines when view appears
+        checkForOverdueVaccines()
     }
     
     override func viewWillDisappear(_ animated: Bool) {
@@ -949,6 +952,111 @@ class HomeViewController: UIViewController {
         } else {
             todaysBitesCollectionView.isHidden = false
             todaysBitesEmptyStateView.isHidden = true
+        }
+    }
+
+    // MARK: - Overdue Vaccine Check and Alert
+    
+    /// Check for any vaccines that were scheduled for yesterday or earlier and have not been administered
+    private func checkForOverdueVaccines() {
+        print("🔍 Checking for overdue vaccines...")
+        Task {
+            do {
+                // Fetch overdue vaccines using SupabaseVaccineManager
+                let overdueVaccines = try await SupabaseVaccineManager.shared.fetchOverdueVaccines()
+                
+                // If there are any overdue vaccines, show an alert on the main thread
+                if !overdueVaccines.isEmpty {
+                    await MainActor.run {
+                        // Show alert for the first overdue vaccine
+                        showOverdueVaccineAlert(for: overdueVaccines[0])
+                    }
+                } else {
+                    print("✅ No overdue vaccines found")
+                }
+            } catch {
+                print("❌ Error checking for overdue vaccines: \(error)")
+            }
+        }
+    }
+    
+    /// Show an Apple-native alert asking if the user has administered the overdue vaccine
+    private func showOverdueVaccineAlert(for vaccine: (VaccineSchedule, String)) {
+        let (vaccineSchedule, vaccineName) = vaccine
+        
+        // Format the date for display
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateStyle = .medium
+        let formattedDate = dateFormatter.string(from: vaccineSchedule.date)
+        
+        // Create an iOS-native alert controller
+        let alert = UIAlertController(
+            title: "Overdue Vaccination",
+            message: "The \(vaccineName) vaccine was scheduled for \(formattedDate). Has this vaccine been administered?",
+            preferredStyle: .alert
+        )
+        
+        // Add "Yes" action to mark as administered
+        let yesAction = UIAlertAction(title: "Yes", style: .default) { [weak self] _ in
+            self?.markVaccineAsAdministered(vaccineSchedule)
+        }
+        
+        // Add "No" action to dismiss
+        let noAction = UIAlertAction(title: "No", style: .cancel)
+        
+        // Add "Remind Me Later" option
+        let remindLaterAction = UIAlertAction(title: "Remind Me Later", style: .default)
+        
+        // Add actions to the alert controller
+        alert.addAction(yesAction)
+        alert.addAction(remindLaterAction)
+        alert.addAction(noAction)
+        
+        // Present the alert
+        present(alert, animated: true)
+    }
+    
+    /// Mark a vaccine as administered in the database
+    private func markVaccineAsAdministered(_ vaccine: VaccineSchedule) {
+        Task {
+            do {
+                // Use SupabaseVaccineManager to mark vaccine as administered
+                try await SupabaseVaccineManager.shared.markVaccineAsAdministered(
+                    scheduleId: vaccine.id.uuidString,
+                    administeredDate: Date()
+                )
+                
+                print("✅ Vaccine marked as administered: \(vaccine.id)")
+                
+                // Reload vaccinations to update the UI
+                await MainActor.run {
+                    self.loadVaccinations()
+                }
+                
+                // Show confirmation to the user
+                await MainActor.run {
+                    let confirmationAlert = UIAlertController(
+                        title: "Success",
+                        message: "The vaccine has been marked as administered.",
+                        preferredStyle: .alert
+                    )
+                    confirmationAlert.addAction(UIAlertAction(title: "OK", style: .default))
+                    self.present(confirmationAlert, animated: true)
+                }
+            } catch {
+                print("❌ Error marking vaccine as administered: \(error)")
+                
+                // Show error alert
+                await MainActor.run {
+                    let errorAlert = UIAlertController(
+                        title: "Error",
+                        message: "Failed to mark the vaccine as administered. Please try again.",
+                        preferredStyle: .alert
+                    )
+                    errorAlert.addAction(UIAlertAction(title: "OK", style: .default))
+                    self.present(errorAlert, animated: true)
+                }
+            }
         }
     }
 }

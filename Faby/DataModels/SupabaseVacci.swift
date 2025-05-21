@@ -116,6 +116,59 @@ class SupabaseVaccineManager {
         }
     }
     
+    /// Fetch overdue vaccines (scheduled for yesterday or earlier)
+    func fetchOverdueVaccines() async throws -> [(VaccineSchedule, String)] {
+        guard let client = client else {
+            throw NSError(domain: "VacciAlertError", code: 1,
+                         userInfo: [NSLocalizedDescriptionKey: "Supabase client not available"])
+        }
+        
+        // Get all scheduled vaccines
+        let response = try await client
+            .from("vaccination_schedules")
+            .select()
+            .eq("is_administered", value: false)
+            .execute()
+        
+        // Convert response to VaccineSchedule objects
+        let decoder = JSONDecoder()
+        let rawSchedules = try decoder.decode([SupabaseVaccineSchedule].self, from: response.data)
+        
+        // Filter to find overdue vaccines (scheduled for yesterday or earlier)
+        let today = Calendar.current.startOfDay(for: Date())
+        var overdueVaccines: [(VaccineSchedule, String)] = []
+        
+        for rawSchedule in rawSchedules {
+            let dateFormatter = ISO8601DateFormatter()
+            if let scheduledDate = dateFormatter.date(from: rawSchedule.date) {
+                // Check if the date is in the past (before today)
+                if Calendar.current.startOfDay(for: scheduledDate) < today {
+                    let schedule = VaccineSchedule(
+                        id: UUID(uuidString: rawSchedule.id) ?? UUID(),
+                        babyID: UUID(uuidString: rawSchedule.baby_id) ?? UUID(),
+                        vaccineId: UUID(uuidString: rawSchedule.vaccine_id) ?? UUID(),
+                        hospital: rawSchedule.hospital,
+                        date: scheduledDate,
+                        location: rawSchedule.location,
+                        isAdministered: rawSchedule.is_administered
+                    )
+                    
+                    // Fetch the vaccine name
+                    let allVaccines = try await self.fetchAllVaccines()
+                    var vaccineName = "Unknown Vaccine"
+                    
+                    if let vaccine = allVaccines.first(where: { $0.id == schedule.vaccineId }) {
+                        vaccineName = vaccine.name
+                    }
+                    
+                    overdueVaccines.append((schedule, vaccineName))
+                }
+            }
+        }
+        
+        return overdueVaccines
+    }
+    
     /// Fetch all scheduled vaccinations for a specific baby
     func fetchVaccineSchedules(forBabyId babyId: String) async throws -> [VaccineSchedule] {
         guard let client = client else {
