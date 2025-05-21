@@ -31,6 +31,15 @@ class SettingsViewController: UIViewController, UICollectionViewDelegate, UIColl
         setupCollectionView()
         setupTableView()
         setupLayout()
+        loadParentData()
+        loadBabyData()
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        // Refresh parent data when view appears
+        loadParentData()
+        loadBabyData()
     }
     
     func setupSearchBar() {
@@ -111,9 +120,76 @@ class SettingsViewController: UIViewController, UICollectionViewDelegate, UIColl
         return 1
     }
     
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        // Navigate to baby details view controller for editing
+        let babyDetailsVC = BabyEditViewController()
+        navigationController?.pushViewController(babyDetailsVC, animated: true)
+    }
+    
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "ProfileCell", for: indexPath) as! ProfileCollectionViewCell
-        cell.configure(image: UIImage(named: "profile_picture"), name: "Deepak Prajapati", details: ["03 Dec", "Boy", "70 cm", "12.0 kg"])
+        
+        if let baby = DataController.shared.baby {
+            // Format date of birth
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateFormat = "yyyy-MM-dd"
+            
+            let displayDateFormatter = DateFormatter()
+            displayDateFormatter.dateFormat = "dd MMM yyyy"
+            
+            var dobFormatted = baby.dateOfBirth
+            if let date = dateFormatter.date(from: baby.dateOfBirth) {
+                dobFormatted = displayDateFormatter.string(from: date)
+            }
+            
+            // Get latest height and weight measurements if available
+            var heightStr = "--"
+            var weightStr = "--"
+            
+            if let latestHeight = baby.heightMeasurements.sorted(by: { $0.date > $1.date }).first {
+                heightStr = "\(Int(latestHeight.value)) cm"
+            }
+            
+            if let latestWeight = baby.weightMeasurements.sorted(by: { $0.date > $1.date }).first {
+                weightStr = "\(String(format: "%.1f", latestWeight.value)) kg"
+            }
+            
+            // Create details array
+            let babyDetails = [
+                dobFormatted,
+                baby.gender.rawValue.capitalized,
+                heightStr,
+                weightStr
+            ]
+            
+            // Load baby image if available
+            var babyImage: UIImage? = UIImage(named: "profile_picture")
+            
+            // Debug baby image URL
+            print("📷 Baby image URL: \(baby.imageURL ?? "nil")")
+            
+            if let imageURL = baby.imageURL, !imageURL.isEmpty {
+                print("📷 Attempting to load baby image from URL: \(imageURL)")
+                loadBabyImage(from: imageURL) { image in
+                    if let image = image {
+                        print("✅ Successfully loaded baby image")
+                        DispatchQueue.main.async {
+                            cell.imageView.image = image
+                        }
+                    } else {
+                        print("❌ Failed to load baby image from URL")
+                    }
+                }
+            } else {
+                print("❌ No baby image URL available")
+            }
+            
+            cell.configure(image: babyImage, name: baby.name, details: babyDetails)
+        } else {
+            // Configure with default values if no baby data is available
+            cell.configure(image: UIImage(named: "profile_picture"), name: "Baby", details: ["--", "--", "--", "--"])
+        }
+        
         return cell
     }
     
@@ -168,6 +244,10 @@ class SettingsViewController: UIViewController, UICollectionViewDelegate, UIColl
         let selectedItem = filteredTableItems[indexPath.section][indexPath.row]
         
         switch (selectedSection, selectedItem) {
+        case ("PARENT PROFILE", "Parents Info"):
+            let parentInfoVC = ParentInfoViewController()
+            navigationController?.pushViewController(parentInfoVC, animated: true)
+            
         case ("VACCITIME", "Administered Vaccines"):
             let savedVaccineVC = SavedVaccineViewController()
             navigationController?.pushViewController(savedVaccineVC, animated: true)
@@ -193,6 +273,90 @@ class SettingsViewController: UIViewController, UICollectionViewDelegate, UIColl
         }
         
         tableView.deselectRow(at: indexPath, animated: true)
+    }
+    
+    // MARK: - Data Methods
+    
+    func loadParentData() {
+        ParentDataController.shared.loadParentData { [weak self] success in
+            guard let self = self, success else { return }
+            
+            // Update UI with parent data
+            ParentDataController.shared.updateParentProfileInSettings(viewController: self)
+        }
+    }
+    
+    func loadBabyData() {
+        Task {
+            print("🔍 Loading baby data from DataController...")
+            await DataController.shared.loadBabyData()
+            
+            // Debug baby data
+            if let baby = DataController.shared.baby {
+                print("✅ Baby data loaded: \(baby.name), DOB: \(baby.dateOfBirth), Gender: \(baby.gender.rawValue)")
+                print("📷 Baby image URL: \(baby.imageURL ?? "nil")")
+                print("📊 Height measurements: \(baby.heightMeasurements.count)")
+                print("📊 Weight measurements: \(baby.weightMeasurements.count)")
+            } else {
+                print("❌ Failed to load baby data")
+            }
+            
+            DispatchQueue.main.async { [weak self] in
+                self?.collectionView.reloadData()
+            }
+        }
+    }
+    
+    func loadBabyImage(from urlString: String, completion: @escaping (UIImage?) -> Void) {
+        guard let url = URL(string: urlString) else {
+            print("❌ Invalid baby image URL: \(urlString)")
+            completion(nil)
+            return
+        }
+        
+        print("🔍 Starting URLSession task to load baby image from: \(url)")
+        
+        URLSession.shared.dataTask(with: url) { data, response, error in
+            if let error = error {
+                print("❌ Error loading baby image: \(error.localizedDescription)")
+                completion(nil)
+                return
+            }
+            
+            if let httpResponse = response as? HTTPURLResponse {
+                print("📊 Baby image HTTP response status code: \(httpResponse.statusCode)")
+                if httpResponse.statusCode != 200 {
+                    print("❌ Bad HTTP response for baby image: \(httpResponse.statusCode)")
+                    completion(nil)
+                    return
+                }
+            }
+            
+            guard let data = data, !data.isEmpty else {
+                print("❌ No data received for baby image")
+                completion(nil)
+                return
+            }
+            
+            guard let image = UIImage(data: data) else {
+                print("❌ Failed to decode baby image data")
+                completion(nil)
+                return
+            }
+            
+            print("✅ Successfully loaded baby image, size: \(image.size)")
+            completion(image)
+        }.resume()
+    }
+    
+    func updateParentInfo(name: String, email: String) {
+        // This method will be called by ParentDataController to update parent info
+        // The table view doesn't need to be updated as it only shows navigation items
+    }
+    
+    func updateParentProfileImage(image: UIImage?) {
+        // This method will be called by ParentDataController to update parent profile image
+        // The profile image is displayed in the baby profile cell, not for parent
     }
 }
 
