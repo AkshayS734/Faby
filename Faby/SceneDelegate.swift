@@ -17,27 +17,57 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
         // Use this method to optionally configure and attach the UIWindow `window` to the provided UIWindowScene `scene`.
-        // If using a storyboard, the `window` property will automatically be initialized and attached to the scene.
-        // This delegate does not imply the connecting scene or session are new (see `application:configurationForConnectingSceneSession` instead).
         guard let windowScene = (scene as? UIWindowScene) else { return }
         
         // Create a new UIWindow using the windowScene constructor
         let window = UIWindow(windowScene: windowScene)
-        
-        // For testing purposes, reset onboarding status to ensure walkthrough shows first
-        UserDefaults.standard.set(false, forKey: "onboardingComplete")
-        
-        // Check if onboarding has been completed before
-        let onboardingComplete = UserDefaults.standard.bool(forKey: "onboardingComplete")
-        
-        // Create WalkthroughViewController programmatically
-        // This approach overrides any storyboard settings and ensures the walkthrough is displayed first
-        let walkthrough = WalkthroughViewController()
-        window.rootViewController = walkthrough
-        
-        // Set the window and make it visible
         self.window = window
+        
+        // Display a loading view initially while we check authentication
+        let loadingVC = UIViewController()
+        loadingVC.view.backgroundColor = .systemBackground
+        let activityIndicator = UIActivityIndicatorView(style: .large)
+        activityIndicator.center = loadingVC.view.center
+        activityIndicator.startAnimating()
+        loadingVC.view.addSubview(activityIndicator)
+        window.rootViewController = loadingVC
         window.makeKeyAndVisible()
+        
+        // Check authentication state asynchronously
+        Task {
+            // Attempt to restore session from persistent storage
+            await AuthManager.shared.restoreSession()
+            
+            // Check if user is logged in after session restore attempt
+            await MainActor.run {
+                // Decide which screen to show based on authentication state
+                if AuthManager.shared.isUserLoggedIn {
+                    print("✅ SceneDelegate: User is logged in, showing main app")
+                    // User is logged in, go to main app
+                    setupMainAppUI(window: window)
+                } else {
+                    print("👋 SceneDelegate: User is not logged in, showing walkthrough")
+                    // User is not logged in, show walkthrough
+                    let walkthrough = WalkthroughViewController()
+                    UIView.transition(with: window, 
+                                      duration: 0.3, 
+                                      options: .transitionCrossDissolve, 
+                                      animations: { window.rootViewController = walkthrough },
+                                      completion: nil)
+                }
+            }
+        }
+    }
+    
+    // Helper method to set up the main app UI
+    func setupMainAppUI(window: UIWindow) {
+        // Load the Main storyboard
+        let storyboard = UIStoryboard(name: "Main", bundle: nil)
+        
+        // Load the tab bar controller from the storyboard
+        if let mainTabBarController = storyboard.instantiateViewController(withIdentifier: "MainTabBarController") as? UITabBarController {
+            window.rootViewController = mainTabBarController
+        }
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {

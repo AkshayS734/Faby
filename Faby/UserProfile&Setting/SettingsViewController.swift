@@ -1,4 +1,5 @@
 import UIKit
+import Supabase
 
 // Import Deepak_Todbite module to access FeedingPlanHistoryViewController
 class SettingsViewController: UIViewController, UICollectionViewDelegate, UICollectionViewDataSource, UITableViewDelegate, UITableViewDataSource, UISearchBarDelegate {
@@ -7,14 +8,15 @@ class SettingsViewController: UIViewController, UICollectionViewDelegate, UIColl
     var tableView: UITableView!
     var searchBar: UISearchBar!
     
-    let tableSections = ["PARENT PROFILE", "VACCITIME", "GROWTRACK", "TODDLER TALK", "TODBITE", "HELP & SUPPORT"]
+    let tableSections = ["PARENT PROFILE", "VACCITIME", "GROWTRACK", "TODDLER TALK", "TODBITE", "HELP & SUPPORT", "ACCOUNT"]
     var filteredTableItems: [[String]] = [
         ["Parents Info"],
         ["Administered Vaccines"],
         ["Milestone track"],
         ["Saved Posts"],
         ["Today's meal", "Your plan"],
-        ["Contact support", "FAQs", "Submit feedback"]
+        ["Contact support", "FAQs", "Submit feedback"],
+        ["Sign Out"]
     ]
     let tableItems = [
         ["Parents Info"],
@@ -22,7 +24,8 @@ class SettingsViewController: UIViewController, UICollectionViewDelegate, UIColl
         ["Milestone track"],
         ["Saved Posts"],
         ["Today's meal", "Your plan"],
-        ["Contact support", "FAQs", "Submit feedback"]
+        ["Contact support", "FAQs", "Submit feedback"],
+        ["Sign Out"]
     ]
     
     override func viewDidLoad() {
@@ -208,6 +211,14 @@ class SettingsViewController: UIViewController, UICollectionViewDelegate, UIColl
         let cell = tableView.dequeueReusableCell(withIdentifier: "ArrowCell", for: indexPath) as! TableViewCellWithArrow
         let title = filteredTableItems[indexPath.section][indexPath.row]
         cell.configure(with: title)
+        
+        // Make the Sign Out cell stand out with red text
+        if tableSections[indexPath.section] == "ACCOUNT" && title == "Sign Out" {
+            cell.titleLabel.textColor = .systemRed
+        } else {
+            cell.titleLabel.textColor = .label
+        }
+        
         return cell
     }
     
@@ -274,6 +285,10 @@ class SettingsViewController: UIViewController, UICollectionViewDelegate, UIColl
             let feedingPlanHistoryVC = FeedingPlanHistoryViewController()
             navigationController?.pushViewController(feedingPlanHistoryVC, animated: true)
             
+        case ("ACCOUNT", "Sign Out"):
+            // Handle sign out action
+            showSignOutConfirmation()
+            
         default:
             break
         }
@@ -311,6 +326,104 @@ class SettingsViewController: UIViewController, UICollectionViewDelegate, UIColl
                 self?.collectionView.reloadData()
             }
         }
+    }
+    
+    // MARK: - Sign Out Functionality
+    
+    func showSignOutConfirmation() {
+        let alertController = UIAlertController(
+            title: "Sign Out",
+            message: "Are you sure you want to sign out?",
+            preferredStyle: .alert
+        )
+        
+        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
+        
+        let signOutAction = UIAlertAction(title: "Sign Out", style: .destructive) { [weak self] _ in
+            self?.signOut()
+        }
+        
+        alertController.addAction(cancelAction)
+        alertController.addAction(signOutAction)
+        
+        present(alertController, animated: true)
+    }
+    
+    func signOut() {
+        // Show loading indicator
+        let loadingAlert = UIAlertController(title: nil, message: "Signing out...", preferredStyle: .alert)
+        let loadingIndicator = UIActivityIndicatorView(frame: CGRect(x: 10, y: 5, width: 50, height: 50))
+        loadingIndicator.hidesWhenStopped = true
+        loadingIndicator.style = .medium
+        loadingIndicator.startAnimating()
+        loadingAlert.view.addSubview(loadingIndicator)
+        present(loadingAlert, animated: true)
+        
+        // Call sign out method asynchronously
+        Task {
+            do {
+                try await AuthManager.shared.signOut()
+                
+                // Dismiss loading alert
+                await MainActor.run {
+                    loadingAlert.dismiss(animated: true) {
+                        // Present auth view controller
+                        self.presentAuthViewController()
+                    }
+                }
+            } catch {
+                // Handle error
+                await MainActor.run {
+                    loadingAlert.dismiss(animated: true) {
+                        self.showAlert(title: "Sign Out Failed", message: error.localizedDescription)
+                    }
+                }
+            }
+        }
+    }
+    
+    func presentAuthViewController() {
+        // Create auth view controller
+        let authVC = AuthViewController()
+        
+        // Wrap it in a navigation controller
+        let navController = UINavigationController(rootViewController: authVC)
+        navController.modalPresentationStyle = .fullScreen
+        
+        // Remove the possibility of going back
+        navController.isNavigationBarHidden = true
+        
+        // Set the auth view controller as the root view controller of the app window
+        // This completely resets the app state and prevents going back
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let delegate = windowScene.delegate as? SceneDelegate,
+           let window = delegate.window {
+            // Replace the root view controller
+            window.rootViewController = navController
+            
+            // Add a smooth transition animation
+            UIView.transition(with: window, 
+                              duration: 0.3,
+                              options: .transitionCrossDissolve,
+                              animations: nil,
+                              completion: nil)
+        } else {
+            // Fallback approach for older iOS versions
+            guard let window = UIApplication.shared.windows.first else { return }
+            window.rootViewController = navController
+            window.makeKeyAndVisible()
+        }
+    }
+    
+    func showAlert(title: String, message: String) {
+        let alertController = UIAlertController(
+            title: title,
+            message: message,
+            preferredStyle: .alert
+        )
+        let okAction = UIAlertAction(title: "OK", style: .default)
+        alertController.addAction(okAction)
+        present(alertController, animated: true)
     }
     
     func loadBabyImage(from urlString: String, completion: @escaping (UIImage?) -> Void) {
