@@ -1,5 +1,6 @@
 import UIKit
 import Foundation
+import PDFKit
 
 class SelectedVaccinesViewController: UIViewController {
     
@@ -163,8 +164,8 @@ class SelectedVaccinesViewController: UIViewController {
             dateLabel.text = "Adminstered on: \(dateFormatter.string(from: selectedDate))"
             dateLabel.textColor = .systemGreen
         } else {
-            dateLabel.text = "Date not selected"
-            dateLabel.textColor = .secondaryLabel
+            dateLabel.text = "Tap to add administration date"
+            dateLabel.textColor = .systemBlue
         }
         
         dateLabel.font = .systemFont(ofSize: 14)
@@ -197,12 +198,10 @@ class SelectedVaccinesViewController: UIViewController {
             dateLabel.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -16)
         ])
         
-        // Add tap gesture only if there's no scheduled date
-        if selectedDates[vaccine.name] == nil {
+        // Add tap gesture to all cards, so user can add or update date
             let tapGesture = UITapGestureRecognizer(target: self, action: #selector(vaccineCardTapped(_:)))
             cardView.addGestureRecognizer(tapGesture)
             cardView.isUserInteractionEnabled = true
-        }
         
         return cardView
     }
@@ -213,45 +212,428 @@ class SelectedVaccinesViewController: UIViewController {
     }
     
     @objc private func printButtonTapped() {
-        // Create a print formatter for the content
-        let formatter = UIMarkupTextPrintFormatter(markupText: generatePrintContent())
+        // Show loading indicator
+        let loadingIndicator = UIActivityIndicatorView(style: .large)
+        loadingIndicator.center = view.center
+        loadingIndicator.startAnimating()
+        view.addSubview(loadingIndicator)
         
-        // Create print controller
-        let printController = UIPrintInteractionController.shared
-        printController.printFormatter = formatter
+        // Disable the print button while generating PDF
+        navigationItem.rightBarButtonItem?.isEnabled = false
         
-        // Configure printing
-        let printInfo = UIPrintInfo(dictionary: nil)
-        printInfo.outputType = .general
-        printInfo.jobName = "Selected Vaccines"
-        printController.printInfo = printInfo
-        
-        // Present printing options
-        printController.present(animated: true)
+        Task {
+            do {
+                // Try to fetch baby data
+                let baby = try await fetchFirstConnectedBaby()
+                
+                // Create fake parent data from UserDefaults
+                let parentName = UserDefaults.standard.string(forKey: "parentName") ?? "Parent"
+                
+                await MainActor.run {
+                    generateAndSharePDF(babyName: baby.name, babyDOB: baby.dateOfBirth, babyGender: baby.gender == .male ? "Male" : "Female", parentName: parentName)
+                    loadingIndicator.removeFromSuperview()
+                    navigationItem.rightBarButtonItem?.isEnabled = true
+                }
+            } catch {
+                print("❌ Error fetching baby: \(error)")
+                
+                await MainActor.run {
+                    // Fall back to generic data if we can't fetch baby info
+                    generateAndSharePDF()
+                    loadingIndicator.removeFromSuperview()
+                    navigationItem.rightBarButtonItem?.isEnabled = true
+                }
+            }
+        }
     }
     
-    private func generatePrintContent() -> String {
-        var content = "<h1>Selected Vaccines</h1>"
-        content += "<p>Total vaccines selected: \(selectedVaccines.count)</p>"
+    // Generate and share PDF with vaccination records in a card format
+    private func generateAndSharePDF(babyName: String = "Baby", babyDOB: String = "Unknown", babyGender: String = "Unknown", parentName: String = "Parent") {
+        // Create PDF renderer with A4 portrait size
+        let pageWidth = 8.5 * 72.0
+        let pageHeight = 11.0 * 72.0
+        let pageRect = CGRect(x: 0, y: 0, width: pageWidth, height: pageHeight)
         
-        for vaccine in selectedVaccines {
-            content += "<div style='margin: 10px 0;'>"
-            content += "<h3>\(vaccine.name)</h3>"
+        // Define colors to be used consistently across all pages
+        let backgroundColor = UIColor(red: 0.98, green: 0.96, blue: 0.94, alpha: 1.0)
+        let primaryTextColor = UIColor(red: 0.25, green: 0.40, blue: 0.55, alpha: 1.0) // Dark blue
+        let secondaryTextColor = UIColor(red: 0.92, green: 0.55, blue: 0.45, alpha: 1.0) // Coral
+        let tableHeaderColor = UIColor(red: 0.92, green: 0.55, blue: 0.45, alpha: 1.0) // Coral
+        
+        let renderer = UIGraphicsPDFRenderer(bounds: pageRect)
+        
+        // Generate PDF data
+        let data = renderer.pdfData { context in
+            context.beginPage()
             
-            // Add scheduled date if available
-            if let scheduledDate = selectedDates[vaccine.name] {
-                let dateFormatter = DateFormatter()
-                dateFormatter.dateStyle = .long
-                content += "<p><strong>Scheduled: \(dateFormatter.string(from: scheduledDate))</strong></p>"
-            } else {
-                content += "<p>Not scheduled</p>"
+            // Draw background
+            backgroundColor.setFill()
+            UIRectFill(pageRect)
+        
+            // Draw dotted border
+            let borderRect = CGRect(x: 60, y: 60, width: pageWidth - 120, height: pageHeight - 120)
+            let borderPath = UIBezierPath(rect: borderRect)
+            borderPath.lineWidth = 1.0
+            
+            // Create a dotted pattern
+            context.cgContext.setLineDash(phase: 0, lengths: [3, 3])
+            context.cgContext.setStrokeColor(UIColor.lightGray.cgColor)
+            context.cgContext.addPath(borderPath.cgPath)
+            context.cgContext.strokePath()
+            
+            // Reset line dash
+            context.cgContext.setLineDash(phase: 0, lengths: [])
+            
+            // Draw baby icon
+            if let babyImage = UIImage(systemName: "face.smiling.fill") {
+                let iconSize: CGFloat = 80
+                let iconRect = CGRect(
+                    x: pageWidth - 150,
+                    y: 100,
+                    width: iconSize,
+                    height: iconSize
+                )
+                
+                // Create a circular background
+                context.cgContext.setFillColor(UIColor(red: 1.0, green: 0.9, blue: 0.85, alpha: 1.0).cgColor)
+                context.cgContext.fillEllipse(in: iconRect)
+                
+                // Draw the icon
+                babyImage.withTintColor(primaryTextColor).draw(in: iconRect.insetBy(dx: 15, dy: 15))
             }
             
-            content += "<p>\(vaccine.description)</p>"
-            content += "</div>"
+            // Add title
+            let titleText = "VACCINATION"
+            let titleFont = UIFont.systemFont(ofSize: 36, weight: .bold)
+            let titleAttributes: [NSAttributedString.Key: Any] = [
+                .font: titleFont,
+                .foregroundColor: primaryTextColor
+            ]
+            
+            titleText.draw(at: CGPoint(x: 100, y: 100), withAttributes: titleAttributes)
+            
+            // Add subtitle
+            let subtitleText = "RECORD"
+            let subtitleFont = UIFont.systemFont(ofSize: 36, weight: .bold)
+            let subtitleAttributes: [NSAttributedString.Key: Any] = [
+                .font: subtitleFont,
+                .foregroundColor: primaryTextColor
+            ]
+            
+            subtitleText.draw(at: CGPoint(x: 100, y: 150), withAttributes: subtitleAttributes)
+            
+            // Add baby information
+            var currentY: CGFloat = 250
+            
+            // Name
+            drawInfoField(label: "Name", value: babyName, y: currentY, primaryColor: primaryTextColor, secondaryColor: secondaryTextColor)
+            currentY += 50
+            
+            // Date of Birth
+            drawInfoField(label: "Date of Birth", value: babyDOB, y: currentY, primaryColor: primaryTextColor, secondaryColor: secondaryTextColor)
+            currentY += 50
+            
+            // Gender
+            drawInfoField(label: "Gender", value: babyGender, y: currentY, primaryColor: primaryTextColor, secondaryColor: secondaryTextColor)
+            currentY += 50
+            
+            // Parent
+            drawInfoField(label: "Parent", value: parentName, y: currentY, primaryColor: primaryTextColor, secondaryColor: secondaryTextColor)
+            currentY += 70
+            
+            // Draw vaccination table
+            drawVaccinationTable(context: context, startY: currentY, pageWidth: pageWidth,
+                                backgroundColor: backgroundColor, headerColor: tableHeaderColor,
+                                textColor: primaryTextColor)
         }
         
-        return content
+        // Create a temporary file URL to store the PDF
+        let temporaryDirectoryURL = FileManager.default.temporaryDirectory
+        let temporaryFileURL = temporaryDirectoryURL.appendingPathComponent("\(babyName)_Vaccination_Record.pdf")
+        
+        // Write PDF data to file
+        do {
+            try data.write(to: temporaryFileURL)
+            
+            // Share the PDF file
+            let activityViewController = UIActivityViewController(
+                activityItems: [temporaryFileURL],
+                applicationActivities: nil
+            )
+            
+            // Configure the activity view controller
+            activityViewController.excludedActivityTypes = [
+                .assignToContact,
+                .postToFlickr,
+                .postToVimeo,
+                .postToWeibo,
+                .saveToCameraRoll
+            ]
+            
+            // For iPad, set the popover presentation controller
+            if let popoverController = activityViewController.popoverPresentationController {
+                popoverController.barButtonItem = navigationItem.rightBarButtonItem
+            }
+            
+            // Present the activity view controller
+            present(activityViewController, animated: true)
+        } catch {
+            print("Error writing PDF: \(error)")
+            
+            let alert = UIAlertController(
+                title: "Error",
+                message: "Could not generate vaccination record. Please try again.",
+                preferredStyle: .alert
+            )
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            present(alert, animated: true)
+        }
+    }
+    
+    // Helper method to draw an information field with label and value
+    private func drawInfoField(label: String, value: String, y: CGFloat, primaryColor: UIColor, secondaryColor: UIColor) {
+        let labelFont = UIFont.systemFont(ofSize: 16, weight: .bold)
+        let labelAttributes: [NSAttributedString.Key: Any] = [
+            .font: labelFont,
+            .foregroundColor: primaryColor
+        ]
+        
+        let valueFont = UIFont.systemFont(ofSize: 20, weight: .regular)
+        let valueAttributes: [NSAttributedString.Key: Any] = [
+            .font: valueFont,
+            .foregroundColor: secondaryColor
+        ]
+        
+        // Draw label
+        label.draw(at: CGPoint(x: 100, y: y), withAttributes: labelAttributes)
+        
+        // Draw value
+        value.draw(at: CGPoint(x: 220, y: y), withAttributes: valueAttributes)
+    }
+    
+    // Helper method to draw the vaccination table
+    private func drawVaccinationTable(context: UIGraphicsPDFRendererContext, startY: CGFloat, pageWidth: CGFloat,
+                                     backgroundColor: UIColor, headerColor: UIColor, textColor: UIColor) {
+        let tableWidth = pageWidth - 200
+        let tableX = 100.0
+        var currentY = startY
+        
+        // Organize vaccines by timeframe
+        let organizedVaccines = organizeVaccinesByTimeframe()
+        
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateStyle = .medium
+        
+        // Draw a section for each timeframe
+        for (timeframe, vaccines) in organizedVaccines {
+            // Draw timeframe header
+            let timeframeFont = UIFont.systemFont(ofSize: 18, weight: .bold)
+            let timeframeAttributes: [NSAttributedString.Key: Any] = [
+                .font: timeframeFont,
+                .foregroundColor: textColor
+            ]
+            
+            timeframe.uppercased().draw(at: CGPoint(x: tableX, y: currentY), withAttributes: timeframeAttributes)
+            currentY += 30
+            
+            // Draw table header
+            let headerHeight = 40.0
+            let headerRect = CGRect(x: tableX, y: currentY, width: tableWidth, height: headerHeight)
+            headerColor.setFill()
+            UIRectFill(headerRect)
+            
+            // Draw header text
+            let nameHeaderWidth = tableWidth * 0.6
+            let dateHeaderWidth = tableWidth * 0.4
+            
+            let headerFont = UIFont.systemFont(ofSize: 16, weight: .bold)
+            let headerAttributes: [NSAttributedString.Key: Any] = [
+                .font: headerFont,
+                .foregroundColor: UIColor.white
+            ]
+            
+            "Vaccine Name".draw(at: CGPoint(x: tableX + 10, y: currentY + 12), withAttributes: headerAttributes)
+            "Administered Date".draw(at: CGPoint(x: tableX + nameHeaderWidth + 10, y: currentY + 12), withAttributes: headerAttributes)
+            
+            // Draw header divider
+            context.cgContext.setStrokeColor(UIColor.white.cgColor)
+            context.cgContext.setLineWidth(1.0)
+            context.cgContext.move(to: CGPoint(x: tableX + nameHeaderWidth, y: currentY))
+            context.cgContext.addLine(to: CGPoint(x: tableX + nameHeaderWidth, y: currentY + headerHeight))
+            context.cgContext.strokePath()
+            
+            currentY += headerHeight
+            
+            // Draw rows
+            let rowHeight = 35.0
+            let rowFont = UIFont.systemFont(ofSize: 14)
+            let rowAttributes: [NSAttributedString.Key: Any] = [
+                .font: rowFont,
+                .foregroundColor: textColor
+            ]
+            
+            // Draw table rows for each vaccine in this timeframe
+            for vaccine in vaccines {
+                // Draw row background
+                let rowRect = CGRect(x: tableX, y: currentY, width: tableWidth, height: rowHeight)
+                backgroundColor.setFill()
+                UIRectFill(rowRect)
+                
+                // Draw border
+                context.cgContext.setStrokeColor(UIColor.lightGray.cgColor)
+                context.cgContext.setLineWidth(0.5)
+                context.cgContext.stroke(rowRect)
+                
+                // Draw vertical divider
+                context.cgContext.move(to: CGPoint(x: tableX + nameHeaderWidth, y: currentY))
+                context.cgContext.addLine(to: CGPoint(x: tableX + nameHeaderWidth, y: currentY + rowHeight))
+                context.cgContext.strokePath()
+                
+                // Draw vaccine name
+                vaccine.name.draw(at: CGPoint(x: tableX + 10, y: currentY + 12), withAttributes: rowAttributes)
+                
+                // Draw administered date if available, otherwise "Not scheduled"
+                let dateString: String
+                if let date = selectedDates[vaccine.name] {
+                    dateString = dateFormatter.string(from: date)
+                } else {
+                    dateString = "Not scheduled"
+                }
+                
+                dateString.draw(at: CGPoint(x: tableX + nameHeaderWidth + 10, y: currentY + 12), withAttributes: rowAttributes)
+                
+                currentY += rowHeight
+                
+                // Check if we need a new page
+                if currentY > context.pdfContextBounds.height - 100 {
+                    context.beginPage()
+                    
+                    // Draw consistent background color on new page
+                    backgroundColor.setFill()
+                    UIRectFill(context.pdfContextBounds)
+                    
+                    // Draw dotted border on new page
+                    let borderRect = CGRect(x: 60, y: 60,
+                                          width: context.pdfContextBounds.width - 120,
+                                          height: context.pdfContextBounds.height - 120)
+                    let borderPath = UIBezierPath(rect: borderRect)
+                    borderPath.lineWidth = 1.0
+                    
+                    // Create a dotted pattern
+                    context.cgContext.setLineDash(phase: 0, lengths: [3, 3])
+                    context.cgContext.setStrokeColor(UIColor.lightGray.cgColor)
+                    context.cgContext.addPath(borderPath.cgPath)
+                    context.cgContext.strokePath()
+                    
+                    // Reset line dash
+                    context.cgContext.setLineDash(phase: 0, lengths: [])
+                    
+                    currentY = 60
+                    
+                    // Continue with timeframe header on the new page
+                    timeframe.uppercased().draw(at: CGPoint(x: tableX, y: currentY), withAttributes: timeframeAttributes)
+                    currentY += 30
+                    
+                    // Redraw the header on the new page
+                    let headerRect = CGRect(x: tableX, y: currentY, width: tableWidth, height: headerHeight)
+                    headerColor.setFill()
+                    UIRectFill(headerRect)
+                    
+                    "Vaccine Name".draw(at: CGPoint(x: tableX + 10, y: currentY + 12), withAttributes: headerAttributes)
+                    "Administered Date".draw(at: CGPoint(x: tableX + nameHeaderWidth + 10, y: currentY + 12), withAttributes: headerAttributes)
+                    
+                    context.cgContext.setStrokeColor(UIColor.white.cgColor)
+                    context.cgContext.setLineWidth(1.0)
+                    context.cgContext.move(to: CGPoint(x: tableX + nameHeaderWidth, y: currentY))
+                    context.cgContext.addLine(to: CGPoint(x: tableX + nameHeaderWidth, y: currentY + headerHeight))
+                    context.cgContext.strokePath()
+                    
+                    currentY += headerHeight
+                }
+            }
+            
+            // Add some space after each timeframe section
+            currentY += 20
+            
+            // Check if we need a new page before starting the next timeframe
+            if currentY > context.pdfContextBounds.height - 130 && organizedVaccines.last?.0 != timeframe {
+                context.beginPage()
+                
+                // Draw consistent background color on new page
+                backgroundColor.setFill()
+                UIRectFill(context.pdfContextBounds)
+                
+                // Draw dotted border on new page
+                let borderRect = CGRect(x: 60, y: 60,
+                                      width: context.pdfContextBounds.width - 120,
+                                      height: context.pdfContextBounds.height - 120)
+                let borderPath = UIBezierPath(rect: borderRect)
+                borderPath.lineWidth = 1.0
+                
+                // Create a dotted pattern
+                context.cgContext.setLineDash(phase: 0, lengths: [3, 3])
+                context.cgContext.setStrokeColor(UIColor.lightGray.cgColor)
+                context.cgContext.addPath(borderPath.cgPath)
+                context.cgContext.strokePath()
+                
+                // Reset line dash
+                context.cgContext.setLineDash(phase: 0, lengths: [])
+                
+                currentY = 60
+            }
+        }
+    }
+    
+    // Organize vaccines by timeframe
+    private func organizeVaccinesByTimeframe() -> [(String, [Vaccine])] {
+        // Group vaccines by their target timeframe
+        var vaccinesByTimeframe: [String: [Vaccine]] = [
+            "Birth": [],
+            "6 Weeks": [],
+            "10 Weeks": [],
+            "14 Weeks": [],
+            "9-12 Months": [],
+            "16-24 Months": []
+        ]
+        
+        // Logic to determine which timeframe each vaccine belongs to
+        for vaccine in selectedVaccines {
+            if vaccine.startWeek == 0 {
+                vaccinesByTimeframe["Birth"]?.append(vaccine)
+            } else if vaccine.startWeek <= 6 {
+                vaccinesByTimeframe["6 Weeks"]?.append(vaccine)
+            } else if vaccine.startWeek <= 10 {
+                vaccinesByTimeframe["10 Weeks"]?.append(vaccine)
+            } else if vaccine.startWeek <= 14 {
+                vaccinesByTimeframe["14 Weeks"]?.append(vaccine)
+            } else if vaccine.startWeek <= 52 { // ~12 months
+                vaccinesByTimeframe["9-12 Months"]?.append(vaccine)
+            } else {
+                vaccinesByTimeframe["16-24 Months"]?.append(vaccine)
+            }
+        }
+        
+        // Convert to array and filter out empty sections
+        let organizedVaccines = vaccinesByTimeframe.compactMap { key, vaccines in
+            if !vaccines.isEmpty {
+                return (timeframe: key, vaccines: vaccines)
+            }
+            return nil
+        }.sorted { lhs, rhs in
+            // Define order of timeframes
+            let order: [String: Int] = [
+                "Birth": 0,
+                "6 Weeks": 1,
+                "10 Weeks": 2,
+                "14 Weeks": 3,
+                "9-12 Months": 4,
+                "16-24 Months": 5
+            ]
+            
+            return (order[lhs.0] ?? 99) < (order[rhs.0] ?? 99)
+        }
+        
+        return organizedVaccines
     }
 
     @objc private func continueButtonTapped() {
@@ -313,6 +695,92 @@ class SelectedVaccinesViewController: UIViewController {
         }
         
         let vaccine = selectedVaccines[index]
-        // Implement vaccine detail view navigation if needed
+        
+        // Create date picker alert
+        let alertController = UIAlertController(title: "", message: "Select a date for \(vaccine.name)", preferredStyle: .actionSheet)
+        
+        // Create custom view for date picker with increased height to fix cut-off dates
+        let customView = UIView(frame: CGRect(x: 0, y: 0, width: alertController.view.bounds.width - 16, height: 380))
+        
+        // Create and configure date picker
+        let datePicker = UIDatePicker()
+        datePicker.datePickerMode = .date
+        datePicker.preferredDatePickerStyle = .inline
+        datePicker.maximumDate = Date() // Can't be in the future since these are administered vaccines
+        datePicker.minimumDate = Calendar.current.date(byAdding: .year, value: -1, to: Date()) // Allow up to a year ago
+        
+        // Configure datePicker to properly fit in the view
+        datePicker.translatesAutoresizingMaskIntoConstraints = false
+        customView.addSubview(datePicker)
+        
+        // Add constraints to ensure datePicker is properly sized and positioned
+        NSLayoutConstraint.activate([
+            datePicker.topAnchor.constraint(equalTo: customView.topAnchor),
+            datePicker.leadingAnchor.constraint(equalTo: customView.leadingAnchor),
+            datePicker.trailingAnchor.constraint(equalTo: customView.trailingAnchor),
+            datePicker.bottomAnchor.constraint(equalTo: customView.bottomAnchor)
+        ])
+        
+        // Add custom view to alert
+        alertController.view.addSubview(customView)
+        
+        // Adjust alert height to accommodate date picker and prevent cut-off dates
+        let heightConstraint = NSLayoutConstraint(
+            item: alertController.view!,
+            attribute: .height,
+            relatedBy: .equal,
+            toItem: nil,
+            attribute: .notAnAttribute,
+            multiplier: 1,
+            constant: 580 // Increased height to ensure all dates are visible
+        )
+        alertController.view.addConstraint(heightConstraint)
+        
+        // Add actions
+        let setDateAction = UIAlertAction(title: "Set", style: .default) { [weak self] _ in
+            guard let self = self else { return }
+            
+            // Store the selected date for the vaccine
+            self.selectedDates[vaccine.name] = datePicker.date
+            
+            // Add haptic feedback for confirmation
+            let generator = UIImpactFeedbackGenerator(style: .light)
+            generator.impactOccurred()
+            
+            // Refresh the UI
+            self.setupVaccineCards()
+        }
+        
+        // Add remove action if date already exists
+        if selectedDates[vaccine.name] != nil {
+            let removeAction = UIAlertAction(title: "Remove Date", style: .destructive) { [weak self] _ in
+                guard let self = self else { return }
+                
+                // Remove the date for this vaccine
+                self.selectedDates.removeValue(forKey: vaccine.name)
+                
+                // Add haptic feedback
+                let generator = UIImpactFeedbackGenerator(style: .medium)
+                generator.impactOccurred()
+                
+                // Refresh the UI
+                self.setupVaccineCards()
+            }
+            alertController.addAction(removeAction)
+        }
+        
+        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
+        
+        alertController.addAction(setDateAction)
+        alertController.addAction(cancelAction)
+        
+        // For iPad support
+        if let popoverController = alertController.popoverPresentationController {
+            popoverController.sourceView = view
+            popoverController.sourceRect = CGRect(x: view.bounds.midX, y: view.bounds.midY, width: 0, height: 0)
+            popoverController.permittedArrowDirections = []
+        }
+        
+        present(alertController, animated: true)
     }
 }

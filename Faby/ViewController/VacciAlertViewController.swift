@@ -66,7 +66,7 @@ struct VaccineCardView: View {
 
         if let recommendedAgeText = recommendedAgeText, !recommendedAgeText.isEmpty {
             if startDate < Date() && endDate < Date() {
-                return "Overdue since \(recommendedAgeText)"
+                return "Recommended before \(recommendedAgeText)"
             }
             if startDate < Date() && endDate >= Date() {
                 return "Due now until \(recommendedAgeText)"
