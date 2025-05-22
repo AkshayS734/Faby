@@ -4,6 +4,7 @@ class FeedingPlanSummaryViewController: UIViewController {
 
     var selectedDay: String = ""
     var savedPlan: [BiteType: [FeedingMeal]] = [:]
+    var customBiteTimes: [BiteType: String] = [:] // Add property to store custom bite times
     
     private let tableView = UITableView(frame: .zero, style: .grouped)
 
@@ -128,6 +129,18 @@ class FeedingPlanSummaryViewController: UIViewController {
             return "Flexible Time Slot"
         }
     }
+
+    // Add this method to properly display time for each bite type including custom bites
+    private func getTimeInterval(for category: BiteType) -> String {
+        switch category {
+        case .EarlyBite: return "7:30 AM - 8:00 AM"
+        case .NourishBite: return "10:00 AM - 10:30 AM"
+        case .MidDayBite: return "12:30 PM - 1:00 PM"
+        case .SnackBite: return "4:00 PM - 4:30 PM"
+        case .NightBite: return "8:00 PM - 8:30 PM"
+        case .custom(_): return customBiteTimes[category] ?? "Flexible Time Slot"
+        }
+    }
 }
 
 
@@ -155,12 +168,8 @@ extension FeedingPlanSummaryViewController: UITableViewDelegate, UITableViewData
         let biteType = categories[section]
         titleLabel.text = biteType.rawValue
         
-        // Set time based on bite type
-        if fixedBiteOrder.contains(biteType) {
-            timeLabel.text = getBiteTimeForDisplay(for: biteType) // Get the standard time
-        } else {
-            timeLabel.text = "Flexible Time Slot" // For custom bites
-        }
+        // Set time using the getTimeInterval method which handles all bite types
+        timeLabel.text = getTimeInterval(for: biteType)
         
         headerView.addSubview(titleLabel)
         headerView.addSubview(timeLabel)

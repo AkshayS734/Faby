@@ -402,6 +402,7 @@ class FeedingPlanViewController: UIViewController {
         let summaryVC = FeedingPlanSummaryViewController()
         summaryVC.selectedDay = selectedDay
         summaryVC.savedPlan = selectedPlanType == .daily ? myBowlItemsDict : weeklyPlan[selectedDay] ?? [:]
+        summaryVC.customBiteTimes = customBiteTimes // Pass custom bite times
 
         var mealHistory = UserDefaults.standard.dictionary(forKey: "mealPlanHistory") as? [String: [[String: String]]] ?? [:]
 
@@ -520,9 +521,11 @@ class FeedingPlanViewController: UIViewController {
         // Post notification before switching tabs to ensure data is ready
         NotificationCenter.default.post(name: NSNotification.Name("FeedingPlanUpdated"), object: nil)
         
-        // Select the Home tab (usually index 0)
-        if let tabBarController = UIApplication.shared.windows.filter({$0.isKeyWindow}).first?.rootViewController as? UITabBarController {
-            tabBarController.selectedIndex = 1 // Home tab index
+        // Get the tab bar controller using the scene delegate approach
+        if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let tabBarController = scene.windows.first?.rootViewController as? UITabBarController {
+            // Select the Home tab (index 0 based on screenshot)
+            tabBarController.selectedIndex = 0
             
             // We can't directly call updateTodaysBites as it's private
             // Instead we rely on the notification we just posted
@@ -544,7 +547,7 @@ class FeedingPlanViewController: UIViewController {
         case .MidDayBite: return "12:30 PM - 1:00 PM"
         case .SnackBite: return "4:00 PM - 4:30 PM"
         case .NightBite: return "8:00 PM - 8:30 PM"
-        case .custom(_): return customBiteTimes[category] ?? "**No Time Set**"
+        case .custom(_): return customBiteTimes[category] ?? "Flexible Time Slot"
         }
     }
 
@@ -766,14 +769,15 @@ extension FeedingPlanViewController: UITableViewDelegate, UITableViewDataSource 
         if section < predefinedCount {
             let biteType = fixedBiteOrder[section]
             biteTitle = biteType.rawValue
-            biteTime = getBiteTimeForDisplay(for: biteType) // Get the formatted time
+            biteTime = getTimeInterval(for: biteType) // Get the formatted time
         } else {
             let customIndex = section - predefinedCount
             let customBiteKey = Array(customBitesDict.keys)[customIndex]
             biteTitle = customBiteKey
             
-            // Since FeedingMeal doesn't have a time property, use a default time for custom bites
-            biteTime = "Flexible Time Slot"
+            // Create a custom bite type to look up time
+            let customBiteType = BiteType.custom(customBiteKey)
+            biteTime = customBiteTimes[customBiteType] ?? "Flexible Time Slot"
         }
         
         titleLabel.text = biteTitle
@@ -807,8 +811,8 @@ extension FeedingPlanViewController: UITableViewDelegate, UITableViewDataSource 
             return "4:00 PM - 4:30 PM"
         case .NightBite:
             return "8:00 PM - 8:30 PM"
-        default:
-            return "" // Handle any additional cases added to the enum
+        case .custom(_):
+            return customBiteTimes[biteType] ?? "Flexible Time Slot"
         }
     }
 
