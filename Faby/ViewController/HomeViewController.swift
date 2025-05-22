@@ -237,15 +237,15 @@ class HomeViewController: UIViewController {
         print("🚀 HomeViewController viewDidLoad")
         view.backgroundColor = .systemGroupedBackground
         tabBarItem.title = "Home"
-            
+        
         navigationController?.navigationBar.prefersLargeTitles = true
         navigationItem.largeTitleDisplayMode = .always
         if let babyName = baby?.name {
             navigationItem.title = "\(babyName)"
         }
-
+        
         // Setup the navigation bar with gradient and blur effects
-//        setupNavigationBar()
+        //        setupNavigationBar()
         navigationItem.rightBarButtonItem = UIBarButtonItem(
             image: UIImage(systemName: "person.crop.circle"),
             style: .plain,
@@ -313,6 +313,7 @@ class HomeViewController: UIViewController {
         
         // Check for overdue vaccines when view appears
         checkForOverdueVaccines()
+        startAutoScrollTimer()
     }
     
     override func viewWillDisappear(_ animated: Bool) {
@@ -357,7 +358,7 @@ class HomeViewController: UIViewController {
         }
     }
     private func setupUI() {
-        view.backgroundColor = .systemBackground 
+        view.backgroundColor = .systemBackground
         view.addSubview(scrollView)
         scrollView.addSubview(contentView)
         
@@ -390,7 +391,7 @@ class HomeViewController: UIViewController {
         // Set custom spacing after image
         todaysBitesContentStack.setCustomSpacing(8, after: todaysBitesEmptyImageView)
         todaysBitesContentStack.setCustomSpacing(16, after: todaysBitesEmptyLabel)
-
+        
         NSLayoutConstraint.activate([
             scrollView.topAnchor.constraint(equalTo: view.topAnchor),
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
@@ -518,7 +519,7 @@ class HomeViewController: UIViewController {
                 vaccineSchedulesWithNames.append((schedule, vaccineName))
             }
         }
-
+        
         // Debug the content of scheduled vaccines
         for (i, tuple) in vaccineSchedulesWithNames.enumerated() {
             let (vaccine, vaccineName) = tuple
@@ -795,7 +796,7 @@ class HomeViewController: UIViewController {
         if let mealsForToday = mealHistory[todayFormattedDate] {
             print("📌 Found meals for today (\(todayFormattedDate)): \(mealsForToday.count) meals")
             todaysMeals = mealsForToday
-        } 
+        }
         // If not found, use saved meals from todaysBites
         else if let savedMeals = savedMeals, !savedMeals.isEmpty {
             print("📌 Using saved meals from todaysBites")
@@ -844,7 +845,7 @@ class HomeViewController: UIViewController {
                 // that returns meals organized by date and category
                 if let feedingPlans = try? await SupabaseManager.loadFeedingPlansWithMeals(
                     startDate: today,
-                    endDate: today, 
+                    endDate: today,
                     using: supabaseClient
                 ) {
                     // Convert Supabase response to meal dictionaries
@@ -956,11 +957,11 @@ class HomeViewController: UIViewController {
         DispatchQueue.main.async {
             // Force collection view to reload with animation
             UIView.transition(with: self.todaysBitesCollectionView,
-                            duration: 0.35,
-                             options: .transitionCrossDissolve,
-                          animations: {
-                              self.todaysBitesCollectionView.reloadData()
-                          })
+                              duration: 0.35,
+                              options: .transitionCrossDissolve,
+                              animations: {
+                self.todaysBitesCollectionView.reloadData()
+            })
             
             // Update empty state visibility
             self.updateTodaysBitesEmptyState()
@@ -1034,7 +1035,7 @@ class HomeViewController: UIViewController {
         // Navigate to the vaccine details screen
         navigationController?.pushViewController(vaccineReminderVC, animated: true)
     }
-
+    
     private func updateTodaysBitesEmptyState() {
         if todaysBitesData.isEmpty {
             todaysBitesCollectionView.isHidden = true
@@ -1044,7 +1045,7 @@ class HomeViewController: UIViewController {
             todaysBitesEmptyStateView.isHidden = true
         }
     }
-
+    
     // MARK: - Overdue Vaccine Check and Alert
     
     /// Check for any vaccines that were scheduled for yesterday or earlier and have not been administered
@@ -1300,6 +1301,59 @@ class HomeViewController: UIViewController {
                 toastContainer.removeFromSuperview()
             })
         })
+    }
+    private func  startAutoScrollTimer() {
+        // Cancel any existing timer
+        stopAutoScrollTimer()
+        
+        // Only start timer if we have more than one item
+        if todaysBitesData.count > 1 {
+            autoScrollTimer = Timer.scheduledTimer(timeInterval: autoScrollInterval,
+                                                   target: self,
+                                                   selector: #selector(scrollToNextCard),
+                                                   userInfo: nil,
+                                                   repeats: true)
+        }
+    }
+    
+    // Function to stop auto-scrolling timer
+    private func stopAutoScrollTimer() {
+        autoScrollTimer?.invalidate()
+        autoScrollTimer = nil
+    }
+    
+    // Function to scroll to the next card
+    @objc private func scrollToNextCard() {
+        guard todaysBitesData.count > 1,
+              let visibleItems = todaysBitesCollectionView.indexPathsForVisibleItems.first else {
+            return
+        }
+        
+        // Calculate the next index
+        let nextIndex = (visibleItems.item + 1) % todaysBitesData.count
+        let nextIndexPath = IndexPath(item: nextIndex, section: 0)
+        
+        // Scroll to the next item with animation
+        todaysBitesCollectionView.scrollToItem(at: nextIndexPath,
+                                               at: .centeredHorizontally,
+                                               animated: true)
+        
+        // Update page control
+        pageControl.currentPage = nextIndex
+    }
+    
+    // Pause scrolling when user touches the collection view
+    func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+        if scrollView == todaysBitesCollectionView {
+            stopAutoScrollTimer()
+        }
+    }
+    
+    // Resume scrolling when user stops interacting with the collection view
+    func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+        if scrollView == todaysBitesCollectionView {
+            startAutoScrollTimer()
+        }
     }
 }
 
