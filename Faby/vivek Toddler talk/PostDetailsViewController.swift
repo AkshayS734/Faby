@@ -103,8 +103,11 @@ class PostDetailsViewController: UIViewController {
     private let postImageView: UIImageView = {
         let imageView = UIImageView()
         imageView.translatesAutoresizingMaskIntoConstraints = false
-        imageView.contentMode = .scaleAspectFit
+        imageView.contentMode = .scaleAspectFill
         imageView.clipsToBounds = true
+        imageView.layer.cornerRadius = 8
+        imageView.backgroundColor = .systemGray6
+        imageView.isUserInteractionEnabled = true // Enable user interaction for tap gesture
         return imageView
     }()
     
@@ -353,6 +356,10 @@ class PostDetailsViewController: UIViewController {
         // Add image view to image scroll view
         imageScrollView.addSubview(postImageView)
         
+        // Add tap gesture recognizer to the image view for full-screen viewing
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleImageTap))
+        postImageView.addGestureRecognizer(tapGesture)
+        
         // Add interaction components
         [likeButton, likeCountLabel, commentButton, commentCountLabel, shareButton].forEach {
             interactionView.addSubview($0)
@@ -448,7 +455,8 @@ class PostDetailsViewController: UIViewController {
             imageScrollView.topAnchor.constraint(equalTo: hashtagsLabel.bottomAnchor, constant: 16),
             imageScrollView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
             imageScrollView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-            imageScrollView.heightAnchor.constraint(equalTo: imageScrollView.widthAnchor),
+            // Set a reasonable aspect ratio (16:9) instead of a square
+            imageScrollView.heightAnchor.constraint(equalTo: imageScrollView.widthAnchor, multiplier: 0.75),
             
             postImageView.topAnchor.constraint(equalTo: imageScrollView.topAnchor),
             postImageView.leadingAnchor.constraint(equalTo: imageScrollView.leadingAnchor),
@@ -1323,34 +1331,170 @@ extension PostDetailsViewController: CommentCellDelegate {
     }
     
     func didTapViewReplies(for comment: Comment) {
-        guard let commentId = comment.commentId else { return }
+        print("🔍 View replies tapped for comment: \(comment.content)")
+        print("🔍 Comment ID: \(comment.commentId ?? -1)")
         
-        // Fetch replies for this comment
-        PostsSupabaseManager.shared.fetchRepliesForComment(commentId: commentId) { [weak self] replies, error in
-            if let error = error {
-                print("❌ Error fetching replies: \(error.localizedDescription)")
-                return
-            }
+        guard let commentId = comment.commentId else {
+            print("❌ ERROR: Comment has no ID, cannot show replies")
+            let alert = UIAlertController(
+                title: "Error",
+                message: "Cannot load replies for this comment",
+                preferredStyle: .alert
+            )
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            self.present(alert, animated: true)
+            return
+        }
+        
+        let postId = post.postId
+        print("🔄 Using post ID: \(postId)")
+        
+        // Check if postId is empty
+        if postId.isEmpty {
+            print("❌ ERROR: Post ID is empty")
+            return
+        }
+        
+        // DEBUGGING - Print all comments currently displayed to help understand the state
+        print("📊 Current comments in tableView: \(comments.count)")
+        for (index, comment) in comments.enumerated() {
+            print("  \(index): ID=\(comment.commentId ?? -1), Content=\(comment.content.prefix(20))...")
+        }
+        
+        // Find the index of the comment in the array
+        if let commentIndex = comments.firstIndex(where: { $0.commentId == commentId }) {
+            print("✅ Found comment at index \(commentIndex)")
             
-            guard let replies = replies else { return }
+            // Check if comment already has expanded replies
+            let isExpanded = comments[commentIndex].isRepliesExpanded ?? false
+            print("📊 Comment expanded state: \(isExpanded ? "EXPANDED" : "COLLAPSED")")
             
-            DispatchQueue.main.async {
-                // Create and present a view controller to show replies
-                let alert = UIAlertController(title: "Replies", message: nil, preferredStyle: .actionSheet)
+            if isExpanded {
+                // Collapse the replies
+                print("📱 Collapsing replies for comment at index \(commentIndex)")
                 
-                if replies.isEmpty {
-                    alert.message = "No replies yet"
-                } else {
-                    // Add each reply as a message
-                    for reply in replies {
-                        let replyText = "\(reply.parentName ?? "Unknown"): \(reply.replyContent)"
-                        alert.addAction(UIAlertAction(title: replyText, style: .default, handler: nil))
-                    }
+                // Remove all replies from the comment array
+                comments = comments.filter { comment in
+                    // Keep the comment itself and all non-replies
+                    if comment.commentId == commentId { return true }
+                    if comment.isReply != true { return true }
+                    if comment.replyToCommentId != commentId { return true }
+                    return false // Remove replies to this comment
                 }
                 
-                alert.addAction(UIAlertAction(title: "Close", style: .cancel))
-                self?.present(alert, animated: true)
+                // Mark comment as collapsed
+                comments[commentIndex].isRepliesExpanded = false
+                
+                // Reload the table
+                commentsTableView.reloadData()
+            } else {
+                // Expand to show replies
+                print("📱 Expanding replies for comment at index \(commentIndex)")
+                
+                // Mark comment as expanded
+                comments[commentIndex].isRepliesExpanded = true
+                
+                // Show loading indicator underneath comment
+                let loadingComment = Comment(
+                    commentId: nil,
+                    content: "Loading replies...",
+                    parentId: nil,
+                    parentName: nil,
+                    postId: postId,
+                    createdAt: nil,
+                    isLoadingIndicator: true,
+                    replyToCommentId: commentId
+                )
+                
+                // Insert loading indicator right after the comment
+                if commentIndex + 1 <= comments.count {
+                    comments.insert(loadingComment, at: commentIndex + 1)
+                    commentsTableView.reloadData()
+                }
+                
+                print("🔄 Sending API request to fetch replies for comment ID: \(commentId)")
+                
+                // Fetch replies
+                PostsSupabaseManager.shared.fetchRepliesForComment(commentId: commentId) { [weak self] replies, error in
+                    guard let self = self else { return }
+                    
+                    print("🔄 Reply fetch callback received")
+                    
+                    DispatchQueue.main.async {
+                        // Remove loading indicator
+                        print("🔄 Removing loading indicators...")
+                        self.comments = self.comments.filter { !($0.isLoadingIndicator == true) }
+                        
+                        if let error = error {
+                            print("❌ ERROR: Failed to load replies: \(error.localizedDescription)")
+                            self.commentsTableView.reloadData()
+                            return
+                        }
+                        
+                        if let replies = replies {
+                            print("✅ Loaded \(replies.count) replies")
+                            
+                            if !replies.isEmpty {
+                                // Convert replies to Comment objects and insert them after the comment
+                                var index = commentIndex + 1
+                                for reply in replies {
+                                    print("🔄 Processing reply: ID=\(reply.replyId ?? -1), Content=\(reply.replyContent.prefix(20))...")
+                                    
+                                    let replyComment = Comment(
+                                        commentId: reply.replyId,
+                                        content: reply.replyContent,
+                                        parentId: reply.userId,
+                                        parentName: reply.parentName,
+                                        postId: postId,
+                                        createdAt: reply.createdAt,
+                                        isReply: true,
+                                        replyToCommentId: commentId
+                                    )
+                                    
+                                    if index <= self.comments.count {
+                                        self.comments.insert(replyComment, at: index)
+                                        index += 1
+                                    } else {
+                                        self.comments.append(replyComment)
+                                    }
+                                }
+                            } else {
+                                print("ℹ️ No replies found for this comment")
+                                
+                                // Show an empty state
+                                let emptyReply = Comment(
+                                    commentId: nil,
+                                    content: "No replies yet",
+                                    parentId: nil,
+                                    parentName: nil,
+                                    postId: postId,
+                                    createdAt: nil,
+                                    isEmptyState: true,
+                                    replyToCommentId: commentId
+                                )
+                                
+                                if commentIndex + 1 <= self.comments.count {
+                                    self.comments.insert(emptyReply, at: commentIndex + 1)
+                                }
+                            }
+                            
+                            print("🔄 Reloading table with \(self.comments.count) comments (including replies)")
+                            // Reload the table
+                            self.commentsTableView.reloadData()
+                            
+                            // Scroll to show the replies
+                            if let originalCommentCell = self.commentsTableView.cellForRow(at: IndexPath(row: commentIndex, section: 0)) {
+                                self.commentsTableView.scrollRectToVisible(originalCommentCell.frame, animated: true)
+                            }
+                        } else {
+                            print("❌ ERROR: Replies data is nil")
+                            self.commentsTableView.reloadData()
+                        }
+                    }
+                }
             }
+        } else {
+            print("❌ ERROR: Could not find comment with ID \(commentId) in the comments array")
         }
     }
 }
@@ -1359,6 +1503,131 @@ extension PostDetailsViewController: CommentCellDelegate {
 extension PostDetailsViewController: UIScrollViewDelegate {
     func viewForZooming(in scrollView: UIScrollView) -> UIView? {
         return postImageView
+    }
+    
+    func scrollViewDidZoom(_ scrollView: UIScrollView) {
+        // Center the image in the scroll view as it zooms
+        let offsetX = max((scrollView.bounds.width - scrollView.contentSize.width) * 0.5, 0)
+        let offsetY = max((scrollView.bounds.height - scrollView.contentSize.height) * 0.5, 0)
+        
+        scrollView.contentInset = UIEdgeInsets(top: offsetY, left: offsetX, bottom: 0, right: 0)
+    }
+}
+
+// MARK: - Full Screen Image Viewer
+extension PostDetailsViewController {
+    @objc private func handleImageTap() {
+        guard let image = postImageView.image else { return }
+        
+        // Create a full screen image viewer
+        let fullScreenVC = FullScreenImageViewController(image: image)
+        fullScreenVC.modalPresentationStyle = .fullScreen
+        fullScreenVC.modalTransitionStyle = .crossDissolve
+        present(fullScreenVC, animated: true)
+    }
+}
+
+// Full Screen Image View Controller
+class FullScreenImageViewController: UIViewController {
+    private let scrollView: UIScrollView = {
+        let scrollView = UIScrollView()
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.minimumZoomScale = 1.0
+        scrollView.maximumZoomScale = 4.0
+        scrollView.showsHorizontalScrollIndicator = false
+        scrollView.showsVerticalScrollIndicator = false
+        scrollView.backgroundColor = .black
+        return scrollView
+    }()
+    
+    private let imageView: UIImageView = {
+        let imageView = UIImageView()
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        imageView.contentMode = .scaleAspectFit
+        imageView.clipsToBounds = true
+        return imageView
+    }()
+    
+    private let closeButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.setImage(UIImage(systemName: "xmark.circle.fill"), for: .normal)
+        button.tintColor = .white
+        button.alpha = 0.8
+        return button
+    }()
+    
+    init(image: UIImage) {
+        super.init(nibName: nil, bundle: nil)
+        imageView.image = image
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        setupUI()
+    }
+    
+    private func setupUI() {
+        view.backgroundColor = .black
+        
+        // Add scroll view and image view
+        view.addSubview(scrollView)
+        scrollView.addSubview(imageView)
+        view.addSubview(closeButton)
+        
+        // Add tap gesture for dismissal
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleTap))
+        view.addGestureRecognizer(tapGesture)
+        
+        // Add close button action
+        closeButton.addTarget(self, action: #selector(dismissView), for: .touchUpInside)
+        
+        // Setup constraints
+        NSLayoutConstraint.activate([
+            scrollView.topAnchor.constraint(equalTo: view.topAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            
+            imageView.topAnchor.constraint(equalTo: scrollView.topAnchor),
+            imageView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
+            imageView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
+            imageView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
+            imageView.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
+            imageView.heightAnchor.constraint(equalTo: scrollView.heightAnchor),
+            
+            closeButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16),
+            closeButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            closeButton.widthAnchor.constraint(equalToConstant: 44),
+            closeButton.heightAnchor.constraint(equalToConstant: 44)
+        ])
+        
+        // Set scroll view delegate
+        scrollView.delegate = self
+    }
+    
+    @objc private func handleTap() {
+        // Toggle UI visibility
+        let newAlpha: CGFloat = closeButton.alpha > 0 ? 0 : 0.8
+        
+        UIView.animate(withDuration: 0.3) {
+            self.closeButton.alpha = newAlpha
+        }
+    }
+    
+    @objc private func dismissView() {
+        dismiss(animated: true)
+    }
+}
+
+// MARK: - UIScrollViewDelegate for Full Screen Image
+extension FullScreenImageViewController: UIScrollViewDelegate {
+    func viewForZooming(in scrollView: UIScrollView) -> UIView? {
+        return imageView
     }
     
     func scrollViewDidZoom(_ scrollView: UIScrollView) {

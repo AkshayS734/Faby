@@ -579,10 +579,9 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
         
         if isInReplyMode, let replyToComment = replyingToComment, let commentId = replyToComment.commentId {
             // We're replying to a specific comment
-            PostsSupabaseManager.shared.addCommentReply(
+            ToddlerTalkDataController.shared.addCommentReply(
                 commentId: commentId,
                 postId: post.postId,
-                userId: userId,
                 content: commentText
             ) { [weak self] success, error in
                 DispatchQueue.main.async {
@@ -600,7 +599,7 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
             }
         } else {
             // Regular comment (not a reply)
-            PostsSupabaseManager.shared.addComment(postId: post.postId, userId: userId, content: commentText) { [weak self] success, error in
+            ToddlerTalkDataController.shared.addComment(postId: post.postId, content: commentText) { [weak self] success, error in
                 DispatchQueue.main.async {
                     if success {
                         self?.commentTextField.text = ""
@@ -677,7 +676,7 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
         }
         
         print("🔄 Fetching comments for post: \(post.postId)")
-        PostsSupabaseManager.shared.fetchComments(for: post.postId) { [weak self] comments, error in
+        ToddlerTalkDataController.shared.fetchComments(for: post.postId) { [weak self] comments, error in
             guard let self = self else { return }
             
             if let error = error {
@@ -699,7 +698,7 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
     // MARK: - Data Loading
     private func fetchLikedPosts() {
         print("📢 fetchLikedPosts() called")
-        PostsSupabaseManager.shared.fetchLikedPostIds { [weak self] likedPostIds, error in
+        ToddlerTalkDataController.shared.fetchLikedPostIds { [weak self] likedPostIds, error in
             guard let self = self else { return }
             
             if let error = error {
@@ -728,7 +727,7 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
             return
         }
         
-        PostsSupabaseManager.shared.fetchPosts(for: topicUUID) { [weak self] posts, error in
+        ToddlerTalkDataController.shared.fetchPosts(for: topicUUID) { [weak self] posts, error in
             guard let self = self else { return }
             
             DispatchQueue.main.async {
@@ -870,8 +869,8 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
                 cell.delegate = self
                 
                 // Check if the user has liked this comment
-                if let commentId = comment.commentId?.description, let userId = AuthManager.shared.currentUserID {
-                    PostsSupabaseManager.shared.checkIfUserLikedComment(commentId: commentId, userId: userId) { isLiked, _ in
+                if let commentId = comment.commentId?.description {
+                    ToddlerTalkDataController.shared.checkIfUserLikedComment(commentId: commentId) { isLiked, _ in
                         DispatchQueue.main.async {
                             cell.configure(with: comment, isLiked: isLiked)
                         }
@@ -943,9 +942,9 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
         items.append(postText)
         
         // Add deep link or web link for sharing
-        if let deepLink = PostsSupabaseManager.shared.generatePostDeepLink(for: post) {
+        if let deepLink = ToddlerTalkDataController.shared.generatePostDeepLink(for: post) {
             items.append(deepLink)
-        } else if let webLink = PostsSupabaseManager.shared.generatePostWebLink(for: post) {
+        } else if let webLink = ToddlerTalkDataController.shared.generatePostWebLink(for: post) {
             items.append(webLink)
         }
         
@@ -998,7 +997,7 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
     }
     
     private func savePost(_ post: Post) {
-        PostsSupabaseManager.shared.isPostSaved(postId: post.postId) { [weak self] isSaved, error in
+        ToddlerTalkDataController.shared.isPostSaved(postId: post.postId) { [weak self] isSaved, error in
             guard let self = self else { return }
             
             if isSaved {
@@ -1008,7 +1007,7 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
                                              preferredStyle: .alert)
                 
                 alert.addAction(UIAlertAction(title: "Remove", style: .destructive) { _ in
-                    PostsSupabaseManager.shared.unsavePost(postId: post.postId) { success, error in
+                    ToddlerTalkDataController.shared.unsavePost(postId: post.postId) { success, error in
                         DispatchQueue.main.async {
                             if success {
                                 let feedback = UINotificationFeedbackGenerator()
@@ -1031,7 +1030,7 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
                 
             } else {
                 // Save the post
-                PostsSupabaseManager.shared.savePost(postId: post.postId) { success, error in
+                ToddlerTalkDataController.shared.savePost(postId: post.postId) { success, error in
                     DispatchQueue.main.async {
                         if success {
                             let feedback = UINotificationFeedbackGenerator()
@@ -1162,7 +1161,7 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
                 print("🔄 Sending API request to fetch replies for comment ID: \(commentId)")
                 
                 // Fetch replies
-                PostsSupabaseManager.shared.fetchRepliesForComment(commentId: commentId) { [weak self] replies, error in
+                ToddlerTalkDataController.shared.fetchRepliesForComment(commentId: commentId) { [weak self] replies, error in
                     guard let self = self else { return }
                     
                     print("🔄 Reply fetch callback received")
@@ -1302,7 +1301,7 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
         generator.impactOccurred()
         
         // Check if already liked
-        PostsSupabaseManager.shared.checkIfUserLikedComment(commentId: commentId, userId: userId) { [weak self] isLiked, error in
+        ToddlerTalkDataController.shared.checkIfUserLikedComment(commentId: commentId) { [weak self] isLiked, error in
             guard let self = self else { return }
             
             if let error = error {
@@ -1312,7 +1311,7 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
             
             if isLiked {
                 // Unlike comment
-                PostsSupabaseManager.shared.removeCommentLike(commentId: commentId, userId: userId) { success, error in
+                ToddlerTalkDataController.shared.removeCommentLike(commentId: commentId) { success, error in
                     if success {
                         print("✅ Successfully unliked comment")
                         
@@ -1324,7 +1323,7 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
                 }
             } else {
                 // Like comment
-                PostsSupabaseManager.shared.addCommentLike(commentId: commentId, userId: userId) { success, error in
+                ToddlerTalkDataController.shared.addCommentLike(commentId: commentId) { success, error in
                     if success {
                         print("✅ Successfully liked comment")
                         
