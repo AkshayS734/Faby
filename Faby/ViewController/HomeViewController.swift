@@ -306,6 +306,36 @@ class HomeViewController: UIViewController {
         super.viewWillAppear(animated)
         print("🚀 HomeViewController viewWillAppear")
         
+        // Check if baby data is available, if not reload it
+        if baby == nil || baby?.name == nil || baby?.name.isEmpty == true {
+            print("⚠️ Baby data missing or incomplete in HomeViewController, reloading from server")
+            Task {
+                do {
+                    // Try to reload baby data
+                    await dataController.loadBabyData()
+                    self.baby = dataController.baby
+                    
+                    // Update UI on main thread
+                    await MainActor.run {
+                        if let babyName = baby?.name {
+                            navigationItem.title = babyName
+                            print("✅ Baby data reloaded successfully: \(babyName)")
+                        } else {
+                            print("❌ Failed to reload baby name")
+                        }
+                    }
+                } catch {
+                    print("❌ Error loading baby data: \(error)")
+                }
+            }
+        } else {
+            // Ensure the title is set correctly even if we already have the baby data
+            if let babyName = baby?.name {
+                navigationItem.title = babyName
+                print("👶 Using existing baby data: \(babyName)")
+            }
+        }
+        
         loadVaccinations() // Reload vaccinations when view appears
         updateSpecialMoments()
         // Always update Today's Bites when returning to this view
