@@ -689,7 +689,13 @@ class TodBiteViewController: UIViewController, UITableViewDelegate, UISearchBarD
         case .MidDayBite: return "12:30 PM - 1:00 PM"
         case .SnackBite: return "4:00 PM - 4:30 PM"
         case .NightBite: return "8:00 PM - 8:30 PM"
-        case .custom(let name): return customBiteTimes[category] ?? "Custom Time"
+        case .custom(_): 
+            // Make sure to check if we have a time set for this category
+            if let time = customBiteTimes[category], !time.isEmpty {
+                return time
+            } else {
+                return "Flexible Time Slot"  // Default display when no time is set
+            }
         }
     }
 

@@ -6,11 +6,12 @@ class TodayBiteCollectionViewCell: UICollectionViewCell {
     private let cardView: UIView = {
         let view = UIView()
         view.backgroundColor = .white
-        view.layer.cornerRadius = 16
+        view.layer.cornerRadius = 24
+        view.clipsToBounds = false
         view.layer.shadowColor = UIColor.black.cgColor
         view.layer.shadowOffset = CGSize(width: 0, height: 2)
-        view.layer.shadowRadius = 4
-        view.layer.shadowOpacity = 0.1
+        view.layer.shadowRadius = 10
+        view.layer.shadowOpacity = 0.15
         view.translatesAutoresizingMaskIntoConstraints = false
         return view
     }()
@@ -19,18 +20,38 @@ class TodayBiteCollectionViewCell: UICollectionViewCell {
         let imageView = UIImageView()
         imageView.contentMode = .scaleAspectFill
         imageView.clipsToBounds = true
-        imageView.layer.cornerRadius = 12
-        imageView.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
-        imageView.layer.masksToBounds = true
+        imageView.layer.cornerRadius = 24
+        imageView.backgroundColor = .systemGray6 // Light gray background while loading
         imageView.translatesAutoresizingMaskIntoConstraints = false
         return imageView
     }()
+    
+    private let overlayView: UIView = {
+        let view = UIView()
+        view.backgroundColor = UIColor.black.withAlphaComponent(0.25)
+        view.layer.cornerRadius = 24
+        view.translatesAutoresizingMaskIntoConstraints = false
+        return view
+    }()
+    
+    // Text background gradient for better visibility
+    private let textBackgroundView: UIView = {
+        let view = UIView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        view.clipsToBounds = true
+        view.layer.cornerRadius = 24
+        view.layer.maskedCorners = [.layerMinXMaxYCorner, .layerMaxXMaxYCorner]
+        return view
+    }()
+    
+    private var gradientLayer: CAGradientLayer?
+    
     private let titleLabel: UILabel = {
         let label = UILabel()
-        label.font = UIFont.systemFont(ofSize: 18, weight: .semibold)
-        label.textColor = .black
+        label.font = UIFont.systemFont(ofSize: 20, weight: .bold)
+        label.textColor = .white
         label.textAlignment = .left
-        label.numberOfLines = 1
+        label.numberOfLines = 2
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
     }()
@@ -38,19 +59,17 @@ class TodayBiteCollectionViewCell: UICollectionViewCell {
     private let mealTypeLabel: UILabel = {
         let label = UILabel()
         label.font = UIFont.systemFont(ofSize: 14, weight: .semibold)
-        label.textColor = .systemBlue
+        label.textColor = .white
         label.textAlignment = .left
         label.numberOfLines = 1
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
     }()
 
-    
-
     private let timeLabel: UILabel = {
         let label = UILabel()
         label.font = UIFont.systemFont(ofSize: 14, weight: .regular)
-        label.textColor = UIColor.systemGray
+        label.textColor = .white
         label.textAlignment = .left
         label.numberOfLines = 1
         label.adjustsFontSizeToFitWidth = true
@@ -58,15 +77,63 @@ class TodayBiteCollectionViewCell: UICollectionViewCell {
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
     }()
-
+    
+    // Shimmer effect view
+    private let shimmerView: UIView = {
+        let view = UIView()
+        view.backgroundColor = .systemGray6
+        view.layer.cornerRadius = 24
+        view.translatesAutoresizingMaskIntoConstraints = false
+        view.isHidden = true
+        return view
+    }()
+    
+    // Shimmer animation view
+    private let shimmerLayerView: UIView = {
+        let view = UIView()
+        view.backgroundColor = .clear
+        view.translatesAutoresizingMaskIntoConstraints = false
+        return view
+    }()
+    
+    private var shimmerLayer: CAGradientLayer?
+    private var imageLoadTask: URLSessionDataTask?
 
     override init(frame: CGRect) {
         super.init(frame: frame)
         setupUI()
+        setupGradient()
+        
+        // Add shadow to text labels for better visibility
+        [titleLabel, mealTypeLabel, timeLabel].forEach { label in
+            label.layer.shadowColor = UIColor.black.cgColor
+            label.layer.shadowOffset = CGSize(width: 0, height: 2)
+            label.layer.shadowRadius = 4
+            label.layer.shadowOpacity = 0.7
+            label.layer.masksToBounds = false
+        }
+        
+        // Set up shimmer layer
+        setupShimmerLayer()
     }
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+    
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        imageView.image = nil
+        titleLabel.text = ""
+        mealTypeLabel.text = ""
+        timeLabel.text = ""
+        
+        // Cancel any ongoing image loading task
+        imageLoadTask?.cancel()
+        imageLoadTask = nil
+        
+        // Stop shimmer animation
+        stopShimmerAnimation()
     }
 
     private func setupUI() {
@@ -75,9 +142,15 @@ class TodayBiteCollectionViewCell: UICollectionViewCell {
         
         // Add components to card view
         cardView.addSubview(imageView)
-        cardView.addSubview(mealTypeLabel)
+        cardView.addSubview(overlayView)
+        cardView.addSubview(textBackgroundView)
         cardView.addSubview(titleLabel)
+        cardView.addSubview(mealTypeLabel)
         cardView.addSubview(timeLabel)
+        
+        // Add shimmer view
+        cardView.addSubview(shimmerView)
+        shimmerView.addSubview(shimmerLayerView)
 
         NSLayoutConstraint.activate([
             // Card view constraints
@@ -86,100 +159,223 @@ class TodayBiteCollectionViewCell: UICollectionViewCell {
             cardView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -4),
             cardView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -4),
             
-            // Image view constraints - top part of card
+            // Image view fills the entire card
             imageView.topAnchor.constraint(equalTo: cardView.topAnchor),
             imageView.leadingAnchor.constraint(equalTo: cardView.leadingAnchor),
             imageView.trailingAnchor.constraint(equalTo: cardView.trailingAnchor),
-            imageView.heightAnchor.constraint(equalToConstant: 120),
-
-            // Title label (name of the meal) - now first
-            titleLabel.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 12),
-            titleLabel.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 12),
-            titleLabel.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -12),
+            imageView.bottomAnchor.constraint(equalTo: cardView.bottomAnchor),
             
-            // Meal type label (NourishBite, MidDayBite, etc) - now second
-            mealTypeLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 4),
-            mealTypeLabel.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 12),
-            mealTypeLabel.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -12),
+            // Overlay view covers the image
+            overlayView.topAnchor.constraint(equalTo: imageView.topAnchor),
+            overlayView.leadingAnchor.constraint(equalTo: imageView.leadingAnchor),
+            overlayView.trailingAnchor.constraint(equalTo: imageView.trailingAnchor),
+            overlayView.bottomAnchor.constraint(equalTo: imageView.bottomAnchor),
+            
+            // Text background gradient view (covers bottom half)
+            textBackgroundView.leadingAnchor.constraint(equalTo: cardView.leadingAnchor),
+            textBackgroundView.trailingAnchor.constraint(equalTo: cardView.trailingAnchor),
+            textBackgroundView.bottomAnchor.constraint(equalTo: cardView.bottomAnchor),
+            textBackgroundView.heightAnchor.constraint(equalTo: cardView.heightAnchor, multiplier: 0.5),
 
-            // Time label (10:00 AM - 10:30 AM) - now third
-            timeLabel.topAnchor.constraint(equalTo: mealTypeLabel.bottomAnchor, constant: 4),
-            timeLabel.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 12),
-            timeLabel.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -12),
-            timeLabel.bottomAnchor.constraint(lessThanOrEqualTo: cardView.bottomAnchor, constant: -12)
+            // Title label positioned at bottom left
+            titleLabel.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 20),
+            titleLabel.trailingAnchor.constraint(lessThanOrEqualTo: cardView.trailingAnchor, constant: -20),
+            titleLabel.bottomAnchor.constraint(equalTo: mealTypeLabel.topAnchor, constant: -4),
+            
+            // Meal type label below title
+            mealTypeLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
+            mealTypeLabel.trailingAnchor.constraint(lessThanOrEqualTo: cardView.trailingAnchor, constant: -20),
+            mealTypeLabel.bottomAnchor.constraint(equalTo: timeLabel.topAnchor, constant: -4),
+
+            // Time label at the bottom
+            timeLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
+            timeLabel.trailingAnchor.constraint(lessThanOrEqualTo: cardView.trailingAnchor, constant: -20),
+            timeLabel.bottomAnchor.constraint(equalTo: cardView.bottomAnchor, constant: -20),
+            
+            // Shimmer view constraints (same as image view)
+            shimmerView.topAnchor.constraint(equalTo: cardView.topAnchor),
+            shimmerView.leadingAnchor.constraint(equalTo: cardView.leadingAnchor),
+            shimmerView.trailingAnchor.constraint(equalTo: cardView.trailingAnchor),
+            shimmerView.bottomAnchor.constraint(equalTo: cardView.bottomAnchor),
+            
+            // Shimmer layer view
+            shimmerLayerView.topAnchor.constraint(equalTo: shimmerView.topAnchor),
+            shimmerLayerView.leadingAnchor.constraint(equalTo: shimmerView.leadingAnchor),
+            shimmerLayerView.trailingAnchor.constraint(equalTo: shimmerView.trailingAnchor),
+            shimmerLayerView.bottomAnchor.constraint(equalTo: shimmerView.bottomAnchor)
         ])
+    }
+    
+    private func setupGradient() {
+        gradientLayer = CAGradientLayer()
+        gradientLayer?.colors = [
+            UIColor.clear.cgColor,
+            UIColor.black.withAlphaComponent(0.3).cgColor,
+            UIColor.black.withAlphaComponent(0.7).cgColor
+        ]
+        gradientLayer?.locations = [0.0, 0.5, 1.0]
+        gradientLayer?.startPoint = CGPoint(x: 0.5, y: 0.0)
+        gradientLayer?.endPoint = CGPoint(x: 0.5, y: 1.0)
+        
+        if let gradientLayer = gradientLayer {
+            textBackgroundView.layer.insertSublayer(gradientLayer, at: 0)
+        }
+    }
+    
+    private func setupShimmerLayer() {
+        shimmerLayer = CAGradientLayer()
+        shimmerLayer?.colors = [
+            UIColor.systemGray6.cgColor,
+            UIColor.systemGray5.cgColor,
+            UIColor.systemGray4.cgColor,
+            UIColor.systemGray5.cgColor,
+            UIColor.systemGray6.cgColor
+        ]
+        shimmerLayer?.startPoint = CGPoint(x: 0, y: 0.5)
+        shimmerLayer?.endPoint = CGPoint(x: 1, y: 0.5)
+        shimmerLayer?.locations = [0, 0.25, 0.5, 0.75, 1]
+        shimmerLayer?.frame = shimmerLayerView.bounds
+        
+        // Add the shimmer layer to the view
+        if let shimmerLayer = shimmerLayer {
+            shimmerLayerView.layer.addSublayer(shimmerLayer)
+        }
+    }
+    
+    // Start shimmer animation
+    private func startShimmerAnimation() {
+        // Show shimmer view
+        shimmerView.isHidden = false
+        
+        // Hide image temporarily
+        imageView.alpha = 0
+        overlayView.alpha = 0
+        
+        // Update layer frame
+        shimmerLayer?.frame = shimmerLayerView.bounds
+        
+        // Create animation
+        let animation = CABasicAnimation(keyPath: "locations")
+        animation.fromValue = [-1, -0.75, -0.5, -0.25, 0]
+        animation.toValue = [1, 1.25, 1.5, 1.75, 2]
+        animation.duration = 1.5
+        animation.repeatCount = .infinity
+        
+        // Add animation
+        shimmerLayer?.add(animation, forKey: "shimmerAnimation")
+    }
+    
+    // Stop shimmer animation
+    private func stopShimmerAnimation() {
+        // Show image
+        imageView.alpha = 1
+        overlayView.alpha = 1
+        
+        // Hide shimmer view
+        shimmerView.isHidden = true
+        
+        // Remove animation
+        shimmerLayer?.removeAllAnimations()
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        // Update shimmer layer frame when layout changes
+        shimmerLayer?.frame = shimmerLayerView.bounds
+        
+        // Update gradient layer frame
+        gradientLayer?.frame = textBackgroundView.bounds
     }
 
     func configure(with bite: TodayBite) {
-        // Set the meal title
+        // Set text content
         titleLabel.text = bite.title
-        
-        // Set the meal type (display category name)
         if let category = bite.category {
             mealTypeLabel.text = category
-            
-            // Set appropriate color based on meal type
-            switch category {
-            case "NourishBite":
-                mealTypeLabel.textColor = .black
-            case "EarlyBite":
-                mealTypeLabel.textColor = .black
-            case "MidDayBite":
-                mealTypeLabel.textColor = .black
-            case "SnackBite":
-                mealTypeLabel.textColor = .black
-            case "NightBite":
-                mealTypeLabel.textColor = .black
-            default:
-                mealTypeLabel.textColor = .black
-            }
+            mealTypeLabel.textColor = .white
         } else {
             mealTypeLabel.text = ""
         }
-        
-        // Set the time range
         timeLabel.text = bite.time
         
-        // Set a placeholder image while loading
-        imageView.image = UIImage(named: "placeholder") ?? UIImage(systemName: "photo")
+        // Start shimmer immediately
+        startShimmerAnimation()
         
+        // Get the image name/URL
         let imageName = bite.imageName
+        
+        // Set a placeholder color while loading
+        imageView.backgroundColor = .systemGray6
         
         // Handle different image source types
         if let image = UIImage(named: imageName) {
-            // Local asset case
-            imageView.image = image
+            // Local asset case - show immediately
+            self.imageView.image = image
+            self.stopShimmerAnimation()
         } else if imageName.hasPrefix("http://") || imageName.hasPrefix("https://") {
             // URL case - load asynchronously
             loadImageFromURL(imageUrl: imageName)
         } else if imageName.contains("/") {
             // Local file path case
             if let image = UIImage(contentsOfFile: imageName) {
-                imageView.image = image
+                self.imageView.image = image
+                self.stopShimmerAnimation()
+            } else {
+                // If file can't be loaded, use fallback image
+                self.imageView.image = UIImage(systemName: "photo")
+                self.imageView.contentMode = .scaleAspectFit
+                self.imageView.tintColor = .systemGray3
+                self.stopShimmerAnimation()
             }
         } else {
-            // If none of the above worked, keep the placeholder
-            imageView.image = UIImage(named: "placeholder") ?? UIImage(systemName: "photo")
+            // If none of the above worked, use system photo icon
+            self.imageView.image = UIImage(systemName: "photo")
+            self.imageView.contentMode = .scaleAspectFit
+            self.imageView.tintColor = .systemGray3
+            self.stopShimmerAnimation()
         }
     }
     
     private func loadImageFromURL(imageUrl: String) {
-        guard let url = URL(string: imageUrl) else { return }
+        // Cancel any previous loading task
+        imageLoadTask?.cancel()
         
-        let task = URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
-            guard let self = self,
-                  error == nil,
-                  let data = data,
-                  let image = UIImage(data: data) else {
-                return
-            }
-            
-            // Update UI on main thread
+        guard let url = URL(string: imageUrl) else {
+            // Invalid URL, show fallback image
+            self.imageView.image = UIImage(systemName: "photo")
+            self.imageView.contentMode = .scaleAspectFit
+            self.imageView.tintColor = .systemGray3
+            self.stopShimmerAnimation()
+            return
+        }
+        
+        // Create loading task
+        imageLoadTask = URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
             DispatchQueue.main.async {
+                guard let self = self, 
+                      error == nil,
+                      let data = data,
+                      let image = UIImage(data: data) else {
+                    // Error loading image, show fallback
+                    self?.imageView.image = UIImage(systemName: "photo")
+                    self?.imageView.contentMode = .scaleAspectFit
+                    self?.imageView.tintColor = .systemGray3
+                    self?.stopShimmerAnimation()
+                    return
+                }
+                
+                // Successfully loaded image
+                self.imageView.contentMode = .scaleAspectFill
                 self.imageView.image = image
+                
+                // Fade in image
+                UIView.animate(withDuration: 0.3) {
+                    self.stopShimmerAnimation()
+                }
             }
         }
         
-        task.resume()
+        // Start the task
+        imageLoadTask?.resume()
     }
 }
