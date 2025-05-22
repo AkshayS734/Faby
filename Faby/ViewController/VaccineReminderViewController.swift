@@ -1290,6 +1290,128 @@ class VaccineReminderViewController: UIViewController, UIScrollViewDelegate {
             filterVaccinationsForDate(selectedDate, showLoading: false)
         }
     }
+    
+    // MARK: - Overdue Vaccine Methods
+    
+    /// Check for overdue vaccines and return them
+    func checkForOverdueVaccines() async -> [(VaccineSchedule, String)] {
+        do {
+            // Try using VaccineScheduleManager first
+            return try await VaccineScheduleManager.shared.fetchOverdueVaccines()
+        } catch {
+            print("❌ Error fetching overdue vaccines from VaccineScheduleManager: \(error)")
+            
+            // Fallback to SupabaseVaccineManager
+            do {
+                return try await SupabaseVaccineManager.shared.fetchOverdueVaccines()
+            } catch {
+                print("❌ Error fetching overdue vaccines from SupabaseVaccineManager: \(error)")
+                return []
+            }
+        }
+    }
+    
+    /// Show an alert for an overdue vaccine
+    func showOverdueVaccineAlert(for vaccineSchedule: VaccineSchedule, withName vaccineName: String) {
+        // Create an iOS-native alert
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateStyle = .medium
+        
+        let alert = UIAlertController(
+            title: "Overdue Vaccine",
+            message: "The \(vaccineName) vaccine was scheduled for \(dateFormatter.string(from: vaccineSchedule.date)). Has it been administered?",
+            preferredStyle: .alert
+        )
+        
+        // Add Yes action (mark as administered)
+        alert.addAction(UIAlertAction(title: "Yes", style: .default) { [weak self] _ in
+            Task {
+                do {
+                    try await SupabaseVaccineManager.shared.markVaccineAsAdministered(
+                        scheduleId: vaccineSchedule.id.uuidString,
+                        administeredDate: Date()
+                    )
+                    
+                    // Refresh the view
+                    await MainActor.run {
+                        self?.loadVaccinations()
+                    }
+                } catch {
+                    print("❌ Error marking vaccine as administered: \(error)")
+                }
+            }
+        })
+        
+        // Add Remind Later action
+        alert.addAction(UIAlertAction(title: "Remind Me Later", style: .default))
+        
+        // Add No action (dismiss the alert)
+        alert.addAction(UIAlertAction(title: "No", style: .cancel))
+        
+        // Present the alert
+        present(alert, animated: true)
+    }
+    
+    /// Static method that can be called by other view controllers to present an alert
+    static func presentOverdueVaccineAlert(for vaccineSchedule: VaccineSchedule, withName vaccineName: String, on viewController: UIViewController) {
+        // Create an iOS-native alert
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateStyle = .medium
+        
+        let alert = UIAlertController(
+            title: "Overdue Vaccine",
+            message: "The \(vaccineName) vaccine was scheduled for \(dateFormatter.string(from: vaccineSchedule.date)). Has it been administered?",
+            preferredStyle: .alert
+        )
+        
+        // Add Yes action (mark as administered)
+        alert.addAction(UIAlertAction(title: "Yes", style: .default) { _ in
+            Task {
+                do {
+                    try await SupabaseVaccineManager.shared.markVaccineAsAdministered(
+                        scheduleId: vaccineSchedule.id.uuidString,
+                        administeredDate: Date()
+                    )
+                    
+                    // Notify observers to refresh data
+                    await MainActor.run {
+                        NotificationCenter.default.post(name: .vaccinesUpdated, object: nil)
+                        
+                        // Show success alert
+                        let successAlert = UIAlertController(
+                            title: "Success",
+                            message: "The vaccine has been marked as administered.",
+                            preferredStyle: .alert
+                        )
+                        successAlert.addAction(UIAlertAction(title: "OK", style: .default))
+                        viewController.present(successAlert, animated: true)
+                    }
+                } catch {
+                    print("❌ Error marking vaccine as administered: \(error)")
+                    
+                    // Show error alert
+                    await MainActor.run {
+                        let errorAlert = UIAlertController(
+                            title: "Error",
+                            message: "Failed to mark the vaccine as administered. Please try again.",
+                            preferredStyle: .alert
+                        )
+                        errorAlert.addAction(UIAlertAction(title: "OK", style: .default))
+                        viewController.present(errorAlert, animated: true)
+                    }
+                }
+            }
+        })
+        
+        // Add Remind Later action
+        alert.addAction(UIAlertAction(title: "Remind Me Later", style: .default))
+        
+        // Add No action (dismiss the alert)
+        alert.addAction(UIAlertAction(title: "No", style: .cancel))
+        
+        // Present the alert
+        viewController.present(alert, animated: true)
+    }
 }
 
 // MARK: - SwiftUI Views
@@ -1342,7 +1464,7 @@ struct VaccinationCard: View {
                 
                 Spacer()
                 
-                Text(vaccination.isAdministered ? "Administered" : "Scheduled")
+                Text(vaccination.isAdministered ? "Administered" : "Rescheduled")
                     .font(.subheadline)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
@@ -1392,7 +1514,7 @@ struct VaccinationCard: View {
                             Text("Navigate")
                                 .font(.footnote)
                                 .fontWeight(.medium)
-                            Image(systemName: "map.fill")
+                            Image(systemName: "location.fill")
                                 .font(.footnote)
                         }
                         .padding(.horizontal, 8)

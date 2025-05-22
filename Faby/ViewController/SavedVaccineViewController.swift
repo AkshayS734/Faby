@@ -1074,63 +1074,57 @@ class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITab
         let updateAction = UIAlertAction(title: "Update", style: .default) { [weak self] _ in
             guard let self = self else { return }
             
+            // Start loading state
+            self.activityIndicator.startAnimating()
+            
             // Immediately update the local data model before server update
-            let oldDate = vaccine.administeredDate
             let newDate = datePicker.date
             
             // Find the vaccine in our local array and update its date
             for (sectionIndex, section) in self.organizedVaccines.enumerated() {
-                if let vaccineIndex = section.vaccines.firstIndex(where: { $0.scheduleId == vaccine.scheduleId }) {
+                if let vaccineIndex = section.vaccines.firstIndex(where: { $0.id == vaccine.id }) {
                     // Update the vaccine's date locally
                     self.organizedVaccines[sectionIndex].vaccines[vaccineIndex].administeredDate = newDate
+                    self.organizedVaccines[sectionIndex].vaccines[vaccineIndex].hasDate = true
                     
                     // Get the indexPath for this vaccine
                     let indexPath = IndexPath(row: vaccineIndex, section: sectionIndex)
                     
                     // Update the cell if it's visible
                     if let cell = self.tableView.cellForRow(at: indexPath) as? AdministeredVaccineCell {
-                        let dateFormatter = DateFormatter()
-                        dateFormatter.dateStyle = .medium
                         cell.updateDate(newDate: newDate)
                     }
                     
                     // Also update in the main array
-                    if let mainIndex = self.administeredVaccines.firstIndex(where: { $0.scheduleId == vaccine.scheduleId }) {
+                    if let mainIndex = self.administeredVaccines.firstIndex(where: { $0.id == vaccine.id }) {
                         self.administeredVaccines[mainIndex].administeredDate = newDate
+                        self.administeredVaccines[mainIndex].hasDate = true
                     }
                 }
             }
             
-            // FRONTEND ONLY IMPLEMENTATION (until backend is ready)
-            // Skipping database update for now
-            self.showToast(message: "Date updated")
-            
-            // NOTE: Uncomment the below code once the backend API is ready
-            /*
+            // Update the database
             Task {
                 do {
-                    // Update the date in the database
-                    try await SupabaseVaccineManager.shared.updateAdministeredDate(
-                        scheduleId: vaccine.scheduleId.uuidString,
+                    try await SupabaseVaccineManager.shared.updateAdministeredVaccineDate(
+                        vaccineId: vaccine.id.uuidString,
                         newDate: newDate
                     )
                     
-                    // Show success feedback
                     await MainActor.run {
-                        self.showToast(message: "Vaccine date updated successfully")
+                        self.activityIndicator.stopAnimating()
+                        self.showToast(message: "Date updated successfully")
                     }
                 } catch {
                     print("Failed to update date: \(error)")
                     
-                    // Revert the local change if server update failed
                     await MainActor.run {
-                        // Revert local changes
-                        self.loadVaccines()
+                        self.activityIndicator.stopAnimating()
                         self.showToast(message: "Failed to update date. Please try again.")
+                        self.loadVaccines() // Reload to reset changes
                     }
                 }
             }
-            */
         }
         
         let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
@@ -1329,10 +1323,21 @@ class AdministeredVaccineCell: UITableViewCell {
         // Set up vaccine name
         nameLabel.text = vaccine?.name ?? "Unknown Vaccine"
         
-        // Format the date
+        // Format the date with proper timezone handling
         let dateFormatter = DateFormatter()
         dateFormatter.dateStyle = .medium
-        dateLabel.text = "Administered on \(dateFormatter.string(from: administeredVaccine.administeredDate))"
+        dateFormatter.timeZone = TimeZone.current
+        
+        // Check if the vaccine has a date
+        if administeredVaccine.hasDate {
+            // Use the actual administered date from the database
+            let dateString = dateFormatter.string(from: administeredVaccine.administeredDate)
+            dateLabel.text = "Administered on \(dateString)"
+        } else {
+            // No date was selected
+            dateLabel.text = "No date selected"
+            dateLabel.textColor = .systemOrange
+        }
         
         // Always use syringe icon with systemBlue color
         iconImageView.image = UIImage(systemName: "syringe.fill")
@@ -1344,6 +1349,7 @@ class AdministeredVaccineCell: UITableViewCell {
         // Update the stored vaccine object
         if var vaccine = self.vaccine {
             vaccine.administeredDate = newDate
+            vaccine.hasDate = true
             self.vaccine = vaccine
         }
         
@@ -1351,6 +1357,7 @@ class AdministeredVaccineCell: UITableViewCell {
         let dateFormatter = DateFormatter()
         dateFormatter.dateStyle = .medium
         dateLabel.text = "Administered on \(dateFormatter.string(from: newDate))"
+        dateLabel.textColor = .secondaryLabel
         
         // Add a subtle animation to highlight the update
         UIView.animate(withDuration: 0.3) {

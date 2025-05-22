@@ -164,6 +164,15 @@ class HomeViewController: UIViewController {
         return indicator
     }()
     
+    // Activity indicator for general loading operations
+    private let activityIndicator: UIActivityIndicatorView = {
+        let indicator = UIActivityIndicatorView(style: .large)
+        indicator.hidesWhenStopped = true
+        indicator.color = .systemBlue
+        indicator.translatesAutoresizingMaskIntoConstraints = false
+        return indicator
+    }()
+    
     var todaysBitesData: [TodayBite] = []
     
     private let todaysBitesEmptyStateView: UIView = {
@@ -302,8 +311,8 @@ class HomeViewController: UIViewController {
         // Always update Today's Bites when returning to this view
         updateTodaysBites()
         
-        // Start auto-scrolling timer
-        startAutoScrollTimer()
+        // Check for overdue vaccines when view appears
+        checkForOverdueVaccines()
     }
     
     override func viewWillDisappear(_ animated: Bool) {
@@ -348,6 +357,7 @@ class HomeViewController: UIViewController {
         }
     }
     private func setupUI() {
+        view.backgroundColor = .systemBackground 
         view.addSubview(scrollView)
         scrollView.addSubview(contentView)
         
@@ -365,6 +375,9 @@ class HomeViewController: UIViewController {
         
         // Add loading indicator to the vaccine container view
         vaccineContainerView.addSubview(vaccinationLoadingIndicator)
+        
+        // Add activity indicator for general loading operations
+        view.addSubview(activityIndicator)
         
         // Add empty state views with proper hierarchy
         contentView.addSubview(todaysBitesEmptyStateView)
@@ -428,6 +441,10 @@ class HomeViewController: UIViewController {
             // Add constraints for the vaccination loading indicator
             vaccinationLoadingIndicator.centerXAnchor.constraint(equalTo: vaccineContainerView.centerXAnchor),
             vaccinationLoadingIndicator.centerYAnchor.constraint(equalTo: vaccineContainerView.centerYAnchor),
+            
+            // Add constraints for the general activity indicator
+            activityIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            activityIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor),
             
             // Card constraints
             todaysBitesEmptyStateView.topAnchor.constraint(equalTo: todaysBitesLabel.bottomAnchor, constant: 12),
@@ -1027,60 +1044,262 @@ class HomeViewController: UIViewController {
             todaysBitesEmptyStateView.isHidden = true
         }
     }
+
+    // MARK: - Overdue Vaccine Check and Alert
     
-    // Function to start auto-scrolling timer
-    private func startAutoScrollTimer() {
-        // Cancel any existing timer
-        stopAutoScrollTimer()
-        
-        // Only start timer if we have more than one item
-        if todaysBitesData.count > 1 {
-            autoScrollTimer = Timer.scheduledTimer(timeInterval: autoScrollInterval, 
-                                                  target: self, 
-                                                  selector: #selector(scrollToNextCard), 
-                                                  userInfo: nil, 
-                                                  repeats: true)
+    /// Check for any vaccines that were scheduled for yesterday or earlier and have not been administered
+    private func checkForOverdueVaccines() {
+        print("🔍 Checking for overdue vaccines...")
+        Task {
+            do {
+                // Fetch overdue vaccines using SupabaseVaccineManager
+                let overdueVaccines = try await SupabaseVaccineManager.shared.fetchOverdueVaccines()
+                
+                // If there are any overdue vaccines, show an alert on the main thread
+                if !overdueVaccines.isEmpty {
+                    await MainActor.run {
+                        // Show alert for the first overdue vaccine
+                        showOverdueVaccineAlert(for: overdueVaccines[0])
+                    }
+                } else {
+                    print("✅ No overdue vaccines found")
+                }
+            } catch {
+                print("❌ Error checking for overdue vaccines: \(error)")
+            }
         }
     }
-
-    // Function to stop auto-scrolling timer
-    private func stopAutoScrollTimer() {
-        autoScrollTimer?.invalidate()
-        autoScrollTimer = nil
-    }
-
-    // Function to scroll to the next card
-    @objc private func scrollToNextCard() {
-        guard todaysBitesData.count > 1, 
-              let visibleItems = todaysBitesCollectionView.indexPathsForVisibleItems.first else {
-            return
+    
+    /// Show an Apple-native alert asking if the user has administered the overdue vaccine
+    private func showOverdueVaccineAlert(for vaccine: (VaccineSchedule, String)) {
+        let (vaccineSchedule, vaccineName) = vaccine
+        
+        // Format the date for display
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateStyle = .medium
+        let formattedDate = dateFormatter.string(from: vaccineSchedule.date)
+        
+        // Create an iOS-native alert controller
+        let alert = UIAlertController(
+            title: "Overdue Vaccination",
+            message: "The \(vaccineName) vaccine was scheduled for \(formattedDate). Has this vaccine been administered?",
+            preferredStyle: .alert
+        )
+        
+        // Add "Yes" action to mark as administered
+        let yesAction = UIAlertAction(title: "Yes", style: .default) { [weak self] _ in
+            self?.markVaccineAsAdministered(vaccineSchedule)
         }
         
-        // Calculate the next index
-        let nextIndex = (visibleItems.item + 1) % todaysBitesData.count
-        let nextIndexPath = IndexPath(item: nextIndex, section: 0)
+        // Add "Reschedule" action instead of "No"
+        let rescheduleAction = UIAlertAction(title: "Reschedule", style: .default) { [weak self] _ in
+            self?.showDatePicker(for: vaccineSchedule, vaccineName: vaccineName)
+        }
         
-        // Scroll to the next item with animation
-        todaysBitesCollectionView.scrollToItem(at: nextIndexPath, 
-                                              at: .centeredHorizontally, 
-                                              animated: true)
+        // Add "Remind Me Later" option
+        let remindLaterAction = UIAlertAction(title: "Remind Me Later", style: .cancel)
         
-        // Update page control
-        pageControl.currentPage = nextIndex
+        // Add actions to the alert controller
+        alert.addAction(yesAction)
+        alert.addAction(rescheduleAction)
+        alert.addAction(remindLaterAction)
+        
+        // Present the alert
+        present(alert, animated: true)
     }
-
-    // Pause scrolling when user touches the collection view
-    func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
-        if scrollView == todaysBitesCollectionView {
-            stopAutoScrollTimer()
+    
+    /// Shows a date picker alert for rescheduling a vaccine
+    private func showDatePicker(for vaccineSchedule: VaccineSchedule, vaccineName: String) {
+        // Create alert controller with action sheet style
+        let alertController = UIAlertController(title: "Reschedule \(vaccineName)", message: "Select a new date", preferredStyle: .actionSheet)
+        
+        // Create custom view for date picker with sufficient height
+        let customView = UIView(frame: CGRect(x: 0, y: 0, width: alertController.view.bounds.width - 16, height: 380))
+        
+        // Create and configure date picker using iOS-native inline style
+        let datePicker = UIDatePicker()
+        datePicker.datePickerMode = .date
+        datePicker.preferredDatePickerStyle = .inline  // Modern iOS inline calendar style
+        
+        // Set minimum date to today (can't schedule in the past)
+        datePicker.minimumDate = Date()
+        
+        // Set the date to a week from now as default
+        datePicker.date = Calendar.current.date(byAdding: .day, value: 7, to: Date()) ?? Date()
+        
+        // Configure datePicker to properly fit in the view
+        datePicker.translatesAutoresizingMaskIntoConstraints = false
+        customView.addSubview(datePicker)
+        
+        // Add constraints to ensure datePicker is properly sized and positioned
+        NSLayoutConstraint.activate([
+            datePicker.topAnchor.constraint(equalTo: customView.topAnchor),
+            datePicker.leadingAnchor.constraint(equalTo: customView.leadingAnchor),
+            datePicker.trailingAnchor.constraint(equalTo: customView.trailingAnchor),
+            datePicker.bottomAnchor.constraint(equalTo: customView.bottomAnchor)
+        ])
+        
+        // Add custom view to alert
+        alertController.view.addSubview(customView)
+        
+        // Adjust alert height to accommodate date picker and prevent cut-off dates
+        let heightConstraint = NSLayoutConstraint(
+            item: alertController.view!,
+            attribute: .height,
+            relatedBy: .equal,
+            toItem: nil,
+            attribute: .notAnAttribute,
+            multiplier: 1,
+            constant: 580 // Increased height to ensure all dates are visible
+        )
+        alertController.view.addConstraint(heightConstraint)
+        
+        // Add actions
+        let updateAction = UIAlertAction(title: "Update", style: .default) { [weak self] _ in
+            guard let self = self else { return }
+            
+            // Start loading state
+            self.activityIndicator.startAnimating()
+            
+            // Get the selected date
+            let newDate = datePicker.date
+            
+            // Update the schedule in the database
+            Task {
+                do {
+                    try await self.updateVaccineScheduleDate(vaccineSchedule, newDate: newDate)
+                    
+                    // Once updated, reload vaccinations
+                    await MainActor.run {
+                        self.activityIndicator.stopAnimating()
+                        self.showToast(message: "Vaccine rescheduled successfully")
+                        self.loadVaccinations()
+                    }
+                } catch {
+                    print("❌ Error rescheduling vaccine: \(error)")
+                    
+                    await MainActor.run {
+                        self.activityIndicator.stopAnimating()
+                        self.showToast(message: "Failed to reschedule. Please try again.")
+                    }
+                }
+            }
+        }
+        
+        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
+        
+        alertController.addAction(updateAction)
+        alertController.addAction(cancelAction)
+        
+        // For iPad support
+        if let popoverController = alertController.popoverPresentationController {
+            popoverController.sourceView = view
+            popoverController.sourceRect = CGRect(x: view.bounds.midX, y: view.bounds.midY, width: 0, height: 0)
+            popoverController.permittedArrowDirections = []
+        }
+        
+        present(alertController, animated: true)
+    }
+    
+    /// Update the scheduled date for a vaccine
+    private func updateVaccineScheduleDate(_ vaccineSchedule: VaccineSchedule, newDate: Date) async throws {
+        // Use VaccineScheduleManager to update the schedule
+        try await VaccineScheduleManager.shared.updateSchedule(
+            recordId: vaccineSchedule.id,
+            newDate: newDate
+        )
+        
+        print("✅ Vaccine rescheduled successfully for date: \(newDate)")
+    }
+    
+    /// Mark a vaccine as administered in the database
+    private func markVaccineAsAdministered(_ vaccine: VaccineSchedule) {
+        Task {
+            do {
+                // Use SupabaseVaccineManager to mark vaccine as administered
+                try await SupabaseVaccineManager.shared.markVaccineAsAdministered(
+                    scheduleId: vaccine.id.uuidString,
+                    administeredDate: Date()
+                )
+                
+                print("✅ Vaccine marked as administered: \(vaccine.id)")
+                
+                // Reload vaccinations to update the UI
+                await MainActor.run {
+                    self.loadVaccinations()
+                }
+                
+                // Show confirmation to the user
+                await MainActor.run {
+                    let confirmationAlert = UIAlertController(
+                        title: "Success",
+                        message: "The vaccine has been marked as administered.",
+                        preferredStyle: .alert
+                    )
+                    confirmationAlert.addAction(UIAlertAction(title: "OK", style: .default))
+                    self.present(confirmationAlert, animated: true)
+                }
+            } catch {
+                print("❌ Error marking vaccine as administered: \(error)")
+                
+                // Show error alert
+                await MainActor.run {
+                    let errorAlert = UIAlertController(
+                        title: "Error",
+                        message: "Failed to mark the vaccine as administered. Please try again.",
+                        preferredStyle: .alert
+                    )
+                    errorAlert.addAction(UIAlertAction(title: "OK", style: .default))
+                    self.present(errorAlert, animated: true)
+                }
+            }
         }
     }
-
-    // Resume scrolling when user stops interacting with the collection view
-    func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
-        if scrollView == todaysBitesCollectionView {
-            startAutoScrollTimer()
-        }
+    
+    /// Shows a toast message with feedback
+    private func showToast(message: String) {
+        let toastContainer = UIView()
+        toastContainer.backgroundColor = UIColor.black.withAlphaComponent(0.7)
+        toastContainer.layer.cornerRadius = 16
+        toastContainer.clipsToBounds = true
+        toastContainer.translatesAutoresizingMaskIntoConstraints = false
+        
+        let toastLabel = UILabel()
+        toastLabel.textColor = .white
+        toastLabel.font = UIFont.systemFont(ofSize: 14, weight: .medium)
+        toastLabel.textAlignment = .center
+        toastLabel.text = message
+        toastLabel.numberOfLines = 0
+        toastLabel.translatesAutoresizingMaskIntoConstraints = false
+        
+        toastContainer.addSubview(toastLabel)
+        view.addSubview(toastContainer)
+        
+        // Set constraints
+        NSLayoutConstraint.activate([
+            toastLabel.topAnchor.constraint(equalTo: toastContainer.topAnchor, constant: 12),
+            toastLabel.leadingAnchor.constraint(equalTo: toastContainer.leadingAnchor, constant: 16),
+            toastLabel.trailingAnchor.constraint(equalTo: toastContainer.trailingAnchor, constant: -16),
+            toastLabel.bottomAnchor.constraint(equalTo: toastContainer.bottomAnchor, constant: -12),
+            
+            toastContainer.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            toastContainer.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -100),
+            toastContainer.leadingAnchor.constraint(greaterThanOrEqualTo: view.leadingAnchor, constant: 16),
+            toastContainer.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -16)
+        ])
+        
+        // Animate in
+        toastContainer.alpha = 0
+        UIView.animate(withDuration: 0.2, animations: {
+            toastContainer.alpha = 1
+        }, completion: { _ in
+            // Animate out after delay
+            UIView.animate(withDuration: 0.2, delay: 2.0, options: .curveEaseOut, animations: {
+                toastContainer.alpha = 0
+            }, completion: { _ in
+                toastContainer.removeFromSuperview()
+            })
+        })
     }
 }
 

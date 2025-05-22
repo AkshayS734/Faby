@@ -13,37 +13,50 @@ struct VaccineCardView: View {
     
     @Environment(\.colorScheme) private var colorScheme
     @ScaledMetric var scaledPadding: CGFloat = 16
-
+    
+    // Fixed height for all cards
+    private let cardHeight: CGFloat = 100
+    
     var body: some View {
         Button(action: onTap) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .center) {
+                VStack(alignment: .leading, spacing: 6) {
                     Text(vaccine.name)
-                        .font(.body)
-                        .fontWeight(.medium)
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
                         .foregroundColor(.primary)
+                        .lineLimit(1)
                     
-                    Text(formatDateRange(startWeek: vaccine.startWeek, endWeek: vaccine.endWeek, birthDate: babyBirthDate))
-                        .font(.footnote)
+                    Text(formatDateRange(startWeek: vaccine.startWeek, endWeek: vaccine.endWeek, birthDate: babyBirthDate, recommendedAgeText: vaccine.recommendedAgeText))
+                        .font(.caption)
                         .foregroundColor(.secondary)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .multilineTextAlignment(.leading)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.vertical, 8)
+                
                 Spacer()
+                
                 Image(systemName: "calendar.badge.plus")
                     .font(.title3)
                     .foregroundColor(Color.accentColor)
-                    .frame(width: 44, height: 44) // Optimal tap target size
+                    .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
             }
-            .padding(scaledPadding)
+            .padding(.horizontal, 16)
+            .frame(height: cardHeight, alignment: .center)
+            .frame(maxWidth: .infinity)
             .background(Color.white)
             .cornerRadius(16)
             .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.1 : 0.05),
                     radius: 4, x: 0, y: 2)
         }
-        .buttonStyle(PlainButtonStyle()) // Prevents default button styling
+        .buttonStyle(PlainButtonStyle())
     }
 
-    private func formatDateRange(startWeek: Int, endWeek: Int, birthDate: Date) -> String {
+    private func formatDateRange(startWeek: Int, endWeek: Int, birthDate: Date, recommendedAgeText: String? = nil) -> String {
         let calendar = Calendar.current
         let startDate = calendar.date(byAdding: .day, value: startWeek * 7, to: birthDate) ?? Date()
         let endDate = calendar.date(byAdding: .day, value: endWeek * 7, to: birthDate) ?? Date()
@@ -51,13 +64,24 @@ struct VaccineCardView: View {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
 
-        if startDate < Date() && endDate < Date() {
-            return "Overdue since \(formatter.string(from: endDate))"
+        if let recommendedAgeText = recommendedAgeText, !recommendedAgeText.isEmpty {
+            if startDate < Date() && endDate < Date() {
+                return "Overdue since \(recommendedAgeText)"
+            }
+            if startDate < Date() && endDate >= Date() {
+                return "Due now until \(recommendedAgeText)"
+            }
+            return "Recommended before \(recommendedAgeText)"
+        } else {
+            // Fallback to date-based formatting if no recommendedAgeText is available
+            if startDate < Date() && endDate < Date() {
+                return "Overdue since \(formatter.string(from: endDate))"
+            }
+            if startDate < Date() && endDate >= Date() {
+                return "Due now until \(formatter.string(from: endDate))"
+            }
+            return "Due \(formatter.string(from: startDate)) - \(formatter.string(from: endDate))"
         }
-        if startDate < Date() && endDate >= Date() {
-            return "Due now until \(formatter.string(from: endDate))"
-        }
-        return "Due \(formatter.string(from: startDate)) - \(formatter.string(from: endDate))"
     }
 }
 //
@@ -771,7 +795,7 @@ class VacciAlertViewController: UIViewController, TimePeriodCollectionViewDelega
                     print("🔧 No current baby ID set, using first baby: \(baby.name) (ID: \(baby.babyID))")
                     UserDefaultsManager.shared.currentBabyId = baby.babyID
                 } catch {
-                    print("⚠️ Error fetching connected baby: \(error)")
+                     print("⚠️ Error fetching connected baby: \(error)")
                 }
             }
         } else {
@@ -779,7 +803,6 @@ class VacciAlertViewController: UIViewController, TimePeriodCollectionViewDelega
         }
     }
     
-    // MARK: - Baby Data Fetching
-    // Using shared methods from BabyDataModels.swift
+  
 }
-import Foundation
+
