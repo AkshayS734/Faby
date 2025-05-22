@@ -1376,419 +1376,435 @@ class PostsSupabaseManager {
     }
     
     func fetchSavedPosts(completion: @escaping ([Post]?, Error?) -> Void) {
-        guard let userId = AuthManager.shared.currentUserID else {
-            print("❌ User not logged in")
-            completion(nil, NSError(domain: "AuthError", code: 401, userInfo: [NSLocalizedDescriptionKey: "User not logged in"]))
-            return
-        }
-        
-        print("📢 fetchSavedPosts() called")
-        
-        Task {
-            do {
-                // First get all saved post IDs
-                let savedPostsResponse = try await client.database
-                    .from("SavedPosts")
-                    .select("post_id")
-                    .eq("user_id", value: userId)
-                    .execute()
-                
-                // Print raw response for debugging
-                print("📄 Saved posts raw response: \(String(data: savedPostsResponse.data, encoding: .utf8) ?? "None")")
-                
-                guard !savedPostsResponse.data.isEmpty else {
-                    print("ℹ️ No saved posts found")
-                    DispatchQueue.main.async {
-                        completion([], nil)
-                    }
-                    return
-                }
-                
-                // Parse the response to get post IDs
-                guard let jsonArray = try? JSONSerialization.jsonObject(with: savedPostsResponse.data, options: []) as? [[String: Any]] else {
-                    print("❌ Error parsing saved posts response")
-                    DispatchQueue.main.async {
-                        completion(nil, NSError(domain: "SavedPostsError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to parse saved posts"]))
-                    }
-                    return
-                }
-                
-                // The post_id might be a UUID or a string in the database
-                let postIds = jsonArray.compactMap {
-                    if let postIdString = $0["post_id"] as? String {
-                        return postIdString
-                    }
-                    // Add other type conversions if necessary
-                    return nil
-                }
-                
-                print("📊 Found \(postIds.count) saved post IDs: \(postIds)")
-                
-                if postIds.isEmpty {
-                    DispatchQueue.main.async {
-                        completion([], nil)
-                    }
-                    return
-                }
-                
-                // Fetch all posts with these IDs
-                var postsQuery = client.database.from("posts").select("""
-                    postId, 
-                    postTitle, 
-                    postContent, 
-                    topicId, 
-                    userId, 
-                    createdAt, 
-                    image_url,
-                    parents(name, parentimage_url)
-                """)
-                
-                // Use in() filter with the list of post IDs
-                if let postIdsJson = try? JSONEncoder().encode(postIds),
-                   let postIdsJsonString = String(data: postIdsJson, encoding: .utf8) {
-                    postsQuery = postsQuery.filter("postId", operator: "in", value: postIdsJsonString)
-                    let postsResponse = try await postsQuery.execute()
-                    
-                    print("📄 Posts response: \(String(data: postsResponse.data, encoding: .utf8) ?? "None")")
-                    
-                    let decodedPosts = try JSONDecoder().decode([Post].self, from: postsResponse.data)
-                    print("✅ Fetched \(decodedPosts.count) saved posts")
-                    
-                    DispatchQueue.main.async {
-                        completion(decodedPosts, nil)
-                    }
-                } else {
-                    print("❌ Failed to encode post IDs to JSON")
-                    DispatchQueue.main.async {
-                        completion([], nil)
-                    }
-                }
-            } catch {
-                print("❌ Error fetching saved posts: \(error.localizedDescription)")
-                DispatchQueue.main.async {
-                    completion(nil, error)
-                }
+            guard let userId = AuthManager.shared.currentUserID else {
+                print("❌ User not logged in")
+                completion(nil, NSError(domain: "AuthError", code: 401, userInfo: [NSLocalizedDescriptionKey: "User not logged in"]))
+                return
             }
-        }
-    }
-    
-    // MARK: - Delete Post
-    func deletePost(postId: String, completion: @escaping (Bool, Error?) -> Void) {
-        print("📢 deletePost() called for post: \(postId)")
-        
-        Task {
-            do {
-                // 1. First delete all likes for this post to avoid foreign key constraints
-                let likesResponse = try await client.database
-                    .from("Likes")
-                    .delete()
-                    .eq("post_id", value: postId)
-                    .execute()
-                
-                print("✅ Deleted likes for post: \(postId)")
-                
-                // 2. Delete all saved instances of this post
-                let savedResponse = try await client.database
-                    .from("SavedPosts")
-                    .delete()
-                    .eq("post_id", value: postId)
-                    .execute()
-                
-                print("✅ Deleted saved instances of post: \(postId)")
-                
-                // 3. Delete all comments for this post
-                // First, get all comment IDs to handle replies
-                let commentsResponse = try await client.database
-                    .from("Comments")
-                    .select("Comment_id")
-                    .eq("post_id", value: postId)
-                    .execute()
-                
-                if let commentData = try? JSONSerialization.jsonObject(with: commentsResponse.data, options: []) as? [[String: Any]] {
-                    let commentIds = commentData.compactMap { $0["Comment_id"] as? Int }
-                    print("📊 Found \(commentIds.count) comments to delete for post: \(postId)")
+            
+            print("📢 fetchSavedPosts() called")
+            
+            Task {
+                do {
+                    // First get all saved post IDs
+                    let savedPostsResponse = try await client.database
+                        .from("SavedPosts")
+                        .select("post_id")
+                        .eq("user_id", value: userId)
+                        .execute()
                     
-                    // 3a. Delete all comment replies
-                    if !commentIds.isEmpty {
-                        if let commentIdsJson = try? JSONEncoder().encode(commentIds),
-                           let commentIdsJsonString = String(data: commentIdsJson, encoding: .utf8) {
-                            let repliesResponse = try await client.database
-                                .from("CommentReplies")
-                                .delete()
-                                .filter("comment_id", operator: "in", value: commentIdsJsonString)
-                                .execute()
-                            
-                            print("✅ Deleted all comment replies")
-                        } else {
-                            print("⚠️ Failed to encode comment IDs for replies deletion")
+                    // Print raw response for debugging
+                    print("📄 Saved posts raw response: \(String(data: savedPostsResponse.data, encoding: .utf8) ?? "None")")
+                    
+                    guard !savedPostsResponse.data.isEmpty else {
+                        print("ℹ️ No saved posts found")
+                        DispatchQueue.main.async {
+                            completion([], nil)
                         }
+                        return
                     }
                     
-                    // 3b. Delete all comment likes
-                    if !commentIds.isEmpty {
-                        if let commentIdsJson = try? JSONEncoder().encode(commentIds),
-                           let commentIdsJsonString = String(data: commentIdsJson, encoding: .utf8) {
-                            let commentLikesResponse = try await client.database
-                                .from("CommentLikes")
-                                .delete()
-                                .filter("comment_id", operator: "in", value: commentIdsJsonString)
-                                .execute()
-                            
-                            print("✅ Deleted all comment likes")
-                        } else {
-                            print("⚠️ Failed to encode comment IDs for likes deletion")
+                    // Parse the response to get post IDs
+                    guard let jsonArray = try? JSONSerialization.jsonObject(with: savedPostsResponse.data, options: []) as? [[String: Any]] else {
+                        print("❌ Error parsing saved posts response")
+                        DispatchQueue.main.async {
+                            completion(nil, NSError(domain: "SavedPostsError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to parse saved posts"]))
                         }
+                        return
                     }
-                }
-                
-                // 3c. Now delete all comments
-                let deleteCommentsResponse = try await client.database
-                    .from("Comments")
-                    .delete()
-                    .eq("post_id", value: postId)
-                    .execute()
-                
-                print("✅ Deleted all comments for post: \(postId)")
-                
-                // 4. Finally delete the post itself
-                let postResponse = try await client.database
-                    .from("posts")
-                    .delete()
-                    .eq("postId", value: postId)
-                    .execute()
-                
-                print("✅ Deleted post: \(postId)")
-                
-                if postResponse.status >= 200 && postResponse.status < 300 {
-                    // 5. If post has an image, attempt to delete it from storage
-                    // Note: This is optional and may fail if image names don't match
-                    if let fileIdMatch = postId.split(separator: "-").last {
-                        let possibleImageName = "\(fileIdMatch).jpg"
+                    
+                    // The post_id might be a UUID or a string in the database
+                    let postIds = jsonArray.compactMap {
+                        if let postIdString = $0["post_id"] as? String {
+                            return postIdString
+                        }
+                        // Add other type conversions if necessary
+                        return nil
+                    }
+                    
+                    print("📊 Found \(postIds.count) saved post IDs: \(postIds)")
+                    
+                    if postIds.isEmpty {
+                        DispatchQueue.main.async {
+                            completion([], nil)
+                        }
+                        return
+                    }
+                    
+                    // Fetch all posts with these IDs
+                    var postsQuery = client.database.from("posts").select("""
+                        postId, 
+                        postTitle, 
+                        postContent, 
+                        topicId, 
+                        userId, 
+                        createdAt, 
+                        image_url,
+                        parents(name, parentimage_url)
+                    """)
+                    
+                    // Fetch posts one by one since the 'in' operator is causing issues
+                    var allPosts: [Post] = []
+                    
+                    // Since the 'in' operator isn't working correctly, we'll fetch posts individually
+                    for postId in postIds {
                         do {
-                            let _ = try await client.storage
-                                .from("postimages")
-                                .remove(paths: [possibleImageName])
+                            let singlePostResponse = try await client.database.from("posts")
+                                .select("""
+                                    postId, 
+                                    postTitle, 
+                                    postContent, 
+                                    topicId, 
+                                    userId, 
+                                    createdAt, 
+                                    image_url,
+                                    parents(name, parentimage_url)
+                                """)
+                                .eq("postId", value: postId)
+                                .execute()
                             
-                            print("✅ Deleted image for post: \(postId)")
+                            if let post = try? JSONDecoder().decode([Post].self, from: singlePostResponse.data).first {
+                                allPosts.append(post)
+                                print("✅ Successfully fetched post with ID: \(postId)")
+                            }
                         } catch {
-                            print("⚠️ Could not delete image, but post deletion was successful")
+                            print("⚠️ Error fetching individual post \(postId): \(error.localizedDescription)")
+                            // Continue with other posts even if one fails
+                            continue
                         }
                     }
                     
+                    print("✅ Fetched \(allPosts.count) saved posts")
+                    
                     DispatchQueue.main.async {
-                        completion(true, nil)
+                        completion(allPosts, nil)
                     }
-                } else {
-                    let errorMessage = String(data: postResponse.data, encoding: .utf8) ?? "Unknown error"
+                } catch {
+                    print("❌ Error fetching saved posts: \(error.localizedDescription)")
                     DispatchQueue.main.async {
-                        completion(false, NSError(domain: "DeletePostError", code: postResponse.status, userInfo: [NSLocalizedDescriptionKey: errorMessage]))
+                        completion(nil, error)
                     }
-                }
-            } catch {
-                print("❌ Error deleting post: \(error.localizedDescription)")
-                DispatchQueue.main.async {
-                    completion(false, error)
                 }
             }
         }
-    }
-    
-    // MARK: - Post Deep Link Generation
-    func generatePostDeepLink(for post: Post) -> URL? {
-        // Create a deep link structure
-        // Format: faby://post/{postId}
         
-        let baseUrlString = "faby://post/"
-        let postIdComponent = post.postId
-        
-        guard let url = URL(string: baseUrlString + postIdComponent) else {
-            print("❌ Failed to create deep link URL")
-            return nil
-        }
-        
-        return url
-    }
-    
-    // Generate a web link (for when deep links aren't available)
-    func generatePostWebLink(for post: Post) -> URL? {
-        // Use the Supabase URL as a base for web sharing
-        // This is a placeholder for a real web link to your app
-        
-        let baseUrlString = "https://hlkmrimpxzsnxzrgofes.supabase.co/storage/v1/object/public/share"
-        let postIdComponent = "/post/\(post.postId)"
-        
-        guard let url = URL(string: baseUrlString + postIdComponent) else {
-            print("❌ Failed to create web link URL")
-            return nil
-        }
-        
-        return url
-    }
-    
-    // MARK: - Debug Functions
-    func debugFetchAllSavedPostsRecords(completion: @escaping (Bool) -> Void) {
-        print("🔍 DEBUG: Fetching all records from SavedPosts table")
-        
-        Task {
-            do {
-                // Fetch all records from SavedPosts table
-                let response = try await client.database
-                    .from("SavedPosts")
-                    .select("*")
-                    .execute()
-                
-                print("📋 DEBUG: SavedPosts table raw response:")
-                print(String(data: response.data, encoding: .utf8) ?? "No data")
-                
-                // Parse the response
-                if let jsonArray = try? JSONSerialization.jsonObject(with: response.data, options: []) as? [[String: Any]] {
-                    print("📊 DEBUG: SavedPosts table records count: \(jsonArray.count)")
+        // MARK: - Delete Post
+        func deletePost(postId: String, completion: @escaping (Bool, Error?) -> Void) {
+            print("📢 deletePost() called for post: \(postId)")
+            
+            Task {
+                do {
+                    // 1. First delete all likes for this post to avoid foreign key constraints
+                    let likesResponse = try await client.database
+                        .from("Likes")
+                        .delete()
+                        .eq("post_id", value: postId)
+                        .execute()
                     
-                    for (index, record) in jsonArray.enumerated() {
-                        print("📝 DEBUG: Record #\(index + 1):")
-                        print("   - id: \(record["id"] ?? "nil")")
-                        print("   - user_id: \(record["user_id"] ?? "nil")")
-                        print("   - post_id: \(record["post_id"] ?? "nil")")
-                        print("   - created_at: \(record["created_at"] ?? "nil")")
+                    print("✅ Deleted likes for post: \(postId)")
+                    
+                    // 2. Delete all saved instances of this post
+                    let savedResponse = try await client.database
+                        .from("SavedPosts")
+                        .delete()
+                        .eq("post_id", value: postId)
+                        .execute()
+                    
+                    print("✅ Deleted saved instances of post: \(postId)")
+                    
+                    // 3. Delete all comments for this post
+                    // First, get all comment IDs to handle replies
+                    let commentsResponse = try await client.database
+                        .from("Comments")
+                        .select("Comment_id")
+                        .eq("post_id", value: postId)
+                        .execute()
+                    
+                    if let commentData = try? JSONSerialization.jsonObject(with: commentsResponse.data, options: []) as? [[String: Any]] {
+                        let commentIds = commentData.compactMap { $0["Comment_id"] as? Int }
+                        print("📊 Found \(commentIds.count) comments to delete for post: \(postId)")
+                        
+                        // 3a. Delete all comment replies
+                        if !commentIds.isEmpty {
+                            if let commentIdsJson = try? JSONEncoder().encode(commentIds),
+                               let commentIdsJsonString = String(data: commentIdsJson, encoding: .utf8) {
+                                let repliesResponse = try await client.database
+                                    .from("CommentReplies")
+                                    .delete()
+                                    .filter("comment_id", operator: "in", value: commentIdsJsonString)
+                                    .execute()
+                                
+                                print("✅ Deleted all comment replies")
+                            } else {
+                                print("⚠️ Failed to encode comment IDs for replies deletion")
+                            }
+                        }
+                        
+                        // 3b. Delete all comment likes
+                        if !commentIds.isEmpty {
+                            if let commentIdsJson = try? JSONEncoder().encode(commentIds),
+                               let commentIdsJsonString = String(data: commentIdsJson, encoding: .utf8) {
+                                let commentLikesResponse = try await client.database
+                                    .from("CommentLikes")
+                                    .delete()
+                                    .filter("comment_id", operator: "in", value: commentIdsJsonString)
+                                    .execute()
+                                
+                                print("✅ Deleted all comment likes")
+                            } else {
+                                print("⚠️ Failed to encode comment IDs for likes deletion")
+                            }
+                        }
                     }
                     
+                    // 3c. Now delete all comments
+                    let deleteCommentsResponse = try await client.database
+                        .from("Comments")
+                        .delete()
+                        .eq("post_id", value: postId)
+                        .execute()
+                    
+                    print("✅ Deleted all comments for post: \(postId)")
+                    
+                    // 4. Finally delete the post itself
+                    let postResponse = try await client.database
+                        .from("posts")
+                        .delete()
+                        .eq("postId", value: postId)
+                        .execute()
+                    
+                    print("✅ Deleted post: \(postId)")
+                    
+                    if postResponse.status >= 200 && postResponse.status < 300 {
+                        // 5. If post has an image, attempt to delete it from storage
+                        // Note: This is optional and may fail if image names don't match
+                        if let fileIdMatch = postId.split(separator: "-").last {
+                            let possibleImageName = "\(fileIdMatch).jpg"
+                            do {
+                                let _ = try await client.storage
+                                    .from("postimages")
+                                    .remove(paths: [possibleImageName])
+                                
+                                print("✅ Deleted image for post: \(postId)")
+                            } catch {
+                                print("⚠️ Could not delete image, but post deletion was successful")
+                            }
+                        }
+                        
+                        DispatchQueue.main.async {
+                            completion(true, nil)
+                        }
+                    } else {
+                        let errorMessage = String(data: postResponse.data, encoding: .utf8) ?? "Unknown error"
+                        DispatchQueue.main.async {
+                            completion(false, NSError(domain: "DeletePostError", code: postResponse.status, userInfo: [NSLocalizedDescriptionKey: errorMessage]))
+                        }
+                    }
+                } catch {
+                    print("❌ Error deleting post: \(error.localizedDescription)")
                     DispatchQueue.main.async {
-                        completion(true)
+                        completion(false, error)
                     }
-                } else {
-                    print("⚠️ DEBUG: Failed to parse SavedPosts records as JSON array")
+                }
+            }
+        }
+        
+        // MARK: - Post Deep Link Generation
+        func generatePostDeepLink(for post: Post) -> URL? {
+            // Create a deep link structure
+            // Format: faby://post/{postId}
+            
+            let baseUrlString = "faby://post/"
+            let postIdComponent = post.postId
+            
+            guard let url = URL(string: baseUrlString + postIdComponent) else {
+                print("❌ Failed to create deep link URL")
+                return nil
+            }
+            
+            return url
+        }
+        
+        // Generate a web link (for when deep links aren't available)
+        func generatePostWebLink(for post: Post) -> URL? {
+            // Use the Supabase URL as a base for web sharing
+            // This is a placeholder for a real web link to your app
+            
+            let baseUrlString = "https://hlkmrimpxzsnxzrgofes.supabase.co/storage/v1/object/public/share"
+            let postIdComponent = "/post/\(post.postId)"
+            
+            guard let url = URL(string: baseUrlString + postIdComponent) else {
+                print("❌ Failed to create web link URL")
+                return nil
+            }
+            
+            return url
+        }
+        
+        // MARK: - Debug Functions
+        func debugFetchAllSavedPostsRecords(completion: @escaping (Bool) -> Void) {
+            print("🔍 DEBUG: Fetching all records from SavedPosts table")
+            
+            Task {
+                do {
+                    // Fetch all records from SavedPosts table
+                    let response = try await client.database
+                        .from("SavedPosts")
+                        .select("*")
+                        .execute()
+                    
+                    print("📋 DEBUG: SavedPosts table raw response:")
+                    print(String(data: response.data, encoding: .utf8) ?? "No data")
+                    
+                    // Parse the response
+                    if let jsonArray = try? JSONSerialization.jsonObject(with: response.data, options: []) as? [[String: Any]] {
+                        print("📊 DEBUG: SavedPosts table records count: \(jsonArray.count)")
+                        
+                        for (index, record) in jsonArray.enumerated() {
+                            print("📝 DEBUG: Record #\(index + 1):")
+                            print("   - id: \(record["id"] ?? "nil")")
+                            print("   - user_id: \(record["user_id"] ?? "nil")")
+                            print("   - post_id: \(record["post_id"] ?? "nil")")
+                            print("   - created_at: \(record["created_at"] ?? "nil")")
+                        }
+                        
+                        DispatchQueue.main.async {
+                            completion(true)
+                        }
+                    } else {
+                        print("⚠️ DEBUG: Failed to parse SavedPosts records as JSON array")
+                        DispatchQueue.main.async {
+                            completion(false)
+                        }
+                    }
+                } catch {
+                    print("❌ DEBUG: Error fetching SavedPosts records: \(error.localizedDescription)")
                     DispatchQueue.main.async {
                         completion(false)
                     }
                 }
-            } catch {
-                print("❌ DEBUG: Error fetching SavedPosts records: \(error.localizedDescription)")
-                DispatchQueue.main.async {
-                    completion(false)
-                }
             }
         }
-    }
-    
-    func isPostSaved(postId: String, completion: @escaping (Bool, Error?) -> Void) {
-        guard let userId = AuthManager.shared.currentUserID else {
-            print("❌ User not logged in")
-            completion(false, NSError(domain: "AuthError", code: 401, userInfo: [NSLocalizedDescriptionKey: "User not logged in"]))
-            return
-        }
         
-        print("📢 isPostSaved() called for post: \(postId)")
-        
-        Task {
-            do {
-                // Check if postId is in valid UUID format
-                if let _ = UUID(uuidString: postId) {
-                    let response = try await client.database
-                        .from("SavedPosts")
-                        .select("id")
-                        .eq("post_id", value: postId)
-                        .eq("user_id", value: userId)
-                        .execute()
-                    
-                    // Parse the response to check if any records were returned
-                    if let jsonString = String(data: response.data, encoding: .utf8) {
-                        // Try to parse the data
-                        if let jsonArray = try? JSONSerialization.jsonObject(with: response.data) as? [Any] {
-                            let isSaved = !jsonArray.isEmpty
-                            print(isSaved ? "✅ Post is saved (found \(jsonArray.count) records)" : "ℹ️ Post is not saved (no records found)")
-                            print("📄 Raw response data: \(jsonString)")
-                            
-                            DispatchQueue.main.async {
-                                completion(isSaved, nil)
+        func isPostSaved(postId: String, completion: @escaping (Bool, Error?) -> Void) {
+            guard let userId = AuthManager.shared.currentUserID else {
+                print("❌ User not logged in")
+                completion(false, NSError(domain: "AuthError", code: 401, userInfo: [NSLocalizedDescriptionKey: "User not logged in"]))
+                return
+            }
+            
+            print("📢 isPostSaved() called for post: \(postId)")
+            
+            Task {
+                do {
+                    // Check if postId is in valid UUID format
+                    if let _ = UUID(uuidString: postId) {
+                        let response = try await client.database
+                            .from("SavedPosts")
+                            .select("id")
+                            .eq("post_id", value: postId)
+                            .eq("user_id", value: userId)
+                            .execute()
+                        
+                        // Parse the response to check if any records were returned
+                        if let jsonString = String(data: response.data, encoding: .utf8) {
+                            // Try to parse the data
+                            if let jsonArray = try? JSONSerialization.jsonObject(with: response.data) as? [Any] {
+                                let isSaved = !jsonArray.isEmpty
+                                print(isSaved ? "✅ Post is saved (found \(jsonArray.count) records)" : "ℹ️ Post is not saved (no records found)")
+                                print("📄 Raw response data: \(jsonString)")
+                                
+                                DispatchQueue.main.async {
+                                    completion(isSaved, nil)
+                                }
+                                return
                             }
-                            return
+                        }
+                        
+                        // If we couldn't parse or the array was empty, the post is not saved
+                        print("ℹ️ Post is not saved (no records or parsing failed)")
+                        print("📄 Response data: \(String(data: response.data, encoding: .utf8) ?? "None")")
+                        
+                        DispatchQueue.main.async {
+                            completion(false, nil)
+                        }
+                    } else {
+                        // Not a valid UUID format
+                        print("❌ Error: postId \(postId) is not in UUID format, cannot check in SavedPosts table with UUID column")
+                        // Since it's just a check, we'll return false instead of an error
+                        DispatchQueue.main.async {
+                            completion(false, nil)
                         }
                     }
-                    
-                    // If we couldn't parse or the array was empty, the post is not saved
-                    print("ℹ️ Post is not saved (no records or parsing failed)")
-                    print("📄 Response data: \(String(data: response.data, encoding: .utf8) ?? "None")")
-                    
+                } catch {
+                    print("❌ Error checking if post is saved: \(error.localizedDescription)")
                     DispatchQueue.main.async {
-                        completion(false, nil)
+                        completion(false, error)
                     }
-                } else {
-                    // Not a valid UUID format
-                    print("❌ Error: postId \(postId) is not in UUID format, cannot check in SavedPosts table with UUID column")
-                    // Since it's just a check, we'll return false instead of an error
-                    DispatchQueue.main.async {
-                        completion(false, nil)
-                    }
-                }
-            } catch {
-                print("❌ Error checking if post is saved: \(error.localizedDescription)")
-                DispatchQueue.main.async {
-                    completion(false, error)
                 }
             }
         }
     }
-}
 
-extension DateFormatter {
-    static let iso8601Full: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSXXXXX"
-        formatter.calendar = Calendar(identifier: .iso8601)
-        formatter.timeZone = TimeZone(secondsFromGMT: 0)
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        return formatter
-    }()
-    
-    // Alternative formatter without milliseconds
-    static let iso8601Simple: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
-        formatter.calendar = Calendar(identifier: .iso8601)
-        formatter.timeZone = TimeZone(secondsFromGMT: 0)
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        return formatter
-    }()
-    
-    static func formatPostDate(_ dateString: String?) -> String? {
-        guard let dateString = dateString else { return nil }
+    extension DateFormatter {
+        static let iso8601Full: DateFormatter = {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSXXXXX"
+            formatter.calendar = Calendar(identifier: .iso8601)
+            formatter.timeZone = TimeZone(secondsFromGMT: 0)
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            return formatter
+        }()
         
-        // Try multiple date formats to handle different formats from the database
-        var date: Date?
+        // Alternative formatter without milliseconds
+        static let iso8601Simple: DateFormatter = {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+            formatter.calendar = Calendar(identifier: .iso8601)
+            formatter.timeZone = TimeZone(secondsFromGMT: 0)
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            return formatter
+        }()
         
-        // Try ISO8601 with full format first
-        if date == nil {
-            date = iso8601Full.date(from: dateString)
-        }
-        
-        // Try with simple format (no milliseconds)
-        if date == nil {
-            date = iso8601Simple.date(from: dateString)
-        }
-        
-        // Try with ISO8601DateFormatter as a fallback
-        if date == nil {
-            let isoFormatter = ISO8601DateFormatter()
-            date = isoFormatter.date(from: dateString)
-        }
-        
-        if let date = date {
-            // Calculate time difference
-            let now = Date()
-            let components = Calendar.current.dateComponents([.day, .hour, .minute], from: date, to: now)
+        static func formatPostDate(_ dateString: String?) -> String? {
+            guard let dateString = dateString else { return nil }
             
-            if let days = components.day, days > 0 {
-                return "\(days) \(days == 1 ? "day" : "days") ago"
-            } else if let hours = components.hour, hours > 0 {
-                return "\(hours) \(hours == 1 ? "hour" : "hours") ago"
-            } else if let minutes = components.minute, minutes > 0 {
-                return "\(minutes) \(minutes == 1 ? "minute" : "minutes") ago"
-            } else {
-                return "Just now"
+            // Try multiple date formats to handle different formats from the database
+            var date: Date?
+            
+            // Try ISO8601 with full format first
+            if date == nil {
+                date = iso8601Full.date(from: dateString)
             }
-        } else {
-            print("⚠️ Could not parse date from string: \(dateString)")
-            return "Recently"  // Use a generic fallback instead of showing error
+            
+            // Try with simple format (no milliseconds)
+            if date == nil {
+                date = iso8601Simple.date(from: dateString)
+            }
+            
+            // Try with ISO8601DateFormatter as a fallback
+            if date == nil {
+                let isoFormatter = ISO8601DateFormatter()
+                date = isoFormatter.date(from: dateString)
+            }
+            
+            if let date = date {
+                // Calculate time difference
+                let now = Date()
+                let components = Calendar.current.dateComponents([.day, .hour, .minute], from: date, to: now)
+                
+                if let days = components.day, days > 0 {
+                    return "\(days) \(days == 1 ? "day" : "days") ago"
+                } else if let hours = components.hour, hours > 0 {
+                    return "\(hours) \(hours == 1 ? "hour" : "hours") ago"
+                } else if let minutes = components.minute, minutes > 0 {
+                    return "\(minutes) \(minutes == 1 ? "minute" : "minutes") ago"
+                } else {
+                    return "Just now"
+                }
+            } else {
+                print("⚠️ Could not parse date from string: \(dateString)")
+                return "Recently"  // Use a generic fallback instead of showing error
+            }
         }
     }
-}

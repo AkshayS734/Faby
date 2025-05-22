@@ -58,12 +58,28 @@ class SupabaseManager {
                     return
                 }
                 
+                // Debug the baby data from Supabase
+                print("📊 Baby data from Supabase: \(babyData)")
+                
+                // Extract the baby image URL if available - it's stored as "image_url" in the database
+                let babyImageURL = babyData["image_url"] as? String
+                print("📷 Baby image URL from database: \(babyImageURL ?? "nil")")
+                
+                // Also check for dateOfBirth field name - it might be "dob" in the database
+                var dateOfBirth = babyData["dateOfBirth"] as? String ?? ""
+                if dateOfBirth.isEmpty {
+                    dateOfBirth = babyData["dob"] as? String ?? ""
+                }
+                
                 let baby = Baby(
                     babyId: UUID(uuidString: babyData["uid"] as? String ?? "") ?? UUID(),
                     name: babyData["name"] as? String ?? "",
-                    dateOfBirth: babyData["dateOfBirth"] as? String ?? "",
+                    dateOfBirth: dateOfBirth,
                     gender: Gender(rawValue: (babyData["gender"] as? String ?? "").lowercased()) ?? .other
                 )
+                
+                // Set the baby's image URL
+                baby.imageURL = babyImageURL
                 
                 completion(baby)
             } catch {
@@ -81,8 +97,11 @@ class SupabaseManager {
     }
     
     func loadImageFromPublicBucket(path: String, bucket: String, completion: @escaping (UIImage?) -> Void) {
+        print("🔍 SupabaseManager: Loading image from bucket: \(bucket), path: \(path)")
+        
         // Check cache first
         if let cachedImage = ImageCache.shared.getImage(forKey: path) {
+            print("✅ SupabaseManager: Image found in cache")
             completion(cachedImage)
             return
         }
@@ -90,25 +109,43 @@ class SupabaseManager {
         // Else fetch from Supabase
         Task {
             do {
+                print("🔄 SupabaseManager: Creating signed URL for path: \(path) in bucket: \(bucket)")
                 let signedURL = try await client.storage
                     .from(bucket)
                     .createSignedURL(path: path, expiresIn: 60)
                 
-                let imageURL = signedURL
+                print("🔗 SupabaseManager: Signed URL created: \(signedURL)")
                 
-                URLSession.shared.dataTask(with: imageURL) { data, response, error in
-                    if error != nil {
-//                        print("❌ Error loading image: \(error.localizedDescription)")
+                URLSession.shared.dataTask(with: signedURL) { data, response, error in
+                    if let error = error {
+                        print("❌ SupabaseManager: Error loading image: \(error.localizedDescription)")
+                        completion(nil)
+                        return
+                    }
+                    
+                    if let httpResponse = response as? HTTPURLResponse {
+                        print("📊 SupabaseManager: HTTP response status code: \(httpResponse.statusCode)")
+                        if httpResponse.statusCode != 200 {
+                            print("❌ SupabaseManager: Bad HTTP response: \(httpResponse.statusCode)")
+                            completion(nil)
+                            return
+                        }
+                    }
+
+                    guard let data = data, !data.isEmpty else {
+                        print("❌ SupabaseManager: No data received")
+                        completion(nil)
+                        return
+                    }
+                    
+                    guard let image = UIImage(data: data) else {
+                        print("❌ SupabaseManager: Failed to decode image data")
                         completion(nil)
                         return
                     }
 
-                    guard let data = data, let image = UIImage(data: data) else {
-//                        print("❌ Failed to decode image data")
-                        completion(nil)
-                        return
-                    }
-
+                    print("✅ SupabaseManager: Successfully loaded image, size: \(image.size)")
+                    
                     // Cache image
                     ImageCache.shared.setImage(image, forKey: path)
                     
@@ -116,6 +153,7 @@ class SupabaseManager {
                 }.resume()
                 
             } catch {
+                print("❌ SupabaseManager: Error creating signed URL: \(error.localizedDescription)")
                 completion(nil)
             }
         }
