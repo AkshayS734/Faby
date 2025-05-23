@@ -1,16 +1,16 @@
 import UIKit
 
-// Protocol for handling back navigation
-protocol BabySignupViewControllerDelegate: AnyObject {
-    func didTapBackButton()
-}
-
-class SignupContainerViewController: UIViewController, BabySignupViewControllerDelegate {
+class SignupContainerViewController: UIViewController {
+    // Flag to skip directly to baby signup if OTP was already verified
+    var skipToOTPVerified: Bool = false
     // Container to hold both screens
     private let containerView = UIView()
     
     // First screen view controller
     private var signupVC: ModernSignupViewController!
+    
+    // OTP verification view controller (created when needed)
+    private var otpVC: OTPVerificationViewController?
     
     // Reference to baby signup VC (created when needed)
     private var babySignupVC: ModernBabySignupViewController?
@@ -22,7 +22,19 @@ class SignupContainerViewController: UIViewController, BabySignupViewControllerD
         super.viewDidLoad()
         view.backgroundColor = .systemBackground
         setupContainer()
-        setupSignupScreen()
+        
+        // Check if we should skip to OTP verified state
+        if skipToOTPVerified, let email = UserSessionManager.shared.userEmail,
+           let password = UserSessionManager.shared.userPassword,
+           let userInfo = UserSessionManager.shared.userInfo {
+            // Restore session data and skip to baby signup
+            self.userInfo = userInfo
+            showBabySignupScreen(with: email, password: password, userInfo: userInfo)
+        } else {
+            // Normal flow - start with signup screen
+            setupSignupScreen()
+        }
+        
         setupSwipeGestures()
     }
     
@@ -40,30 +52,37 @@ class SignupContainerViewController: UIViewController, BabySignupViewControllerD
     
     @objc private func handleSwipeLeft() {
         // Only proceed if we're on the first screen
-        if babySignupVC == nil {
-            // Get user info from delegate method
-            signupVC.delegate?.didFinishUserSignup(with: [:])
-            
-            // Provide haptic feedback
-            if #available(iOS 10.0, *) {
-                let generator = UIImpactFeedbackGenerator(style: .medium)
-                generator.prepare()
-                generator.impactOccurred()
+        if otpVC == nil && babySignupVC == nil {
+            // Validate inputs first
+            if signupVC.validateInputs() {
+                // Get user info from delegate method
+                let userInfo = signupVC.getUserInfo()
+                signupVC.delegate?.didFinishUserSignup(with: userInfo)
+                
+                // Provide haptic feedback
+                if #available(iOS 10.0, *) {
+                    let generator = UIImpactFeedbackGenerator(style: .medium)
+                    generator.prepare()
+                    generator.impactOccurred()
+                }
             }
         }
     }
     
     @objc private func handleSwipeRight() {
-        // Only respond if we're on the baby signup screen
+        // Go back to previous screen based on current state
         if babySignupVC != nil {
+            // If on baby signup, go back to OTP verification
+            goBackToOTPScreen()
+        } else if otpVC != nil {
+            // If on OTP verification, go back to signup
             goBackToSignupScreen()
         }
     }
     
-    // MARK: - BabySignupViewControllerDelegate
-    func didTapBackButton() {
-        // Navigate back to the signup screen
-        goBackToSignupScreen()
+    // Handle back navigation from baby signup
+    @objc func handleBackFromBabySignup() {
+        goBackToOTPScreen()
     }
     
     private func setupContainer() {
@@ -94,11 +113,45 @@ class SignupContainerViewController: UIViewController, BabySignupViewControllerD
         navController.didMove(toParent: self)
     }
     
-    private func showBabySignupScreen(with userInfo: [String: String]) {
+    // Show OTP verification screen
+    private func showOTPVerificationScreen(with userInfo: [String: String]) {
         // Store user info for passing to baby signup
         self.userInfo = userInfo
         
-        // Remove current view controller (the navigation controller containing signup)
+        // Remove current view controller
+        if let currentViewController = children.first {
+            currentViewController.willMove(toParent: nil)
+            currentViewController.view.removeFromSuperview()
+            currentViewController.removeFromParent()
+        }
+        
+        // Create and add OTP verification screen
+        otpVC = OTPVerificationViewController()
+        if let otpVC = otpVC {
+            // Set delegate to handle navigation
+            otpVC.delegate = self
+            otpVC.userEmail = userInfo["email"] ?? ""
+            otpVC.userPassword = userInfo["password"] ?? ""
+            otpVC.userInfo = userInfo
+            
+            // Embed in navigation controller
+            let navController = UINavigationController(rootViewController: otpVC)
+            
+            // Add to container
+            addChild(navController)
+            containerView.addSubview(navController.view)
+            navController.view.frame = containerView.bounds
+            navController.view.autoresizingMask = [UIView.AutoresizingMask.flexibleWidth, UIView.AutoresizingMask.flexibleHeight]
+            navController.didMove(toParent: self)
+        }
+    }
+    
+    // Show baby signup screen after OTP verification
+    private func showBabySignupScreen(with email: String, password: String, userInfo: [String: String]) {
+        // Store user info for passing to baby signup
+        self.userInfo = userInfo
+        
+        // Remove current view controller
         if let currentViewController = children.first {
             currentViewController.willMove(toParent: nil)
             currentViewController.view.removeFromSuperview()
@@ -110,10 +163,10 @@ class SignupContainerViewController: UIViewController, BabySignupViewControllerD
         if let babyVC = babySignupVC {
             // Set delegate to handle back navigation
             babyVC.delegate = self
-            babyVC.userEmail = userInfo["email"]
+            babyVC.userEmail = email
             babyVC.userName = userInfo["name"]
             babyVC.userRelationship = userInfo["relationship"]
-            babyVC.userPassword = userInfo["password"]
+            babyVC.userPassword = password
             
             // Embed in navigation controller
             let navController = UINavigationController(rootViewController: babyVC)
@@ -125,7 +178,38 @@ class SignupContainerViewController: UIViewController, BabySignupViewControllerD
             navController.view.autoresizingMask = [UIView.AutoresizingMask.flexibleWidth, UIView.AutoresizingMask.flexibleHeight]
             navController.didMove(toParent: self)
         }
-        // No need for manual animation - navigation controller handles transitions
+    }
+    
+    private func goBackToOTPScreen() {
+        // Remove current navigation controller
+        if let currentViewController = children.first {
+            currentViewController.willMove(toParent: nil)
+            currentViewController.view.removeFromSuperview()
+            currentViewController.removeFromParent()
+        }
+        
+        // Create OTP verification screen again
+        otpVC = OTPVerificationViewController()
+        if let otpVC = otpVC {
+            // Set delegate to handle navigation
+            otpVC.delegate = self
+            otpVC.userEmail = userInfo["email"] ?? ""
+            otpVC.userPassword = userInfo["password"] ?? ""
+            otpVC.userInfo = userInfo
+            
+            // Embed in navigation controller
+            let navController = UINavigationController(rootViewController: otpVC)
+            
+            // Add to container
+            addChild(navController)
+            containerView.addSubview(navController.view)
+            navController.view.frame = containerView.bounds
+            navController.view.autoresizingMask = [UIView.AutoresizingMask.flexibleWidth, UIView.AutoresizingMask.flexibleHeight]
+            navController.didMove(toParent: self)
+        }
+        
+        // Clear reference
+        babySignupVC = nil
     }
     
     private func goBackToSignupScreen() {
@@ -150,16 +234,14 @@ class SignupContainerViewController: UIViewController, BabySignupViewControllerD
         navController.view.autoresizingMask = [UIView.AutoresizingMask.flexibleWidth, UIView.AutoresizingMask.flexibleHeight]
         navController.didMove(toParent: self)
         
-        // Clear reference
+        // Clear references
+        otpVC = nil
         babySignupVC = nil
     }
     
     private func addObserversForBabyVC(_ babyVC: ModernBabySignupViewController) {
-        // Add a target to the back button
-        if let backButton = babyVC.view.subviews.first(where: { $0 is UIButton && ($0 as? UIButton)?.image(for: .normal) != nil }) as? UIButton {
-            backButton.removeTarget(nil, action: nil, for: .allEvents)
-            backButton.addTarget(self, action: #selector(backButtonPressed), for: .touchUpInside)
-        }
+        // We don't need to manually add observers anymore since we're using the delegate pattern
+        // This method is kept for backward compatibility but is now empty
         
         // Add a target to the complete button
         if let completeButton = babyVC.view.subviews.first(where: { $0 is UIButton && ($0 as? UIButton)?.titleLabel?.text == "Complete Signup" }) as? UIButton {
@@ -168,8 +250,10 @@ class SignupContainerViewController: UIViewController, BabySignupViewControllerD
         }
     }
     
+    // This method is deprecated and kept for backward compatibility
+    // Use the delegate methods instead
     @objc private func backButtonPressed() {
-        goBackToSignupScreen()
+        goBackToOTPScreen()
     }
     
     @objc private func handleSignupCompletion() {
@@ -199,8 +283,30 @@ class SignupContainerViewController: UIViewController, BabySignupViewControllerD
 // MARK: - ModernSignupViewControllerDelegate
 extension SignupContainerViewController: ModernSignupViewControllerDelegate {
     func didFinishUserSignup(with userInfo: [String: String]) {
-        showBabySignupScreen(with: userInfo)
+        showOTPVerificationScreen(with: userInfo)
     }
 }
 
+// MARK: - ModernBabySignupViewControllerDelegate
+extension SignupContainerViewController: ModernBabySignupViewControllerDelegate {
+    func didTapBackButton() {
+        // Navigate back to the OTP verification screen
+        goBackToOTPScreen()
+    }
+    
+    func didCompleteBabySignup() {
+        // Navigate to the main app
+        navigateToMainApp()
+    }
+}
 
+// MARK: - OTPVerificationViewControllerDelegate
+extension SignupContainerViewController: OTPVerificationViewControllerDelegate {
+    func didVerifyOTP(email: String, password: String, userInfo: [String: String]) {
+        showBabySignupScreen(with: email, password: password, userInfo: userInfo)
+    }
+    
+    func didTapBackFromOTP() {
+        goBackToSignupScreen()
+    }
+}

@@ -184,35 +184,33 @@ class ForgotPasswordViewController: UIViewController {
         // Disable reset button during request
         resetButton.isEnabled = false
         
-        // Request password reset from Supabase
-        Task {
-            do {
-                try await supabase.auth.resetPasswordForEmail(email)
-                
-                await MainActor.run {
-                    loadingIndicator.stopAnimating()
-                    resetButton.isEnabled = true
-                    
-                    // Show success message
-                    let alertController = UIAlertController(
-                        title: "Email Sent",
-                        message: "We've sent a password reset link to \(email). Please check your inbox and follow the instructions to reset your password.",
-                        preferredStyle: .alert
-                    )
-                    
-                    alertController.addAction(UIAlertAction(title: "OK", style: .default) { [weak self] _ in
-                        self?.dismiss(animated: true)
-                    })
-                    
-                    self.present(alertController, animated: true)
-                }
-            } catch {
-                await MainActor.run {
-                    loadingIndicator.stopAnimating()
-                    resetButton.isEnabled = true
-                    showAlert(title: "Error", message: error.localizedDescription)
-                }
-            }
+        // Instead of just sending a reset email, we'll now present the OTP verification screen
+        presentOTPVerification(email: email)
+        
+        // Hide loading indicator and re-enable button
+        loadingIndicator.stopAnimating()
+        resetButton.isEnabled = true
+    }
+    
+    private func presentOTPVerification(email: String) {
+        let otpVC = ForgotPasswordOTPViewController()
+        otpVC.userEmail = email
+        otpVC.delegate = self
+        
+        let navController = UINavigationController(rootViewController: otpVC)
+        navController.modalPresentationStyle = .fullScreen
+        present(navController, animated: true)
+    }
+    
+    private func presentCreateNewPasswordScreen(email: String, token: String) {
+        let createPasswordVC = CreateNewPasswordViewController()
+        createPasswordVC.userEmail = email
+        createPasswordVC.otpToken = token
+        createPasswordVC.delegate = self
+        
+        // Replace the current view controller with the new one
+        if let navigationController = self.presentedViewController as? UINavigationController {
+            navigationController.pushViewController(createPasswordVC, animated: true)
         }
     }
     
@@ -231,5 +229,44 @@ class ForgotPasswordViewController: UIViewController {
         let alertController = UIAlertController(title: title, message: message, preferredStyle: .alert)
         alertController.addAction(UIAlertAction(title: "OK", style: .default))
         present(alertController, animated: true)
+    }
+}
+
+// MARK: - ForgotPasswordOTPViewControllerDelegate
+extension ForgotPasswordViewController: ForgotPasswordOTPViewControllerDelegate {
+    func didVerifyForgotPasswordOTP(email: String, token: String) {
+        // Present the create new password screen
+        presentCreateNewPasswordScreen(email: email, token: token)
+    }
+    
+    func didCancelForgotPasswordOTP() {
+        // Dismiss the OTP verification screen
+        dismiss(animated: true)
+    }
+}
+
+// MARK: - CreateNewPasswordViewControllerDelegate
+extension ForgotPasswordViewController: CreateNewPasswordViewControllerDelegate {
+    func didResetPassword() {
+        // Dismiss all screens and return to the auth screen
+        dismiss(animated: true)
+        
+        // Show success message on the auth screen
+        let alertController = UIAlertController(
+            title: "Password Reset Successful",
+            message: "Your password has been reset successfully. You can now sign in with your new password.",
+            preferredStyle: .alert
+        )
+        
+        alertController.addAction(UIAlertAction(title: "OK", style: .default))
+        
+        if let presentingVC = presentingViewController {
+            presentingVC.present(alertController, animated: true)
+        }
+    }
+    
+    func didCancelPasswordReset() {
+        // Dismiss all screens and return to the auth screen
+        dismiss(animated: true)
     }
 }
