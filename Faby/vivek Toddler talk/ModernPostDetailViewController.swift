@@ -573,7 +573,7 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
     @objc private func handleSendComment() {
         guard let commentText = commentTextField.text, !commentText.isEmpty,
               let post = currentPost,
-              let userId = AuthManager.shared.currentUserID else {
+              let _ = AuthManager.shared.currentUserID else {
             return
         }
         
@@ -1284,7 +1284,7 @@ class ModernPostDetailViewController: UIViewController, UITableViewDelegate, UIT
             return
         }
         
-        guard let userId = AuthManager.shared.currentUserID else {
+        guard AuthManager.shared.currentUserID != nil else {
             print("❌ Error: User not logged in")
             let alert = UIAlertController(
                 title: "Login Required",

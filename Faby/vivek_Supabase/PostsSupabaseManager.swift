@@ -80,7 +80,6 @@ class PostsSupabaseManager {
                 }
                 
                 let response = try await client
-                    .database
                     .from("topics")
                     .select()
                     .execute()
@@ -103,7 +102,7 @@ class PostsSupabaseManager {
         
         Task {
             do {
-                let response = try await client.database
+                let response = try await client
                     .from("posts")
                     .select("""
                         postId, 
@@ -143,7 +142,7 @@ class PostsSupabaseManager {
         Task {
             do {
                 print("🔍 Constructing query for userId: \(userId.uuidString)")
-                let response = try await client.database
+                let response = try await client
                     .from("posts")
                     .select("""
                         postId, 
@@ -203,7 +202,7 @@ class PostsSupabaseManager {
         
         // Start with 0.8 compression quality
         var compression: CGFloat = 0.8
-        var maxBytes = 500 * 1024 // 500KB target size
+        let maxBytes = 500 * 1024 // 500KB target size
         var compressedData = image.jpegData(compressionQuality: compression)
         
         // Reduce image quality until it's under maxBytes
@@ -239,8 +238,8 @@ class PostsSupabaseManager {
                 _ = try await client.storage
                     .from("postimages")
                     .upload(
-                        path: fileName,
-                        file: compressedData
+                        fileName,
+                        data: compressedData
                     )
                 print("✅ File uploaded successfully")
                 
@@ -303,7 +302,7 @@ class PostsSupabaseManager {
                 
                 // Step 3: Insert post into database
                 print("📢 Step 3: Inserting post into database...")
-                try await client.database
+                try await client
                     .from("posts")
                     .insert(newPost)
                     .execute()
@@ -311,7 +310,7 @@ class PostsSupabaseManager {
                 
                 // Step 4: Verify post creation
                 print("📢 Step 4: Verifying post creation...")
-                let response: [Post] = try await client.database
+                let response: [Post] = try await client
                     .from("posts")
                     .select()
                     .eq("postId", value: newPost.postId)
@@ -343,7 +342,7 @@ class PostsSupabaseManager {
         Task {
             do {
                 // Query Likes table to get likes count for the specific postId
-                let response = try await client.database
+                let response = try await client
                     .from("Likes")
                     .select("user_id")
                     .eq("post_id", value: postId)
@@ -412,7 +411,7 @@ class PostsSupabaseManager {
                 print("📤 Inserting like with data: \(newLike)")
                 
                 // Step 2: Insert new Like into Supabase
-                let insertResponse = try await client.database
+                let insertResponse = try await client
                     .from("Likes")
                     .insert(newLike)
                     .select()  // Get the inserted row back
@@ -423,7 +422,7 @@ class PostsSupabaseManager {
                 }
                 
                 // Step 3: Verify the like was added
-                let verifyResponse = try await client.database
+                let verifyResponse = try await client
                     .from("Likes")
                     .select("post_id")
                     .eq("post_id", value: postId)
@@ -462,7 +461,7 @@ class PostsSupabaseManager {
         Task {
             do {
                 // Delete the like
-                let deleteResponse = try await client.database
+                let deleteResponse = try await client
                     .from("Likes")
                     .delete()
                     .eq("post_id", value: postId)
@@ -520,7 +519,7 @@ class PostsSupabaseManager {
                 print("🔍 Using post_id: \(postId)")
                 print("🔍 Using user_id: \(userId)")
                 
-                let response = try await client.database
+                let response = try await client
                     .from("Likes")
                     .select("Like_id")
                     .eq("post_id", value: postId)
@@ -572,7 +571,7 @@ class PostsSupabaseManager {
             do {
                 // Fetch likes for the specific user
                 print("🔍 Fetching likes for user...")
-                let response = try await client.database
+                let response = try await client
                     .from("Likes")
                     .select("post_id")
                     .eq("user_id", value: userId)
@@ -637,7 +636,7 @@ class PostsSupabaseManager {
                 
                 // First, verify the table exists and we can query it
                 print("🔍 Verifying Comments table...")
-                let tableCheck = try await client.database
+                let tableCheck = try await client
                     .from("Comments")
                     .select("*")
                     .limit(1)
@@ -647,7 +646,7 @@ class PostsSupabaseManager {
                 
                 // Insert the comment
                 print("📤 Attempting to insert comment...")
-                let response = try await client.database
+                let response = try await client
                     .from("Comments")
                     .insert(newComment)
                     .select()  // Get the inserted row back
@@ -660,7 +659,7 @@ class PostsSupabaseManager {
                 
                 // Verify the comment was inserted
                 print("🔍 Verifying comment insertion...")
-                let verifyResponse = try await client.database
+                let verifyResponse = try await client
                     .from("Comments")
                     .select("*")
                     .eq("post_id", value: postId)
@@ -711,7 +710,7 @@ class PostsSupabaseManager {
                 print("🔍 Using post_id: \(postId)")
                 
                 // Only select columns that exist in the database
-                let response = try await client.database
+                let response = try await client
                     .from("Comments")
                     .select("""
                         Comment_id,
@@ -778,7 +777,7 @@ class PostsSupabaseManager {
         Task {
             do {
                 // Query to count replies for this comment
-                let response = try await client.database
+                let response = try await client
                     .from("CommentReplies")
                     .select("reply_id")
                     .eq("comment_id", value: commentId)
@@ -829,7 +828,7 @@ class PostsSupabaseManager {
                 print("📤 Inserting comment like with data: \(newCommentLike)")
                 
                 // Insert into CommentLikes table
-                let insertResponse = try await client.database
+                let insertResponse = try await client
                     .from("CommentLikes")
                     .insert(newCommentLike)
                     .select()
@@ -840,7 +839,7 @@ class PostsSupabaseManager {
                 }
                 
                 // Verify the like was added
-                let verifyResponse = try await client.database
+                let verifyResponse = try await client
                     .from("CommentLikes")
                     .select("id")
                     .eq("comment_id", value: commentNumericId)
@@ -885,7 +884,7 @@ class PostsSupabaseManager {
         Task {
             do {
                 // Add extra check to see if like exists before attempting to delete
-                let checkResponse = try await client.database
+                let checkResponse = try await client
                     .from("CommentLikes")
                     .select("id")
                     .eq("comment_id", value: commentNumericId)
@@ -900,7 +899,7 @@ class PostsSupabaseManager {
                 print(likesExist ? "✅ Found existing like to delete" : "⚠️ No existing like found")
                 
                 // Delete the comment like
-                let deleteResponse = try await client.database
+                let deleteResponse = try await client
                     .from("CommentLikes")
                     .delete()
                     .eq("comment_id", value: commentNumericId)
@@ -953,7 +952,7 @@ class PostsSupabaseManager {
         
         Task {
             do {
-                let response = try await client.database
+                let response = try await client
                     .from("CommentLikes")
                     .select("id")
                     .eq("comment_id", value: commentNumericId)
@@ -1000,7 +999,7 @@ class PostsSupabaseManager {
         Task {
             do {
                 // Get all likes for this specific comment ID
-                let response = try await client.database
+                let response = try await client
                     .from("CommentLikes")
                     .select("id")
                     .eq("comment_id", value: commentNumericId)
@@ -1052,7 +1051,7 @@ class PostsSupabaseManager {
                 print("📤 Inserting reply with data: \(reply)")
                 
                 // Insert using the CommentReply struct which conforms to Encodable
-                let response = try await client.database
+                let response = try await client
                     .from("CommentReplies")
                     .insert(reply)
                     .execute()
@@ -1088,7 +1087,7 @@ class PostsSupabaseManager {
                 print("🔍 Fetching replies from database...")
                 
                 // Fetch replies with parent name
-                let response = try await client.database
+                let response = try await client
                     .from("CommentReplies")
                     .select("""
                         reply_id,
@@ -1134,7 +1133,7 @@ class PostsSupabaseManager {
                 print("🔍 Fetching all replies for post...")
                 
                 // Fetch all replies for a post
-                let response = try await client.database
+                let response = try await client
                     .from("CommentReplies")
                     .select("""
                         reply_id,
@@ -1208,7 +1207,7 @@ class PostsSupabaseManager {
                         print("📢 Checking if post exists in Posts table...")
                         
                         // First check if the post exists in the Posts table
-                        let postCheckResponse = try await self.client.database
+                        let postCheckResponse = try await self.client
                             .from("posts")
                             .select("postId")
                             .eq("postId", value: postId)
@@ -1227,7 +1226,7 @@ class PostsSupabaseManager {
                         }
                         
                         // Post exists, attempt to save it
-                        let response = try await self.client.database
+                        let response = try await self.client
                             .from("SavedPosts")
                             .insert(savedPost)
                             .execute()
@@ -1276,7 +1275,7 @@ class PostsSupabaseManager {
             do {
                 // Check if postId is in valid UUID format
                 if let _ = UUID(uuidString: postId) {
-                    let response = try await client.database
+                    let response = try await client
                         .from("SavedPosts")
                         .delete()
                         .eq("post_id", value: postId)
@@ -1325,7 +1324,7 @@ class PostsSupabaseManager {
                     // Check database
                     print("🔍 DEBUG: Querying SavedPosts table...")
                     
-                    let response = try await client.database
+                    let response = try await client
                         .from("SavedPosts")
                         .select("id, user_id, post_id")
                         .eq("post_id", value: postId)
@@ -1387,7 +1386,7 @@ class PostsSupabaseManager {
         Task {
             do {
                 // First get all saved post IDs
-                let savedPostsResponse = try await client.database
+                let savedPostsResponse = try await client
                     .from("SavedPosts")
                     .select("post_id")
                     .eq("user_id", value: userId)
@@ -1432,7 +1431,7 @@ class PostsSupabaseManager {
                 }
                 
                 // Fetch all posts with these IDs
-                var postsQuery = client.database.from("posts").select("""
+                var postsQuery = client.from("posts").select("""
                     postId, 
                     postTitle, 
                     postContent, 
@@ -1479,7 +1478,7 @@ class PostsSupabaseManager {
         Task {
             do {
                 // 1. First delete all likes for this post to avoid foreign key constraints
-                let likesResponse = try await client.database
+                _ = try await client
                     .from("Likes")
                     .delete()
                     .eq("post_id", value: postId)
@@ -1488,7 +1487,7 @@ class PostsSupabaseManager {
                 print("✅ Deleted likes for post: \(postId)")
                 
                 // 2. Delete all saved instances of this post
-                let savedResponse = try await client.database
+                _ = try await client
                     .from("SavedPosts")
                     .delete()
                     .eq("post_id", value: postId)
@@ -1498,7 +1497,7 @@ class PostsSupabaseManager {
                 
                 // 3. Delete all comments for this post
                 // First, get all comment IDs to handle replies
-                let commentsResponse = try await client.database
+                let commentsResponse = try await client
                     .from("Comments")
                     .select("Comment_id")
                     .eq("post_id", value: postId)
@@ -1512,7 +1511,7 @@ class PostsSupabaseManager {
                     if !commentIds.isEmpty {
                         if let commentIdsJson = try? JSONEncoder().encode(commentIds),
                            let commentIdsJsonString = String(data: commentIdsJson, encoding: .utf8) {
-                            let repliesResponse = try await client.database
+                            _ = try await client
                                 .from("CommentReplies")
                                 .delete()
                                 .filter("comment_id", operator: "in", value: commentIdsJsonString)
@@ -1528,7 +1527,7 @@ class PostsSupabaseManager {
                     if !commentIds.isEmpty {
                         if let commentIdsJson = try? JSONEncoder().encode(commentIds),
                            let commentIdsJsonString = String(data: commentIdsJson, encoding: .utf8) {
-                            let commentLikesResponse = try await client.database
+                            _ = try await client
                                 .from("CommentLikes")
                                 .delete()
                                 .filter("comment_id", operator: "in", value: commentIdsJsonString)
@@ -1542,7 +1541,7 @@ class PostsSupabaseManager {
                 }
                 
                 // 3c. Now delete all comments
-                let deleteCommentsResponse = try await client.database
+                _ = try await client
                     .from("Comments")
                     .delete()
                     .eq("post_id", value: postId)
@@ -1551,7 +1550,7 @@ class PostsSupabaseManager {
                 print("✅ Deleted all comments for post: \(postId)")
                 
                 // 4. Finally delete the post itself
-                let postResponse = try await client.database
+                let postResponse = try await client
                     .from("posts")
                     .delete()
                     .eq("postId", value: postId)
@@ -1632,7 +1631,7 @@ class PostsSupabaseManager {
         Task {
             do {
                 // Fetch all records from SavedPosts table
-                let response = try await client.database
+                let response = try await client
                     .from("SavedPosts")
                     .select("*")
                     .execute()
@@ -1683,7 +1682,7 @@ class PostsSupabaseManager {
             do {
                 // Check if postId is in valid UUID format
                 if let _ = UUID(uuidString: postId) {
-                    let response = try await client.database
+                    let response = try await client
                         .from("SavedPosts")
                         .select("id")
                         .eq("post_id", value: postId)

@@ -17,7 +17,7 @@ class SavedPostsDebugger {
         Task {
             do {
                 // Check access to SavedPosts table with SELECT
-                let selectResponse = try await PostsSupabaseManager.shared.client.database
+                let selectResponse = try await PostsSupabaseManager.shared.client
                     .from("SavedPosts")
                     .select("*")
                     .limit(1)
@@ -27,7 +27,7 @@ class SavedPostsDebugger {
                 print("✅ SELECT permission test successful (Status: \(selectResponse.status))")
                 
                 // Check Posts table to make sure it exists
-                let postsResponse = try await PostsSupabaseManager.shared.client.database
+                let postsResponse = try await PostsSupabaseManager.shared.client
                     .from("posts")
                     .select("postId")
                     .limit(1)

@@ -242,7 +242,7 @@ class CommentCell: UITableViewCell {
         Task {
             do {
                 let client = SupabaseManager.shared.client
-                let response = try await client.database
+                let response = try await client
                     .from("parents")
                     .select()
                     .eq("uid", value: userId)

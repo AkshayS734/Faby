@@ -298,16 +298,22 @@ class PostCardCell: UITableViewCell {
         
         guard let userId = AuthManager.shared.currentUserID else {
             print("❌ User not logged in")
+            
             let alert = UIAlertController(
                 title: "Login Required",
                 message: "Please log in to like posts",
                 preferredStyle: .alert
             )
             alert.addAction(UIAlertAction(title: "OK", style: .default))
-            UIApplication.shared.windows.first?.rootViewController?.present(alert, animated: true)
+
+            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+               let rootVC = windowScene.windows.first?.rootViewController {
+                rootVC.present(alert, animated: true)
+            }
+
             return
         }
-        
+
         // Provide haptic feedback
         let generator = UIImpactFeedbackGenerator(style: .medium)
         generator.impactOccurred()
@@ -340,7 +346,11 @@ class PostCardCell: UITableViewCell {
                             preferredStyle: .alert
                         )
                         alert.addAction(UIAlertAction(title: "OK", style: .default))
-                        UIApplication.shared.windows.first?.rootViewController?.present(alert, animated: true)
+
+                        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                           let rootVC = windowScene.windows.first?.rootViewController {
+                            rootVC.present(alert, animated: true)
+                        }
                     }
                 }
             }
@@ -353,16 +363,21 @@ class PostCardCell: UITableViewCell {
                         // Revert UI if unlike failed
                         self?.isLiked = true
                         print("❌ Failed to remove like: \(error?.localizedDescription ?? "Unknown error")")
-                        
+
                         let alert = UIAlertController(
                             title: "Error",
                             message: "Failed to remove like. Please try again.",
                             preferredStyle: .alert
                         )
                         alert.addAction(UIAlertAction(title: "OK", style: .default))
-                        UIApplication.shared.windows.first?.rootViewController?.present(alert, animated: true)
+
+                        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                           let rootVC = windowScene.windows.first?.rootViewController {
+                            rootVC.present(alert, animated: true)
+                        }
                     }
                 }
+
             }
         }
     }

@@ -94,20 +94,21 @@ class PostViewController: UIViewController, UITextViewDelegate, UIImagePickerCon
     }()
     
     private lazy var imagePickerButton: UIButton = {
-        let button = UIButton(type: .system)
+        var config = UIButton.Configuration.filled()
+        config.title = "Add Photo"
+        config.image = UIImage(systemName: "photo.fill")
+        config.imagePadding = 8
+        config.imagePlacement = .leading
+        config.baseBackgroundColor = .systemGray6
+        config.baseForegroundColor = .systemBlue
+        config.cornerStyle = .medium
+
+        let button = UIButton(configuration: config, primaryAction: nil)
         button.translatesAutoresizingMaskIntoConstraints = false
-        button.setTitle("Add Photo", for: .normal)
-        button.setImage(UIImage(systemName: "photo.fill"), for: .normal)
-        button.titleLabel?.font = .systemFont(ofSize: 16, weight: .medium)
-        button.backgroundColor = .systemGray6
-        button.tintColor = .systemBlue
-        button.layer.cornerRadius = 12
-        button.imageEdgeInsets = UIEdgeInsets(top: 0, left: -8, bottom: 0, right: 0)
-        button.titleEdgeInsets = UIEdgeInsets(top: 0, left: 8, bottom: 0, right: -8)
         button.addTarget(self, action: #selector(imagePickerButtonTapped), for: .touchUpInside)
         return button
     }()
-    
+
     private lazy var selectedImageView: UIImageView = {
         let imageView = UIImageView()
         imageView.translatesAutoresizingMaskIntoConstraints = false
@@ -482,7 +483,7 @@ class PostViewController: UIViewController, UITextViewDelegate, UIImagePickerCon
                 print("✅ Using logged-in user ID: \(parentId)")
                 
                 // Check if parent exists in the database
-                let parentResponse = try await client.database
+                let parentResponse = try await client
                     .from("parents")
                     .select("uid, name")
                     .eq("uid", value: parentId)
@@ -494,7 +495,7 @@ class PostViewController: UIViewController, UITextViewDelegate, UIImagePickerCon
                     // Parent not found, create one
                     print("⚠️ Parent not found in Supabase, creating new parent...")
                     
-                    try await client.database
+                    try await client
                         .from("parents")
                         .insert([
                             "uid": parentId,

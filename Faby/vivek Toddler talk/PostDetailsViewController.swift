@@ -1047,7 +1047,7 @@ class PostDetailsViewController: UIViewController {
             do {
                 let client = SupabaseManager.shared.client
                 
-                let response = try await client.database
+                let response = try await client
                     .from("parents")
                     .select("name")
                     .eq("uid", value: userId)

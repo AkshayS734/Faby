@@ -211,15 +211,22 @@ class MyPostCardCell: UITableViewCell {
         
         guard let userId = AuthManager.shared.currentUserID else {
             print("❌ User not logged in")
+            
             let alert = UIAlertController(
                 title: "Login Required",
                 message: "Please log in to like posts",
                 preferredStyle: .alert
             )
             alert.addAction(UIAlertAction(title: "OK", style: .default))
-            UIApplication.shared.windows.first?.rootViewController?.present(alert, animated: true)
+
+            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+               let rootVC = windowScene.windows.first?.rootViewController {
+                rootVC.present(alert, animated: true)
+            }
+
             return
         }
+
         
         // Provide haptic feedback
         let generator = UIImpactFeedbackGenerator(style: .medium)
@@ -337,7 +344,7 @@ class MyPostCardCell: UITableViewCell {
                 self?.likeCountLabel.isHidden = count == 0
                 
                 // Update isLiked state based on count
-                self?.isLiked = count ?? 0 > 0
+                self?.isLiked = count > 0
                 
                 // Update button appearance after changing isLiked
                 self?.updateLikeButtonAppearance()
