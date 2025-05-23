@@ -529,8 +529,10 @@ extension VaccineInputViewController: VaccineCellDelegate {
         let datePicker = UIDatePicker()
         datePicker.datePickerMode = .date
         datePicker.preferredDatePickerStyle = .inline
-        datePicker.minimumDate = Date() // Can't schedule in the past
-        datePicker.maximumDate = Calendar.current.date(byAdding: .year, value: 2, to: Date()) // Max 2 years in future
+        
+        // Remove all date constraints to allow free selection
+        datePicker.minimumDate = nil
+        datePicker.maximumDate = nil
         
         // Configure datePicker to properly fit in the view
         datePicker.translatesAutoresizingMaskIntoConstraints = false

@@ -1122,11 +1122,12 @@ class HomeViewController: UIViewController {
         datePicker.datePickerMode = .date
         datePicker.preferredDatePickerStyle = .inline  // Modern iOS inline calendar style
         
-        // Set minimum date to today (can't schedule in the past)
-        datePicker.minimumDate = Date()
+        // Remove all date constraints to allow free selection
+        datePicker.minimumDate = nil
+        datePicker.maximumDate = nil
         
-        // Set the date to a week from now as default
-        datePicker.date = Calendar.current.date(byAdding: .day, value: 7, to: Date()) ?? Date()
+        // Set initial date to current schedule date or today
+        datePicker.date = vaccineSchedule.date
         
         // Configure datePicker to properly fit in the view
         datePicker.translatesAutoresizingMaskIntoConstraints = false

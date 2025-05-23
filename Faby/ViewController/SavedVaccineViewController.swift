@@ -501,7 +501,19 @@ class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITab
         
         let babyData = try JSONDecoder().decode(BabyData.self, from: babyResponse.data)
         
-        // Fetch parent data
+        // First try to get parent name from UserDefaults
+        let parentName = UserDefaults.standard.string(forKey: "parentName")
+        if let parentName = parentName {
+            // Create parent data with UserDefaults name
+            let parentData = ParentData(
+                id: UUID().uuidString,
+                name: parentName,
+                relation: "parent"
+            )
+            return (babyData, parentData)
+        }
+        
+        // If no parent name in UserDefaults, try to fetch from Supabase
         let parentResponse = try await client
             .from("parents")
             .select()
@@ -509,9 +521,20 @@ class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITab
             .single()
             .execute()
         
-        let parentData = try JSONDecoder().decode(ParentData.self, from: parentResponse.data)
+        if let parentData = try? JSONDecoder().decode(ParentData.self, from: parentResponse.data) {
+            // Save parent name to UserDefaults for future use
+            UserDefaults.standard.set(parentData.name, forKey: "parentName")
+            return (babyData, parentData)
+        }
         
-        return (babyData, parentData)
+        // If we couldn't get parent data from Supabase, create a default one
+        let defaultParentData = ParentData(
+            id: UUID().uuidString,
+            name: "Parent",
+            relation: "parent"
+        )
+        
+        return (babyData, defaultParentData)
     }
     
     // Data structures for Supabase responses
@@ -543,69 +566,29 @@ class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITab
     
     // Generate PDF with vaccination records in a card format
     private func generateAndSharePDF(with data: (baby: BabyData, parent: ParentData)? = nil) {
-        if let data = data {
-            // Generate a personalized vaccination card with backend data
-            generatePersonalizedVaccinationCard(babyData: data.baby, parentData: data.parent)
-        } else {
-            // Fallback to local data if backend data is not available
-            Task {
-                do {
-                    // Try to fetch baby with current ID first
-                    let baby: Baby
-                    if !currentBabyId.isEmpty, let babyId = UUID(uuidString: currentBabyId) {
-                        baby = try await fetchBaby(with: babyId)
-                    } else {
-                        // If no specific baby is selected, fetch first connected baby
-                        baby = try await fetchFirstConnectedBaby()
-                    }
-                    
-                    // Create fake parent data from UserDefaults
-                    let parentName = UserDefaults.standard.string(forKey: "parentName") ?? "Parent"
-                    let fakeParentData = ParentData(id: UUID().uuidString, name: parentName, relation: "parent")
-                    
-                    // Create BabyData from Baby model
-                    let fakeBabyData = BabyData(
-                        id: baby.babyID.uuidString,
-                        name: baby.name,
-                        dateOfBirth: baby.dateOfBirth,
-                        gender: baby.gender == .male ? "male" : "female"
-                    )
-                    
-                    await MainActor.run {
-                        generatePersonalizedVaccinationCard(babyData: fakeBabyData, parentData: fakeParentData)
-                    }
-                } catch {
-                    print("❌ Error fetching baby: \(error)")
-                    await MainActor.run {
-                        generateGenericVaccinationCard()
-                    }
-                }
-                return
-            }
-        }
-    }
-    
-    private func generateGenericVaccinationCard() {
         // Create PDF renderer with A4 portrait size
         let pageWidth = 8.5 * 72.0
         let pageHeight = 11.0 * 72.0
         let pageRect = CGRect(x: 0, y: 0, width: pageWidth, height: pageHeight)
         
         // Define colors to be used consistently across all pages
-        let backgroundColor = UIColor(red: 0.98, green: 0.96, blue: 0.94, alpha: 1.0)
-        let primaryTextColor = UIColor(red: 0.25, green: 0.40, blue: 0.55, alpha: 1.0) // Dark blue
-        let secondaryTextColor = UIColor(red: 0.92, green: 0.55, blue: 0.45, alpha: 1.0) // Coral
-        let tableHeaderColor = UIColor(red: 0.92, green: 0.55, blue: 0.45, alpha: 1.0) // Coral
+        let backgroundColor = UIColor.white // Changed to white
+        let primaryTextColor = UIColor(red: 0.0, green: 0.32, blue: 0.6, alpha: 1.0) // Darker blue
+        let secondaryTextColor = UIColor(red: 0.2, green: 0.47, blue: 0.7, alpha: 1.0) // Medium blue
+        let tableHeaderColor = UIColor(red: 0.35, green: 0.6, blue: 0.8, alpha: 1.0) // Sky blue for header on white
         
         let renderer = UIGraphicsPDFRenderer(bounds: pageRect)
         
         // Generate PDF data
-        let data = renderer.pdfData { context in
+        let pdfData = renderer.pdfData { context in
             context.beginPage()
             
             // Draw background
             backgroundColor.setFill()
             UIRectFill(pageRect)
+            
+            // Add Faby watermark
+            drawFabyWatermark(context: context, pageWidth: pageWidth, pageHeight: pageHeight)
             
             // Draw dotted border
             let borderRect = CGRect(x: 60, y: 60, width: pageWidth - 120, height: pageHeight - 120)
@@ -632,7 +615,7 @@ class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITab
                 )
                 
                 // Create a circular background
-                context.cgContext.setFillColor(UIColor(red: 1.0, green: 0.9, blue: 0.85, alpha: 1.0).cgColor)
+                context.cgContext.setFillColor(UIColor(red: 0.9, green: 0.95, blue: 1.0, alpha: 1.0).cgColor)
                 context.cgContext.fillEllipse(in: iconRect)
                 
                 // Draw the icon
@@ -659,39 +642,69 @@ class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITab
             
             subtitleText.draw(at: CGPoint(x: 100, y: 150), withAttributes: subtitleAttributes)
             
-            // Add generic information
+            // Add baby information
             var currentY: CGFloat = 250
             
-            // Name (Generic)
-            drawInfoField(label: "Name", value: "Child's Name", y: currentY, primaryColor: primaryTextColor, secondaryColor: secondaryTextColor)
+            // Name
+            let babyName = data?.baby.name ?? "Child's Name"
+            drawInfoField(label: "Name", value: babyName, y: currentY, primaryColor: primaryTextColor, secondaryColor: secondaryTextColor)
             currentY += 50
             
-            // Date of Birth (Generic)
-            drawInfoField(label: "Date of Birth", value: "Date of Birth", y: currentY, primaryColor: primaryTextColor, secondaryColor: secondaryTextColor)
+            // Date of Birth
+            let birthDateString: String
+            if let dob = data?.baby.dateOfBirth {
+                // First try parsing as "ddMMyyyy"
+                let dateFormatter = DateFormatter()
+                dateFormatter.dateFormat = "ddMMyyyy"
+                if let date = dateFormatter.date(from: dob) {
+                    dateFormatter.dateStyle = .long
+                    birthDateString = dateFormatter.string(from: date)
+                } else {
+                    // If that fails, try parsing as ISO format
+                    dateFormatter.dateFormat = "yyyy-MM-dd"
+                    if let date = dateFormatter.date(from: dob) {
+                        dateFormatter.dateStyle = .long
+                        birthDateString = dateFormatter.string(from: date)
+                    } else {
+                        // If all parsing fails, use the raw string
+                        birthDateString = dob
+                    }
+                }
+            } else {
+                birthDateString = "Date of Birth"
+            }
+            drawInfoField(label: "Date of Birth", value: birthDateString, y: currentY, primaryColor: primaryTextColor, secondaryColor: secondaryTextColor)
             currentY += 50
             
-            // Gender (Generic)
-            drawInfoField(label: "Gender", value: "Gender", y: currentY, primaryColor: primaryTextColor, secondaryColor: secondaryTextColor)
+            // Gender
+            let genderString: String
+            if let gender = data?.baby.gender.lowercased() {
+                genderString = gender == "male" ? "Male" : "Female"
+            } else {
+                genderString = "Gender"
+            }
+            drawInfoField(label: "Gender", value: genderString, y: currentY, primaryColor: primaryTextColor, secondaryColor: secondaryTextColor)
             currentY += 50
             
-            // Parent (Generic)
-            let parentName = UserDefaults.standard.string(forKey: "parentName") ?? "Parent"
+            // Parent
+            let parentName = data?.parent.name ?? "Parent"
             drawInfoField(label: "Parent", value: parentName, y: currentY, primaryColor: primaryTextColor, secondaryColor: secondaryTextColor)
             currentY += 70
             
             // Draw vaccination table
-            drawVaccinationTable(context: context, startY: currentY, pageWidth: pageWidth,
-                                backgroundColor: backgroundColor, headerColor: tableHeaderColor,
-                                textColor: primaryTextColor)
+            drawVaccinationTable(context: context, startY: currentY, pageWidth: pageWidth, pageHeight: pageHeight,
+                               backgroundColor: backgroundColor, headerColor: tableHeaderColor,
+                               textColor: primaryTextColor)
         }
         
         // Create a temporary file URL to store the PDF
         let temporaryDirectoryURL = FileManager.default.temporaryDirectory
-        let temporaryFileURL = temporaryDirectoryURL.appendingPathComponent("Vaccination_Record.pdf")
+        let fileName = data?.baby.name ?? "Baby"
+        let temporaryFileURL = temporaryDirectoryURL.appendingPathComponent("\(fileName)_Vaccination_Record.pdf")
         
         // Write PDF data to file
         do {
-            try data.write(to: temporaryFileURL)
+            try pdfData.write(to: temporaryFileURL)
             
             // Share the PDF file
             let activityViewController = UIActivityViewController(
@@ -701,11 +714,11 @@ class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITab
             
             // Configure the activity view controller
             activityViewController.excludedActivityTypes = [
-                .assignToContact,
-                .postToFlickr,
-                .postToVimeo,
-                .postToWeibo,
-                .saveToCameraRoll
+                UIActivity.ActivityType.assignToContact,
+                UIActivity.ActivityType.postToFlickr,
+                UIActivity.ActivityType.postToVimeo,
+                UIActivity.ActivityType.postToWeibo,
+                UIActivity.ActivityType.saveToCameraRoll
             ]
             
             // For iPad, set the popover presentation controller
@@ -749,240 +762,252 @@ class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITab
         value.draw(at: CGPoint(x: 220, y: y), withAttributes: valueAttributes)
     }
     
-    // Generate a personalized vaccination card with backend data
-    private func generatePersonalizedVaccinationCard(babyData: BabyData, parentData: ParentData) {
-        // Create PDF renderer with A4 portrait size
-        let pageWidth = 8.5 * 72.0
-        let pageHeight = 11.0 * 72.0
-        let pageRect = CGRect(x: 0, y: 0, width: pageWidth, height: pageHeight)
-        
-        // Define colors to be used consistently across all pages
-        let backgroundColor = UIColor(red: 0.98, green: 0.96, blue: 0.94, alpha: 1.0)
-        let primaryTextColor = UIColor(red: 0.25, green: 0.40, blue: 0.55, alpha: 1.0) // Dark blue
-        let secondaryTextColor = UIColor(red: 0.92, green: 0.55, blue: 0.45, alpha: 1.0) // Coral
-        let tableHeaderColor = UIColor(red: 0.92, green: 0.55, blue: 0.45, alpha: 1.0) // Coral
-        
-        let renderer = UIGraphicsPDFRenderer(bounds: pageRect)
-        
-        // Generate PDF data
-        let data = renderer.pdfData { context in
-            context.beginPage()
-            
-            // Draw background
-            backgroundColor.setFill()
-            UIRectFill(pageRect)
-            
-            // Draw dotted border
-            let borderRect = CGRect(x: 60, y: 60, width: pageWidth - 120, height: pageHeight - 120)
-            let borderPath = UIBezierPath(rect: borderRect)
-            borderPath.lineWidth = 1.0
-            
-            // Create a dotted pattern
-            context.cgContext.setLineDash(phase: 0, lengths: [3, 3])
-            context.cgContext.setStrokeColor(UIColor.lightGray.cgColor)
-            context.cgContext.addPath(borderPath.cgPath)
-            context.cgContext.strokePath()
-            
-            // Reset line dash
-            context.cgContext.setLineDash(phase: 0, lengths: [])
-            
-            // Draw baby icon
-            if let babyImage = UIImage(systemName: "face.smiling.fill") {
-                let iconSize: CGFloat = 80
-                let iconRect = CGRect(
-                    x: pageWidth - 150,
-                    y: 100,
-                    width: iconSize,
-                    height: iconSize
-                )
-                
-                // Create a circular background
-                context.cgContext.setFillColor(UIColor(red: 1.0, green: 0.9, blue: 0.85, alpha: 1.0).cgColor)
-                context.cgContext.fillEllipse(in: iconRect)
-                
-                // Draw the icon
-                babyImage.withTintColor(primaryTextColor).draw(in: iconRect.insetBy(dx: 15, dy: 15))
-            }
-            
-            // Add title
-            let titleText = "VACCINATION"
-            let titleFont = UIFont.systemFont(ofSize: 36, weight: .bold)
-            let titleAttributes: [NSAttributedString.Key: Any] = [
-                .font: titleFont,
-                .foregroundColor: primaryTextColor
-            ]
-            
-            titleText.draw(at: CGPoint(x: 100, y: 100), withAttributes: titleAttributes)
-            
-            // Add subtitle
-            let subtitleText = "RECORD"
-            let subtitleFont = UIFont.systemFont(ofSize: 36, weight: .bold)
-            let subtitleAttributes: [NSAttributedString.Key: Any] = [
-                .font: subtitleFont,
-                .foregroundColor: primaryTextColor
-            ]
-            
-            subtitleText.draw(at: CGPoint(x: 100, y: 150), withAttributes: subtitleAttributes)
-            
-            // Add baby information
-            var currentY: CGFloat = 250
-            
-            // Name
-            drawInfoField(label: "Name", value: babyData.name, y: currentY, primaryColor: primaryTextColor, secondaryColor: secondaryTextColor)
-            currentY += 50
-            
-            // Date of Birth
-            let dateFormatter = DateFormatter()
-            dateFormatter.dateFormat = "ddMMyyyy"
-            if let birthDate = dateFormatter.date(from: babyData.dateOfBirth) {
-                dateFormatter.dateStyle = .long
-                let birthDateString = dateFormatter.string(from: birthDate)
-                drawInfoField(label: "Date of Birth", value: birthDateString, y: currentY, primaryColor: primaryTextColor, secondaryColor: secondaryTextColor)
-            } else {
-                drawInfoField(label: "Date of Birth", value: babyData.dateOfBirth, y: currentY, primaryColor: primaryTextColor, secondaryColor: secondaryTextColor)
-            }
-            currentY += 50
-            
-            // Gender
-            let genderString = babyData.gender.lowercased() == "male" ? "Male" : "Female"
-            drawInfoField(label: "Gender", value: genderString, y: currentY, primaryColor: primaryTextColor, secondaryColor: secondaryTextColor)
-            currentY += 50
-            
-            // Parent
-            drawInfoField(label: "Parent", value: parentData.name, y: currentY, primaryColor: primaryTextColor, secondaryColor: secondaryTextColor)
-            currentY += 70
-            
-            // Draw vaccination table
-            drawVaccinationTable(context: context, startY: currentY, pageWidth: pageWidth,
-                                backgroundColor: backgroundColor, headerColor: tableHeaderColor,
-                                textColor: primaryTextColor)
-        }
-        
-        // Create a temporary file URL to store the PDF
-        let temporaryDirectoryURL = FileManager.default.temporaryDirectory
-        let temporaryFileURL = temporaryDirectoryURL.appendingPathComponent("\(babyData.name)_Vaccination_Record.pdf")
-        
-        // Write PDF data to file
-        do {
-            try data.write(to: temporaryFileURL)
-            
-            // Share the PDF file
-            let activityViewController = UIActivityViewController(
-                activityItems: [temporaryFileURL],
-                applicationActivities: nil
-            )
-            
-            // Configure the activity view controller
-            activityViewController.excludedActivityTypes = [
-                .assignToContact,
-                .postToFlickr,
-                .postToVimeo,
-                .postToWeibo,
-                .saveToCameraRoll
-            ]
-            
-            // For iPad, set the popover presentation controller
-            if let popoverController = activityViewController.popoverPresentationController {
-                popoverController.barButtonItem = navigationItem.rightBarButtonItem
-            }
-            
-            // Present the activity view controller
-            present(activityViewController, animated: true)
-        } catch {
-            print("Error writing PDF: \(error)")
-            
-            let alert = UIAlertController(
-                title: "Error",
-                message: "Could not generate vaccination record. Please try again.",
-                preferredStyle: .alert
-            )
-            alert.addAction(UIAlertAction(title: "OK", style: .default))
-            present(alert, animated: true)
-        }
+    // Helper function to draw the Faby watermark
+    private func drawFabyWatermark(context: UIGraphicsPDFRendererContext, pageWidth: CGFloat, pageHeight: CGFloat) {
+        let watermarkText = "Faby"
+        let watermarkFont = UIFont.systemFont(ofSize: 150, weight: .bold)
+        // Light gray watermark, subtle on white background
+        let watermarkAttributes: [NSAttributedString.Key: Any] = [
+            .font: watermarkFont,
+            .foregroundColor: UIColor(white: 0.85, alpha: 0.2) 
+        ]
+    
+        let watermarkSize = (watermarkText as NSString).size(withAttributes: watermarkAttributes)
+        let watermarkPoint = CGPoint(
+            x: (pageWidth - watermarkSize.width) / 2,
+            y: (pageHeight - watermarkSize.height) / 2
+        )
+    
+        context.cgContext.saveGState()
+        context.cgContext.translateBy(x: watermarkPoint.x + watermarkSize.width / 2,
+                                   y: watermarkPoint.y + watermarkSize.height / 2)
+        context.cgContext.rotate(by: -CGFloat.pi / 4) // Rotate -45 degrees
+        context.cgContext.translateBy(x: -(watermarkPoint.x + watermarkSize.width / 2),
+                                   y: -(watermarkPoint.y + watermarkSize.height / 2))
+        watermarkText.draw(at: watermarkPoint, withAttributes: watermarkAttributes)
+        context.cgContext.restoreGState()
     }
     
     // Helper method to draw the vaccination table
-    private func drawVaccinationTable(context: UIGraphicsPDFRendererContext, startY: CGFloat, pageWidth: CGFloat,
+    private func drawVaccinationTable(context: UIGraphicsPDFRendererContext, startY: CGFloat, pageWidth: CGFloat, pageHeight: CGFloat,
                                      backgroundColor: UIColor, headerColor: UIColor, textColor: UIColor) {
         let tableWidth = pageWidth - 200
         let tableX = 100.0
         var currentY = startY
         
-        // Draw table header
-        let headerHeight = 40.0
-        let headerRect = CGRect(x: tableX, y: currentY, width: tableWidth, height: headerHeight)
-        headerColor.setFill()
-        UIRectFill(headerRect)
-        
-        // Draw header text
-        let nameHeaderWidth = tableWidth * 0.6
-        let dateHeaderWidth = tableWidth * 0.4
-        
-        let headerFont = UIFont.systemFont(ofSize: 16, weight: .bold)
-        let headerAttributes: [NSAttributedString.Key: Any] = [
-            .font: headerFont,
-            .foregroundColor: UIColor.white
+        // Organize vaccines by timeframe
+        var vaccinesByTimeframe: [String: [VaccineAdministered]] = [
+            "BIRTH": [],
+            "6 WEEKS": [],
+            "10 WEEKS": [],
+            "14 WEEKS": [],
+            "6 MONTHS": [],
+            "9 MONTHS": [],
+            "12 MONTHS": [],
+            "15 MONTHS": [],
+            "18 MONTHS": [],
+            "2 YEARS": [],
+            "4-6 YEARS": [],
+            "11-12 YEARS": []
         ]
         
-        "Vaccine Name".draw(at: CGPoint(x: tableX + 10, y: currentY + 12), withAttributes: headerAttributes)
-        "Administered Date".draw(at: CGPoint(x: tableX + nameHeaderWidth + 10, y: currentY + 12), withAttributes: headerAttributes)
+        // Group vaccines by timeframe
+        for administeredVaccine in administeredVaccines {
+            let vaccineId = administeredVaccine.vaccineId.uuidString
+            if let vaccineInfo = vaccines[vaccineId] {
+                // Use vaccine info to determine timeframe
+                if vaccineInfo.startWeek == 0 {
+                    vaccinesByTimeframe["BIRTH"]?.append(administeredVaccine)
+                } else if vaccineInfo.startWeek <= 6 {
+                    vaccinesByTimeframe["6 WEEKS"]?.append(administeredVaccine)
+                } else if vaccineInfo.startWeek <= 10 {
+                    vaccinesByTimeframe["10 WEEKS"]?.append(administeredVaccine)
+                } else if vaccineInfo.startWeek <= 14 {
+                    vaccinesByTimeframe["14 WEEKS"]?.append(administeredVaccine)
+                } else if vaccineInfo.startWeek <= 26 { // ~6 months
+                    vaccinesByTimeframe["6 MONTHS"]?.append(administeredVaccine)
+                } else if vaccineInfo.startWeek <= 39 { // ~9 months
+                    vaccinesByTimeframe["9 MONTHS"]?.append(administeredVaccine)
+                } else if vaccineInfo.startWeek <= 52 { // ~12 months
+                    vaccinesByTimeframe["12 MONTHS"]?.append(administeredVaccine)
+                } else if vaccineInfo.startWeek <= 65 { // ~15 months
+                    vaccinesByTimeframe["15 MONTHS"]?.append(administeredVaccine)
+                } else if vaccineInfo.startWeek <= 78 { // ~18 months
+                    vaccinesByTimeframe["18 MONTHS"]?.append(administeredVaccine)
+                } else if vaccineInfo.startWeek <= 104 { // ~2 years
+                    vaccinesByTimeframe["2 YEARS"]?.append(administeredVaccine)
+                } else if vaccineInfo.startWeek <= 312 { // ~4-6 years
+                    vaccinesByTimeframe["4-6 YEARS"]?.append(administeredVaccine)
+                } else {
+                    vaccinesByTimeframe["11-12 YEARS"]?.append(administeredVaccine)
+                }
+            }
+        }
         
-        // Draw header divider
-        context.cgContext.setStrokeColor(UIColor.white.cgColor)
-        context.cgContext.setLineWidth(1.0)
-        context.cgContext.move(to: CGPoint(x: tableX + nameHeaderWidth, y: currentY))
-        context.cgContext.addLine(to: CGPoint(x: tableX + nameHeaderWidth, y: currentY + headerHeight))
-        context.cgContext.strokePath()
-        
-        currentY += headerHeight
-        
-        // Draw rows
-        let rowHeight = 35.0
-        let rowFont = UIFont.systemFont(ofSize: 14)
-        let rowAttributes: [NSAttributedString.Key: Any] = [
-            .font: rowFont,
-            .foregroundColor: textColor
-        ]
+        // Sort timeframes and filter out empty ones
+        let sortedTimeframes = vaccinesByTimeframe.filter { !$0.value.isEmpty }
+            .sorted { first, second in
+                let order: [String: Int] = [
+                    "BIRTH": 0,
+                    "6 WEEKS": 1,
+                    "10 WEEKS": 2,
+                    "14 WEEKS": 3,
+                    "6 MONTHS": 4,
+                    "9 MONTHS": 5,
+                    "12 MONTHS": 6,
+                    "15 MONTHS": 7,
+                    "18 MONTHS": 8,
+                    "2 YEARS": 9,
+                    "4-6 YEARS": 10,
+                    "11-12 YEARS": 11
+                ]
+                return (order[first.key] ?? 99) < (order[second.key] ?? 99)
+            }
         
         let dateFormatter = DateFormatter()
-        dateFormatter.dateStyle = .long
+        dateFormatter.dateStyle = .medium
         
-        for vaccine in administeredVaccines {
-            // Draw row background
-            let rowRect = CGRect(x: tableX, y: currentY, width: tableWidth, height: rowHeight)
-            backgroundColor.setFill()
-            UIRectFill(rowRect)
+        // Draw sections for each timeframe
+        for (timeframe, timeframeVaccines) in sortedTimeframes {
+            // Draw timeframe header
+            let timeframeFont = UIFont.systemFont(ofSize: 18, weight: .bold)
+            let timeframeAttributes: [NSAttributedString.Key: Any] = [
+                .font: timeframeFont,
+                .foregroundColor: textColor
+            ]
             
-            // Draw border
-            context.cgContext.setStrokeColor(UIColor.lightGray.cgColor)
-            context.cgContext.setLineWidth(0.5)
-            context.cgContext.stroke(rowRect)
+            timeframe.draw(at: CGPoint(x: tableX, y: currentY), withAttributes: timeframeAttributes)
+            currentY += 30
             
-            // Draw vertical divider
+            // Draw table header
+            let headerHeight = 40.0
+            let headerRect = CGRect(x: tableX, y: currentY, width: tableWidth, height: headerHeight)
+            headerColor.setFill()
+            UIRectFill(headerRect)
+            
+            // Draw header text
+            let nameHeaderWidth = tableWidth * 0.6
+            
+            let headerFont = UIFont.systemFont(ofSize: 16, weight: .bold)
+            let headerAttributes: [NSAttributedString.Key: Any] = [
+                .font: headerFont,
+                .foregroundColor: UIColor.white
+            ]
+            
+            "Vaccine Name".draw(at: CGPoint(x: tableX + 10, y: currentY + 12), withAttributes: headerAttributes)
+            "Administered Date".draw(at: CGPoint(x: tableX + nameHeaderWidth + 10, y: currentY + 12), withAttributes: headerAttributes)
+            
+            // Draw header divider
+            context.cgContext.setStrokeColor(UIColor.white.cgColor)
+            context.cgContext.setLineWidth(1.0)
             context.cgContext.move(to: CGPoint(x: tableX + nameHeaderWidth, y: currentY))
-            context.cgContext.addLine(to: CGPoint(x: tableX + nameHeaderWidth, y: currentY + rowHeight))
+            context.cgContext.addLine(to: CGPoint(x: tableX + nameHeaderWidth, y: currentY + headerHeight))
             context.cgContext.strokePath()
             
-            // Get vaccine name from cache
-            let vaccineId = vaccine.vaccineId.uuidString
-            let vaccineName = vaccines[vaccineId]?.name ?? "Vaccine #\(String(vaccineId.prefix(8)))"
+            currentY += headerHeight
             
-            // Draw vaccine name
-            vaccineName.draw(at: CGPoint(x: tableX + 10, y: currentY + 12), withAttributes: rowAttributes)
+            // Draw rows for this timeframe
+            let rowHeight = 35.0
+            let rowFont = UIFont.systemFont(ofSize: 14)
+            let rowAttributes: [NSAttributedString.Key: Any] = [
+                .font: rowFont,
+                .foregroundColor: textColor
+            ]
             
-            // Draw administered date
-            let dateString = dateFormatter.string(from: vaccine.administeredDate)
-            dateString.draw(at: CGPoint(x: tableX + nameHeaderWidth + 10, y: currentY + 12), withAttributes: rowAttributes)
+            for administeredVaccine in timeframeVaccines {
+                // Draw row background
+                let rowRect = CGRect(x: tableX, y: currentY, width: tableWidth, height: rowHeight)
+                backgroundColor.setFill()
+                UIRectFill(rowRect)
+                
+                // Draw border
+                context.cgContext.setStrokeColor(UIColor.lightGray.cgColor)
+                context.cgContext.setLineWidth(0.5)
+                context.cgContext.stroke(rowRect)
+                
+                // Draw vertical divider
+                context.cgContext.move(to: CGPoint(x: tableX + nameHeaderWidth, y: currentY))
+                context.cgContext.addLine(to: CGPoint(x: tableX + nameHeaderWidth, y: currentY + rowHeight))
+                context.cgContext.strokePath()
+                
+                // Get vaccine name from cache
+                let vaccineId = administeredVaccine.vaccineId.uuidString
+                let vaccineName = vaccines[vaccineId]?.name ?? "Unknown Vaccine"
+                
+                // Draw vaccine name
+                vaccineName.draw(at: CGPoint(x: tableX + 10, y: currentY + 12), withAttributes: rowAttributes)
+                
+                // Draw administered date
+                let dateString = dateFormatter.string(from: administeredVaccine.administeredDate)
+                dateString.draw(at: CGPoint(x: tableX + nameHeaderWidth + 10, y: currentY + 12), withAttributes: rowAttributes)
+                
+                currentY += rowHeight
+                
+                // Check if we need a new page
+                if currentY > context.pdfContextBounds.height - 100 {
+                    context.beginPage()
+                    
+                    // Draw consistent background color on new page
+                    backgroundColor.setFill()
+                    UIRectFill(context.pdfContextBounds)
+
+                    // Add Faby watermark to new page
+                    drawFabyWatermark(context: context, pageWidth: pageWidth, pageHeight: pageHeight)
+                    
+                    // Draw dotted border on new page
+                    let borderRect = CGRect(x: 60, y: 60,
+                                          width: context.pdfContextBounds.width - 120,
+                                          height: context.pdfContextBounds.height - 120)
+                    let borderPath = UIBezierPath(rect: borderRect)
+                    borderPath.lineWidth = 1.0
+                    
+                    // Create a dotted pattern
+                    context.cgContext.setLineDash(phase: 0, lengths: [3, 3])
+                    context.cgContext.setStrokeColor(UIColor.lightGray.cgColor)
+                    context.cgContext.addPath(borderPath.cgPath)
+                    context.cgContext.strokePath()
+                    
+                    // Reset line dash
+                    context.cgContext.setLineDash(phase: 0, lengths: [])
+                    
+                    currentY = 60
+                    
+                    // Continue with timeframe header on new page
+                    timeframe.draw(at: CGPoint(x: tableX, y: currentY), withAttributes: timeframeAttributes)
+                    currentY += 30
+                    
+                    // Redraw the header on the new page
+                    let headerRect = CGRect(x: tableX, y: currentY, width: tableWidth, height: headerHeight)
+                    headerColor.setFill()
+                    UIRectFill(headerRect)
+                    
+                    "Vaccine Name".draw(at: CGPoint(x: tableX + 10, y: currentY + 12), withAttributes: headerAttributes)
+                    "Administered Date".draw(at: CGPoint(x: tableX + nameHeaderWidth + 10, y: currentY + 12), withAttributes: headerAttributes)
+                    
+                    context.cgContext.setStrokeColor(UIColor.white.cgColor)
+                    context.cgContext.setLineWidth(1.0)
+                    context.cgContext.move(to: CGPoint(x: tableX + nameHeaderWidth, y: currentY))
+                    context.cgContext.addLine(to: CGPoint(x: tableX + nameHeaderWidth, y: currentY + headerHeight))
+                    context.cgContext.strokePath()
+                    
+                    currentY += headerHeight
+                }
+            }
             
-            currentY += rowHeight
+            // Add space between timeframe sections
+            currentY += 30
             
-            // Check if we need a new page
-            if currentY > context.pdfContextBounds.height - 100 {
+            // Check if we need a new page before starting next timeframe
+            if currentY > context.pdfContextBounds.height - 130 {
                 context.beginPage()
+                currentY = 60
                 
                 // Draw consistent background color on new page
                 backgroundColor.setFill()
                 UIRectFill(context.pdfContextBounds)
+
+                // Add Faby watermark to new page
+                drawFabyWatermark(context: context, pageWidth: pageWidth, pageHeight: pageHeight)
                 
                 // Draw dotted border on new page
                 let borderRect = CGRect(x: 60, y: 60,
@@ -999,24 +1024,6 @@ class SavedVaccineViewController: UIViewController, UITableViewDataSource, UITab
                 
                 // Reset line dash
                 context.cgContext.setLineDash(phase: 0, lengths: [])
-                
-                currentY = 50
-                
-                // Redraw the header on the new page
-                let headerRect = CGRect(x: tableX, y: currentY, width: tableWidth, height: headerHeight)
-                headerColor.setFill()
-                UIRectFill(headerRect)
-                
-                "Vaccine Name".draw(at: CGPoint(x: tableX + 10, y: currentY + 12), withAttributes: headerAttributes)
-                "Administered Date".draw(at: CGPoint(x: tableX + nameHeaderWidth + 10, y: currentY + 12), withAttributes: headerAttributes)
-                
-                context.cgContext.setStrokeColor(UIColor.white.cgColor)
-                context.cgContext.setLineWidth(1.0)
-                context.cgContext.move(to: CGPoint(x: tableX + nameHeaderWidth, y: currentY))
-                context.cgContext.addLine(to: CGPoint(x: tableX + nameHeaderWidth, y: currentY + headerHeight))
-                context.cgContext.strokePath()
-                
-                currentY += headerHeight
             }
         }
     }

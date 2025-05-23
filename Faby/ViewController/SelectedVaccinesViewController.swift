@@ -226,11 +226,47 @@ class SelectedVaccinesViewController: UIViewController {
                 // Try to fetch baby data
                 let baby = try await fetchFirstConnectedBaby()
                 
-                // Create fake parent data from UserDefaults
-                let parentName = UserDefaults.standard.string(forKey: "parentName") ?? "Parent"
+                // Try to get parent name from different sources
+                var parentName: String?
+                
+                // First try to get from UserDefaults
+                if let storedParentName = UserDefaults.standard.string(forKey: "parentName") {
+                    parentName = storedParentName
+                } else {
+                    // If not in UserDefaults, try to fetch from Supabase
+                    if let client = (UIApplication.shared.delegate as? AppDelegate)?.supabase ??
+                                  (UIApplication.shared.connectedScenes.first?.delegate as? SceneDelegate)?.supabase {
+                        do {
+                            let parentResponse = try await client
+                                .from("parents")
+                                .select()
+                                .eq("baby_uid", value: baby.babyID.uuidString)
+                                .single()
+                                .execute()
+                            
+                            if let parentData = try? JSONDecoder().decode(ParentData.self, from: parentResponse.data) {
+                                parentName = parentData.name
+                                // Save to UserDefaults for future use
+                                UserDefaults.standard.set(parentData.name, forKey: "parentName")
+                            }
+                        } catch {
+                            print("❌ Error fetching parent data: \(error)")
+                        }
+                    }
+                }
+                
+                // If we still don't have a parent name, use a default
+                if parentName == nil {
+                    parentName = UserDefaults.standard.string(forKey: "parentName") ?? "Parent"
+                }
                 
                 await MainActor.run {
-                    generateAndSharePDF(babyName: baby.name, babyDOB: baby.dateOfBirth, babyGender: baby.gender == .male ? "Male" : "Female", parentName: parentName)
+                    generateAndSharePDF(
+                        babyName: baby.name,
+                        babyDOB: baby.dateOfBirth,
+                        babyGender: baby.gender == .male ? "Male" : "Female",
+                        parentName: parentName ?? "Parent"
+                    )
                     loadingIndicator.removeFromSuperview()
                     navigationItem.rightBarButtonItem?.isEnabled = true
                 }
@@ -247,7 +283,45 @@ class SelectedVaccinesViewController: UIViewController {
         }
     }
     
-    // Generate and share PDF with vaccination records in a card format
+    // Add ParentData model to match SavedVaccineViewController
+    private struct ParentData: Codable {
+        let id: String
+        let name: String
+        let relation: String
+        
+        enum CodingKeys: String, CodingKey {
+            case id = "uid"
+            case name
+            case relation = "relationship"
+        }
+    }
+    
+    // Helper function to draw the Faby watermark
+    private func drawFabyWatermark(context: UIGraphicsPDFRendererContext, pageWidth: CGFloat, pageHeight: CGFloat) {
+        let watermarkText = "Faby"
+        let watermarkFont = UIFont.systemFont(ofSize: 150, weight: .bold)
+        // Light gray watermark, subtle on white background
+        let watermarkAttributes: [NSAttributedString.Key: Any] = [
+            .font: watermarkFont,
+            .foregroundColor: UIColor(white: 0.85, alpha: 0.2)
+        ]
+    
+        let watermarkSize = (watermarkText as NSString).size(withAttributes: watermarkAttributes)
+        let watermarkPoint = CGPoint(
+            x: (pageWidth - watermarkSize.width) / 2,
+            y: (pageHeight - watermarkSize.height) / 2
+        )
+    
+        context.cgContext.saveGState()
+        context.cgContext.translateBy(x: watermarkPoint.x + watermarkSize.width / 2,
+                                   y: watermarkPoint.y + watermarkSize.height / 2)
+        context.cgContext.rotate(by: -CGFloat.pi / 4)
+        context.cgContext.translateBy(x: -(watermarkPoint.x + watermarkSize.width / 2),
+                                   y: -(watermarkPoint.y + watermarkSize.height / 2))
+        watermarkText.draw(at: watermarkPoint, withAttributes: watermarkAttributes)
+        context.cgContext.restoreGState()
+    }
+
     private func generateAndSharePDF(babyName: String = "Baby", babyDOB: String = "Unknown", babyGender: String = "Unknown", parentName: String = "Parent") {
         // Create PDF renderer with A4 portrait size
         let pageWidth = 8.5 * 72.0
@@ -255,10 +329,10 @@ class SelectedVaccinesViewController: UIViewController {
         let pageRect = CGRect(x: 0, y: 0, width: pageWidth, height: pageHeight)
         
         // Define colors to be used consistently across all pages
-        let backgroundColor = UIColor(red: 0.98, green: 0.96, blue: 0.94, alpha: 1.0)
-        let primaryTextColor = UIColor(red: 0.25, green: 0.40, blue: 0.55, alpha: 1.0) // Dark blue
-        let secondaryTextColor = UIColor(red: 0.92, green: 0.55, blue: 0.45, alpha: 1.0) // Coral
-        let tableHeaderColor = UIColor(red: 0.92, green: 0.55, blue: 0.45, alpha: 1.0) // Coral
+        let backgroundColor = UIColor.white // White background
+        let primaryTextColor = UIColor(red: 0.0, green: 0.32, blue: 0.6, alpha: 1.0) // Darker blue
+        let secondaryTextColor = UIColor(red: 0.2, green: 0.47, blue: 0.7, alpha: 1.0) // Medium blue
+        let tableHeaderColor = UIColor(red: 0.35, green: 0.6, blue: 0.8, alpha: 1.0) // Sky blue
         
         let renderer = UIGraphicsPDFRenderer(bounds: pageRect)
         
@@ -269,7 +343,10 @@ class SelectedVaccinesViewController: UIViewController {
             // Draw background
             backgroundColor.setFill()
             UIRectFill(pageRect)
-        
+            
+            // Add Faby watermark
+            drawFabyWatermark(context: context, pageWidth: pageWidth, pageHeight: pageHeight)
+            
             // Draw dotted border
             let borderRect = CGRect(x: 60, y: 60, width: pageWidth - 120, height: pageHeight - 120)
             let borderPath = UIBezierPath(rect: borderRect)
@@ -295,7 +372,7 @@ class SelectedVaccinesViewController: UIViewController {
                 )
                 
                 // Create a circular background
-                context.cgContext.setFillColor(UIColor(red: 1.0, green: 0.9, blue: 0.85, alpha: 1.0).cgColor)
+                context.cgContext.setFillColor(UIColor(red: 0.9, green: 0.95, blue: 1.0, alpha: 1.0).cgColor)
                 context.cgContext.fillEllipse(in: iconRect)
                 
                 // Draw the icon
@@ -342,9 +419,9 @@ class SelectedVaccinesViewController: UIViewController {
             currentY += 70
             
             // Draw vaccination table
-            drawVaccinationTable(context: context, startY: currentY, pageWidth: pageWidth,
-                                backgroundColor: backgroundColor, headerColor: tableHeaderColor,
-                                textColor: primaryTextColor)
+            drawVaccinationTable(context: context, startY: currentY, pageWidth: pageWidth, pageHeight: pageHeight,
+                               backgroundColor: backgroundColor, headerColor: tableHeaderColor,
+                               textColor: primaryTextColor)
         }
         
         // Create a temporary file URL to store the PDF
@@ -412,7 +489,7 @@ class SelectedVaccinesViewController: UIViewController {
     }
     
     // Helper method to draw the vaccination table
-    private func drawVaccinationTable(context: UIGraphicsPDFRendererContext, startY: CGFloat, pageWidth: CGFloat,
+    private func drawVaccinationTable(context: UIGraphicsPDFRendererContext, startY: CGFloat, pageWidth: CGFloat, pageHeight: CGFloat,
                                      backgroundColor: UIColor, headerColor: UIColor, textColor: UIColor) {
         let tableWidth = pageWidth - 200
         let tableX = 100.0
@@ -665,14 +742,16 @@ class SelectedVaccinesViewController: UIViewController {
                     administeredDates: selectedDates
                 )
                 
+                // Mark the user as having seen the vaccine input screen
+                try await FirstTimeUserManager.shared.updateHasSeenStatus(babyId: babyId, hasSeen: true)
+                
                 // Remove loading indicator and navigate directly
                 await MainActor.run {
                     loadingIndicator.removeFromSuperview()
                     continueButton.isEnabled = true
                     
-                    // Navigate directly to VacciAlertViewController after successful save
-                    let vacciAlertVC = VacciAlertViewController()
-                    self.navigationController?.pushViewController(vacciAlertVC, animated: true)
+                    // Use the navigation helper to properly clear the stack
+                    self.navigateToVaccineAlertViewController()
                 }
             } catch {
                 // Handle error without showing an alert
@@ -706,8 +785,10 @@ class SelectedVaccinesViewController: UIViewController {
         let datePicker = UIDatePicker()
         datePicker.datePickerMode = .date
         datePicker.preferredDatePickerStyle = .inline
-        datePicker.maximumDate = Date() // Can't be in the future since these are administered vaccines
-        datePicker.minimumDate = Calendar.current.date(byAdding: .year, value: -1, to: Date()) // Allow up to a year ago
+        
+        // Remove all date constraints to allow free selection
+        datePicker.minimumDate = nil
+        datePicker.maximumDate = nil
         
         // Configure datePicker to properly fit in the view
         datePicker.translatesAutoresizingMaskIntoConstraints = false
